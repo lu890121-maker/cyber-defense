@@ -281,9 +281,9 @@ export class GameManager {
         this.buttons.set('overload', { x: 124, y: bottomY, w: 102, h: 40 });
         this.buttons.set('speed', { x: 236, y: bottomY, w: 48, h: 40 });
         // 重新开始按钮（声音开关左边）- 显示"重开"文字
-        this.buttons.set('restart', { x: 360, y: 8, w: 45, h: 32 });
+        this.buttons.set('restart', { x: 375, y: 10, w: 36, h: 26 });
         // 静音开关（右上角）
-        this.buttons.set('mute', { x: 410, y: 8, w: 32, h: 32 });
+        this.buttons.set('mute', { x: 415, y: 10, w: 26, h: 26 });
         // 六个合成格均匀铺满底栏，留出塔名显示空间。
         const mergeAreaY = GAME_CONSTANTS.CANVAS_HEIGHT - 100;
         const mergeAreaStartX = 53;
@@ -4183,13 +4183,14 @@ export class GameManager {
         ctx.fill();
         // 边框
         ctx.strokeStyle = muted ? '#3a4a5a' : '#00F0FF';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.arc(cx, cy, btn.w / 2, 0, Math.PI * 2);
         ctx.stroke();
-        // 喇叭图标（矢量绘制，不使用 emoji）
+        // 喇叭图标（矢量绘制，不使用 emoji）- 缩小版
         ctx.save();
         ctx.translate(cx, cy);
+        ctx.scale(0.8, 0.8); // 整体缩小到 80%
         // 喇叭主体
         ctx.fillStyle = muted ? '#6a7a8a' : '#00F0FF';
         ctx.beginPath();
@@ -4238,16 +4239,16 @@ export class GameManager {
         const cy = btn.y + btn.h / 2;
         // 背景
         ctx.fillStyle = 'rgba(255, 107, 138, 0.15)';
-        this.roundRect(btn.x, btn.y, btn.w, btn.h, 6);
+        this.roundRect(btn.x, btn.y, btn.w, btn.h, 4);
         ctx.fill();
         // 边框
         ctx.strokeStyle = '#ff6b8a';
-        ctx.lineWidth = 1.5;
-        this.roundRect(btn.x, btn.y, btn.w, btn.h, 6);
+        ctx.lineWidth = 1;
+        this.roundRect(btn.x, btn.y, btn.w, btn.h, 4);
         ctx.stroke();
         // 文字"重开"
         ctx.fillStyle = '#ff6b8a';
-        ctx.font = 'bold 14px sans-serif';
+        ctx.font = 'bold 11px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('重开', cx, cy);
