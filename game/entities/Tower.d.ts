@@ -258,6 +258,8 @@ export declare class Tower {
         y: number;
         level: number;
     }>;
+    /** 引力塔持续减速效果（每帧调用） */
+    applyMagneticSlowEffect(enemies: Enemy[], deltaTime: number): void;
     isOverloaded(): boolean;
     isParalyzed(): boolean;
     /**

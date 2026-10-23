@@ -225,6 +225,15 @@ export class Tower {
             this.skillMods.aoeSlow = true;
             this.skillMods.aoeRadius = 60 + (level - 1) * 20; // Lv1: 60, Lv2: 80, Lv3: 100, Lv4: 120, Lv5: 140
         }
+        // 奇点炮：4级生成1个光球，5级生成第2个光球
+        if (type === TowerType.SINGULARITY) {
+            if (level >= 4 && this.orbs.length === 0) {
+                this.spawnOrb(3); // 攻击力等同3级奇点炮
+            }
+            if (level >= 5 && this.orbs.length === 1) {
+                this.spawnOrb(4); // 攻击力等同4级奇点炮
+            }
+        }
         // 先应用稀有度成长，再应用等级成长。
         // 顺序有讲究：稀有度是「底子」，等级是在这个底子上按百分比叠加，
         // 所以 SSR 塔每升一级的绝对收益也更高（1.4 倍乘在更大的基数上）。
@@ -479,6 +488,24 @@ export class Tower {
     /** 获取光球列表（供渲染使用） */
     getOrbs() {
         return this.orbs.map(orb => ({ x: orb.x, y: orb.y, level: orb.level }));
+    }
+    /** 引力塔持续减速效果（每帧调用） */
+    applyMagneticSlowEffect(enemies, deltaTime) {
+        if (this.type !== TowerType.MAGNETIC)
+            return;
+        const radius = this.skillMods.aoeRadius;
+        const slowEffect = 0.3; // 30% 减速
+        const slowDuration = 0.5; // 持续 0.5 秒
+        for (const enemy of enemies) {
+            if (!enemy.isAlive())
+                continue;
+            const dx = enemy.getX() - this.x;
+            const dy = enemy.getY() - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist <= radius) {
+                enemy.applySlow(slowEffect, slowDuration);
+            }
+        }
     }
     isOverloaded() {
         return this.overloadActive;

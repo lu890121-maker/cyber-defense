@@ -1580,6 +1580,10 @@ export class GameManager {
             if (tower.getType() === TowerType.SINGULARITY) {
                 tower.updateOrbsWithEnemies(scaledDelta, this.waveManager.getAliveEnemies());
             }
+            // 引力塔持续减速效果
+            if (tower.getType() === TowerType.MAGNETIC) {
+                tower.applyMagneticSlowEffect(this.waveManager.getAliveEnemies(), scaledDelta);
+            }
         }
         // 更新动画效果
         this.updateEffects(scaledDelta);
