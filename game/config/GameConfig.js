@@ -2118,18 +2118,18 @@ export const TOWER_SKILLS = [
                 effect: 'poison+120%;poison_spread'
             },
             {
+                id: 'poison4_poison_pool',
+                name: '毒液池',
+                icon: '🧪',
+                description: '在路径上形成毒液池，路过敌人持续中毒',
+                effect: 'poison_pool'
+            },
+            {
                 id: 'poison4_decay',
                 name: '腐朽之触',
                 icon: '🦠',
                 description: '中毒目标受伤+60%，易伤+20%',
                 effect: 'weak+60%;vuln+20%'
-            },
-            {
-                id: 'poison4_toxin',
-                name: '神经毒素',
-                icon: '🧪',
-                description: '毒素伤害+100%，减速+20%',
-                effect: 'poison+100%;slow+20%'
             }
         ]
     },
@@ -2226,18 +2226,18 @@ export const TOWER_SKILLS = [
                 effect: 'burn+180%;range+30%'
             },
             {
+                id: 'flame4_fire_sea',
+                name: '火海',
+                icon: '🔥',
+                description: '在路径上形成火海，路过敌人持续灼烧',
+                effect: 'fire_sea'
+            },
+            {
                 id: 'flame4_melt',
                 name: '熔甲',
                 icon: '🛡️',
                 description: '熔甲，护甲穿透+40%',
                 effect: 'armor_break;pierce+40%'
-            },
-            {
-                id: 'flame4_wildfire',
-                name: '野火燎原',
-                icon: '🍂',
-                description: '灼烧伤害+120%，被灼烧目标受伤+25%',
-                effect: 'burn+120%;weak+25%'
             }
         ]
     },

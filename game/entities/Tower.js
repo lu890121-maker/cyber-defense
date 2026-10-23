@@ -64,7 +64,9 @@ export const DEFAULT_SKILL_MODS = {
     sniperPierce: false,
     pullMult: 1,
     vanishSpeed: false,
-    vanishSpeedBonus: 0.5
+    vanishSpeedBonus: 0.5,
+    fireSea: false,
+    poisonPool: false
 };
 /**
  * 技能变体数量 —— 每档技能有 3 个候选，对应 3 种"变体"。
@@ -522,6 +524,57 @@ export class Tower {
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist <= radius) {
                 enemy.applySlow(slowEffect, slowDuration);
+            }
+        }
+    }
+    /** 火焰塔/毒液塔地面持续伤害效果（每帧调用） */
+    applyGroundEffect(enemies, deltaTime, pathPoints) {
+        // 火海效果
+        if (this.type === TowerType.FLAME && this.skillMods.fireSea) {
+            const burnDamage = this.getDamage() * 0.15 * this.skillMods.burnDamageMult; // 每秒15%伤害
+            const burnRadius = 80; // 火海半径
+            // 在塔周围的路径上形成火海
+            for (const point of pathPoints) {
+                const dx = point.x - this.x;
+                const dy = point.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist <= this.getRange()) {
+                    // 对路径点附近的敌人施加灼烧
+                    for (const enemy of enemies) {
+                        if (!enemy.isAlive())
+                            continue;
+                        const ex = enemy.getX() - point.x;
+                        const ey = enemy.getY() - point.y;
+                        const eDist = Math.sqrt(ex * ex + ey * ey);
+                        if (eDist <= burnRadius) {
+                            enemy.applyBurn(burnDamage, 0.5); // 每秒造成burnDamage伤害，持续0.5秒
+                        }
+                    }
+                }
+            }
+        }
+        // 毒液池效果
+        if (this.type === TowerType.POISON && this.skillMods.poisonPool) {
+            const poisonDamage = this.getDamage() * 0.12 * this.skillMods.poisonDamageMult; // 每秒12%伤害
+            const poisonRadius = 80; // 毒液池半径
+            // 在塔周围的路径上形成毒液池
+            for (const point of pathPoints) {
+                const dx = point.x - this.x;
+                const dy = point.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist <= this.getRange()) {
+                    // 对路径点附近的敌人施加中毒
+                    for (const enemy of enemies) {
+                        if (!enemy.isAlive())
+                            continue;
+                        const ex = enemy.getX() - point.x;
+                        const ey = enemy.getY() - point.y;
+                        const eDist = Math.sqrt(ex * ex + ey * ey);
+                        if (eDist <= poisonRadius) {
+                            enemy.applyPoison(poisonDamage, 0.5); // 每秒造成poisonDamage伤害，持续0.5秒
+                        }
+                    }
+                }
             }
         }
     }

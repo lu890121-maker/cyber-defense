@@ -357,6 +357,8 @@ export declare class GameManager {
     private renderOpening;
     private renderGame;
     private renderMap;
+    /** 渲染地面持续伤害效果 */
+    private renderGroundEffects;
     private renderCoreOverlay;
     /**
      * 这张召唤卡能升级的同类目标（战场塔 + 合成区卡）。

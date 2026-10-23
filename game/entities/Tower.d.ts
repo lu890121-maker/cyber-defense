@@ -66,6 +66,8 @@ export interface TowerSkillMods {
     pullMult: number;
     vanishSpeed: boolean;
     vanishSpeedBonus: number;
+    fireSea: boolean;
+    poisonPool: boolean;
 }
 export declare const DEFAULT_SKILL_MODS: TowerSkillMods;
 /**
@@ -260,6 +262,11 @@ export declare class Tower {
     }>;
     /** 引力塔持续减速效果（每帧调用） */
     applyMagneticSlowEffect(enemies: Enemy[], deltaTime: number): void;
+    /** 火焰塔/毒液塔地面持续伤害效果（每帧调用） */
+    applyGroundEffect(enemies: Enemy[], deltaTime: number, pathPoints: Array<{
+        x: number;
+        y: number;
+    }>): void;
     isOverloaded(): boolean;
     isParalyzed(): boolean;
     /**

@@ -114,7 +114,10 @@ export const SKILL_EFFECT_HANDLERS = {
     focus: (t) => t.applySkillMod({ focusRamp: true }),
     split: (t) => t.applySkillMod({ beamSplit: 2 }),
     vanish: (t) => t.applySkillMod({ vanishSpeed: true }),
-    pull: (t, p) => t.applySkillMod({ pullMult: 1 + p.value / 100 })
+    pull: (t, p) => t.applySkillMod({ pullMult: 1 + p.value / 100 }),
+    // ── 地面持续伤害 ──
+    fire_sea: (t) => t.applySkillMod({ fireSea: true }),
+    poison_pool: (t) => t.applySkillMod({ poisonPool: true })
 };
 /** 所有已注册的 kind（工具用） */
 export const REGISTERED_EFFECT_KINDS = Object.keys(SKILL_EFFECT_HANDLERS);

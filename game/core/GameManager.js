@@ -1699,6 +1699,10 @@ export class GameManager {
             if (tower.getType() === TowerType.MAGNETIC) {
                 tower.applyMagneticSlowEffect(this.waveManager.getAliveEnemies(), scaledDelta);
             }
+            // 火焰塔/毒液塔地面持续伤害效果
+            if (tower.getType() === TowerType.FLAME || tower.getType() === TowerType.POISON) {
+                tower.applyGroundEffect(this.waveManager.getAliveEnemies(), scaledDelta, PATH_POINTS);
+            }
         }
         // 更新动画效果
         this.updateEffects(scaledDelta);
@@ -2691,6 +2695,91 @@ export class GameManager {
         // 渲染迷雾禁区（L8）—— 必须在道路之后渲染，否则会被道路盖住
         for (const fog of ACTIVE_FOG_ZONES) {
             this.taRenderer.renderFog(fog.x, fog.y, fog.w, fog.h);
+        }
+        // 渲染地面持续伤害效果（火海/毒液池）
+        this.renderGroundEffects();
+    }
+    /** 渲染地面持续伤害效果 */
+    renderGroundEffects() {
+        const ctx = this.ctx;
+        const pathPoints = PATH_POINTS;
+        for (const tower of this.towerMergeSystem.getAllTowers()) {
+            const skillMods = tower.getSkillMods();
+            // 火海效果
+            if (tower.getType() === TowerType.FLAME && skillMods.fireSea) {
+                const range = tower.getRange();
+                const burnRadius = 80;
+                for (const point of pathPoints) {
+                    const dx = point.x - tower.getX();
+                    const dy = point.y - tower.getY();
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist <= range) {
+                        // 绘制火海效果
+                        ctx.save();
+                        ctx.globalAlpha = 0.3;
+                        const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, burnRadius);
+                        gradient.addColorStop(0, 'rgba(255, 100, 0, 0.8)');
+                        gradient.addColorStop(0.5, 'rgba(255, 50, 0, 0.5)');
+                        gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                        ctx.fillStyle = gradient;
+                        ctx.beginPath();
+                        ctx.arc(point.x, point.y, burnRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                        // 火焰粒子效果
+                        ctx.globalAlpha = 0.6;
+                        const time = this.gameTime;
+                        for (let i = 0; i < 3; i++) {
+                            const angle = (time * 2 + i * Math.PI * 2 / 3) % (Math.PI * 2);
+                            const radius = burnRadius * 0.6;
+                            const px = point.x + Math.cos(angle) * radius;
+                            const py = point.y + Math.sin(angle) * radius - Math.sin(time * 5 + i) * 10;
+                            ctx.fillStyle = `rgba(255, ${150 + Math.sin(time * 3 + i) * 50}, 0, 0.8)`;
+                            ctx.beginPath();
+                            ctx.arc(px, py, 3 + Math.sin(time * 4 + i) * 2, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        ctx.restore();
+                    }
+                }
+            }
+            // 毒液池效果
+            if (tower.getType() === TowerType.POISON && skillMods.poisonPool) {
+                const range = tower.getRange();
+                const poisonRadius = 80;
+                for (const point of pathPoints) {
+                    const dx = point.x - tower.getX();
+                    const dy = point.y - tower.getY();
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist <= range) {
+                        // 绘制毒液池效果
+                        ctx.save();
+                        ctx.globalAlpha = 0.3;
+                        const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, poisonRadius);
+                        gradient.addColorStop(0, 'rgba(100, 255, 0, 0.8)');
+                        gradient.addColorStop(0.5, 'rgba(50, 200, 0, 0.5)');
+                        gradient.addColorStop(1, 'rgba(0, 150, 0, 0)');
+                        ctx.fillStyle = gradient;
+                        ctx.beginPath();
+                        ctx.arc(point.x, point.y, poisonRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                        // 毒液气泡效果
+                        ctx.globalAlpha = 0.6;
+                        const time = this.gameTime;
+                        for (let i = 0; i < 3; i++) {
+                            const angle = (time * 1.5 + i * Math.PI * 2 / 3) % (Math.PI * 2);
+                            const radius = poisonRadius * 0.5;
+                            const px = point.x + Math.cos(angle) * radius;
+                            const py = point.y + Math.sin(angle) * radius;
+                            const bubbleSize = 2 + Math.sin(time * 3 + i) * 1.5;
+                            ctx.fillStyle = `rgba(100, 255, 0, ${0.5 + Math.sin(time * 4 + i) * 0.3})`;
+                            ctx.beginPath();
+                            ctx.arc(px, py, bubbleSize, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        ctx.restore();
+                    }
+                }
+            }
         }
     }
     renderCoreOverlay() {
