@@ -280,8 +280,8 @@ export class GameManager {
         this.buttons.set('summon', { x: 18, y: bottomY, w: 96, h: 40 });
         this.buttons.set('overload', { x: 124, y: bottomY, w: 102, h: 40 });
         this.buttons.set('speed', { x: 236, y: bottomY, w: 48, h: 40 });
-        // 重新开始按钮（声音开关左边）
-        this.buttons.set('restart', { x: 370, y: 8, w: 32, h: 32 });
+        // 重新开始按钮（声音开关左边）- 显示"重开"文字
+        this.buttons.set('restart', { x: 360, y: 8, w: 45, h: 32 });
         // 静音开关（右上角）
         this.buttons.set('mute', { x: 410, y: 8, w: 32, h: 32 });
         // 六个合成格均匀铺满底栏，留出塔名显示空间。
@@ -705,7 +705,13 @@ export class GameManager {
             const restartBtn = { x: 150, y: 500, w: 150, h: 50 };
             if (this.isInButton(x, y, restartBtn)) {
                 this.soundManager.playButtonClick();
-                this.restartGame();
+                // 游戏失败时，从当前关卡重新开始（恢复到刚进入该关卡时的状态）
+                if (this.gameState === 'game_over') {
+                    this.restartCurrentLevel();
+                }
+                else {
+                    this.restartGame();
+                }
                 return;
             }
             // 玩法教程入口：看完返回菜单（这局已经结束了，回战场没有意义）
@@ -4230,35 +4236,21 @@ export class GameManager {
             return;
         const cx = btn.x + btn.w / 2;
         const cy = btn.y + btn.h / 2;
-        // 背景圆
+        // 背景
         ctx.fillStyle = 'rgba(255, 107, 138, 0.15)';
-        ctx.beginPath();
-        ctx.arc(cx, cy, btn.w / 2, 0, Math.PI * 2);
+        this.roundRect(btn.x, btn.y, btn.w, btn.h, 6);
         ctx.fill();
         // 边框
         ctx.strokeStyle = '#ff6b8a';
         ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(cx, cy, btn.w / 2, 0, Math.PI * 2);
+        this.roundRect(btn.x, btn.y, btn.w, btn.h, 6);
         ctx.stroke();
-        // 重新开始图标（循环箭头）
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.strokeStyle = '#ff6b8a';
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        // 画圆弧（270度）
-        ctx.beginPath();
-        ctx.arc(0, 0, 8, -Math.PI * 0.75, Math.PI * 0.75, false);
-        ctx.stroke();
-        // 画箭头
-        ctx.beginPath();
-        ctx.moveTo(6, -6);
-        ctx.lineTo(8, -8);
-        ctx.lineTo(10, -6);
-        ctx.stroke();
-        ctx.restore();
+        // 文字"重开"
+        ctx.fillStyle = '#ff6b8a';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('重开', cx, cy);
     }
     /**
      * 特级召唤：50金，无N卡，高级卡概率高，10次保底SSR
