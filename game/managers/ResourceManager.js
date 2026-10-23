@@ -32,6 +32,9 @@ export class ResourceManager {
     setGold(amount) {
         this.gold = Math.max(0, amount);
     }
+    setLives(amount) {
+        this.lives = Math.max(0, Math.min(this.maxLives, amount));
+    }
     damageBase(amount = 1) {
         this.lives = Math.max(0, this.lives - amount);
     }

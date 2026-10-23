@@ -280,6 +280,8 @@ export class GameManager {
         this.buttons.set('summon', { x: 18, y: bottomY, w: 96, h: 40 });
         this.buttons.set('overload', { x: 124, y: bottomY, w: 102, h: 40 });
         this.buttons.set('speed', { x: 236, y: bottomY, w: 48, h: 40 });
+        // 重新开始按钮（声音开关左边）
+        this.buttons.set('restart', { x: 370, y: 8, w: 32, h: 32 });
         // 静音开关（右上角）
         this.buttons.set('mute', { x: 410, y: 8, w: 32, h: 32 });
         // 六个合成格均匀铺满底栏，留出塔名显示空间。
@@ -753,6 +755,9 @@ export class GameManager {
                 break;
             case 'mute':
                 this.soundManager.toggleMute();
+                break;
+            case 'restart':
+                this.restartCurrentLevel();
                 break;
         }
     }
@@ -1383,9 +1388,14 @@ export class GameManager {
         if (this.currentLevelIndex + 1 >= getLevelCount()) {
             this.gameState = 'victory';
             this.waveManager.enterVictory();
+            // 通关后清除存档
+            this.clearSaveData();
         }
         else {
-            this.startLevel(this.currentLevelIndex + 1);
+            // 进入下一关前保存进度
+            this.currentLevelIndex++;
+            this.saveGame();
+            this.startLevel(this.currentLevelIndex);
         }
     }
     advanceToNextLevel() {
@@ -1454,6 +1464,55 @@ export class GameManager {
         this.waveTimeLimit = WAVE_FORCE_ADVANCE_SECONDS;
         this.soundManager.setBgm('menu');
         this.soundManager.setTension(0.15);
+        // 清除存档
+        this.clearSaveData();
+    }
+    /** 重新开始当前关卡（保留存档进度） */
+    restartCurrentLevel() {
+        // 重置资源
+        this.resourceManager.reset();
+        // 重置波次管理器
+        this.waveManager.reset();
+        // 重置塔合并系统
+        this.towerMergeSystem.reset();
+        // 重置升级系统
+        this.upgradeSystem.reset();
+        // 清空合成区
+        for (const slot of this.mergeAreaSlots)
+            slot.tower = null;
+        // 清空携带塔
+        this.pendingCarryTowers = [];
+        this.carryCandidates = [];
+        this.carrySelection.clear();
+        this.carryPage = 0;
+        // 重置击杀计数
+        this.levelKillCount = 0;
+        // 重置游戏状态
+        this.gameTime = 0;
+        this.gameSpeed = 1;
+        this.paused = false;
+        this.selectedSlot = -1;
+        this.placingTower = null;
+        this.summonCostPaid = false;
+        this.upgradeOptions = [];
+        this.pendingLevelClearAfterUpgrade = false;
+        this.isLevelClearUpgrade = false;
+        this.levelClearRewardText = '';
+        this.normalSummonOptions = [];
+        this.premiumSummonOptions = [];
+        this.mergeCount = 0;
+        this.attackEffects = [];
+        this.vfx.clear();
+        this.mergeEffects = [];
+        this.levelUpFlashes = [];
+        this.skillGainToasts = [];
+        // 波次计时归零
+        this.waveElapsed = 0;
+        this.waveTimedOut = false;
+        // 重新开始当前关卡
+        this.startLevel(this.currentLevelIndex);
+        // 播放音效
+        this.soundManager.playButtonClick();
     }
     // 主循环
     start() {
@@ -1465,6 +1524,10 @@ export class GameManager {
         // 小白玩家的诉求是"迅速了解玩法"，等他自己发现按钮太慢；
         // 看完一次就写本地标记，以后只保留菜单里的「游戏教程」入口。
         this.maybeFirstRunTutorial();
+        // 尝试加载存档
+        if (this.loadGame()) {
+            console.log('Loaded save data, starting from level', this.currentLevelIndex);
+        }
     }
     /** 首次运行自动弹教程（localStorage 标记，只弹一次） */
     maybeFirstRunTutorial() {
@@ -1484,6 +1547,52 @@ export class GameManager {
             localStorage.setItem(KEY, '1');
         }
         catch (e) { /* 忽略：写不了只是下次还会再弹 */ }
+    }
+    // ── 存档系统 ──
+    saveGame() {
+        const saveData = {
+            currentLevelIndex: this.currentLevelIndex,
+            gold: this.resourceManager.getGold(),
+            lives: this.resourceManager.getLives(),
+            timestamp: Date.now()
+        };
+        try {
+            localStorage.setItem('cyber-defense.save', JSON.stringify(saveData));
+        }
+        catch (e) {
+            console.warn('Failed to save game:', e);
+        }
+    }
+    loadGame() {
+        try {
+            const saveStr = localStorage.getItem('cyber-defense.save');
+            if (!saveStr)
+                return false;
+            const saveData = JSON.parse(saveStr);
+            // 验证存档数据有效性
+            if (typeof saveData.currentLevelIndex !== 'number' ||
+                saveData.currentLevelIndex < 0 ||
+                saveData.currentLevelIndex >= getLevelCount()) {
+                return false;
+            }
+            // 恢复关卡进度
+            this.currentLevelIndex = saveData.currentLevelIndex;
+            this.resourceManager.setGold(saveData.gold || 200);
+            this.resourceManager.setLives(saveData.lives || 20);
+            return true;
+        }
+        catch (e) {
+            console.warn('Failed to load game:', e);
+            return false;
+        }
+    }
+    clearSaveData() {
+        try {
+            localStorage.removeItem('cyber-defense.save');
+        }
+        catch (e) {
+            console.warn('Failed to clear save data:', e);
+        }
     }
     // 解锁音频（移动端需要用户交互后才能播放）
     unlockAudio() {
@@ -3341,6 +3450,8 @@ export class GameManager {
         this.renderEnhanceToast();
         // 右上角静音开关
         this.renderMuteButton();
+        // 右上角重新开始按钮
+        this.renderRestartButton();
         // 底部按钮区域背景
         const bottomGradient = ctx.createLinearGradient(0, this.canvas.height - 80, 0, this.canvas.height);
         bottomGradient.addColorStop(0, 'rgba(9, 12, 19, 0.88)');
@@ -4110,6 +4221,43 @@ export class GameManager {
             ctx.lineTo(2, 3);
             ctx.stroke();
         }
+        ctx.restore();
+    }
+    renderRestartButton() {
+        const ctx = this.ctx;
+        const btn = this.buttons.get('restart');
+        if (!btn)
+            return;
+        const cx = btn.x + btn.w / 2;
+        const cy = btn.y + btn.h / 2;
+        // 背景圆
+        ctx.fillStyle = 'rgba(255, 107, 138, 0.15)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, btn.w / 2, 0, Math.PI * 2);
+        ctx.fill();
+        // 边框
+        ctx.strokeStyle = '#ff6b8a';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, btn.w / 2, 0, Math.PI * 2);
+        ctx.stroke();
+        // 重新开始图标（循环箭头）
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.strokeStyle = '#ff6b8a';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        // 画圆弧（270度）
+        ctx.beginPath();
+        ctx.arc(0, 0, 8, -Math.PI * 0.75, Math.PI * 0.75, false);
+        ctx.stroke();
+        // 画箭头
+        ctx.beginPath();
+        ctx.moveTo(6, -6);
+        ctx.lineTo(8, -8);
+        ctx.lineTo(10, -6);
+        ctx.stroke();
         ctx.restore();
     }
     /**

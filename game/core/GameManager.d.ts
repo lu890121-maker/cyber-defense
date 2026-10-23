@@ -295,10 +295,15 @@ export declare class GameManager {
     private handleLevelCleared;
     private advanceToNextLevel;
     private restartGame;
+    /** 重新开始当前关卡（保留存档进度） */
+    private restartCurrentLevel;
     start(): void;
     /** 首次运行自动弹教程（localStorage 标记，只弹一次） */
     private maybeFirstRunTutorial;
     private markTutorialSeen;
+    private saveGame;
+    private loadGame;
+    private clearSaveData;
     unlockAudio(): void;
     private gameLoop;
     private update;
@@ -473,6 +478,7 @@ export declare class GameManager {
     private renderButton;
     private renderOverloadButton;
     private renderMuteButton;
+    private renderRestartButton;
     /**
      * 特级召唤：50金，无N卡，高级卡概率高，10次保底SSR
      * 进入三选一面板，支持换卡（40金/次）

@@ -14,6 +14,7 @@ export declare class ResourceManager {
     addGold(amount: number): void;
     spendGold(amount: number): boolean;
     setGold(amount: number): void;
+    setLives(amount: number): void;
     damageBase(amount?: number): void;
     healBase(amount: number): void;
     setGoldBonusPerWave(bonus: number): void;
