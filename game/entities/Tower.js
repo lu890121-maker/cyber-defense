@@ -455,10 +455,28 @@ export class Tower {
         target.takeDamage(amount, { pierce: this.skillMods.armorPierce });
         // 光球减速效果
         target.applySlow(0.3, 1.5); // 30%减速，持续1.5秒
-        // 视觉反馈
+        // 视觉反馈：从光球位置发射弹道到目标
         if (this.vfx) {
             const ang = Math.atan2(target.getY() - orb.y, target.getX() - orb.x);
             target.applyHitFeedback(ang, 1);
+            // 从光球位置发射紫色能量弹
+            this.vfx.fire({
+                proj: 'orb',
+                trail: 'dark',
+                impact: 'dark',
+                muzzle: 'dark',
+                speed: 500,
+                size: 4,
+                color: '#C084FC',
+                arc: 0,
+                recoil: 1.5,
+                shake: 0.5
+            }, orb.x, orb.y, // 从光球位置发射
+            target.getX(), target.getY(), // 到目标位置
+            1.0, // power
+            undefined // onArrive
+            );
+            // 伤害飘字
             this.vfx.floater(target.getX(), target.getY() - target.getSize() - 6, Math.max(1, Math.round(amount)).toString(), '#C084FC', 10, false);
         }
     }
