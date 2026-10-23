@@ -127,6 +127,8 @@ export declare class Tower {
     private infectionSpeedMultiplier;
     private infectionSideEffect;
     private infectionVampiric;
+    private orbs;
+    private orbSpawned;
     /** 技能修饰物。Lv2/Lv3 选技能时往里叠。 */
     private skillMods;
     /** 「聚焦」：连续攻击同一目标的层数 */
@@ -242,6 +244,20 @@ export declare class Tower {
     activateOverload(): boolean;
     /** 更新过载和瘫痪状态 */
     updateOverload(deltaTime: number): void;
+    /** 更新奇点炮光球位置和攻击 */
+    private updateOrbs;
+    /** 光球攻击敌人 */
+    private orbAttack;
+    /** 查找最近敌人 */
+    private findNearestEnemy;
+    /** 更新光球（供GameManager调用） */
+    updateOrbsWithEnemies(deltaTime: number, enemies: Enemy[]): void;
+    /** 获取光球列表（供渲染使用） */
+    getOrbs(): Array<{
+        x: number;
+        y: number;
+        level: number;
+    }>;
     isOverloaded(): boolean;
     isParalyzed(): boolean;
     /**
@@ -363,6 +379,8 @@ export declare class Tower {
      * 修复：levelUp 只应用一级的增量，不重复累加
      */
     levelUp(): void;
+    /** 生成奇点炮光球 */
+    private spawnOrb;
     canMergeWith(other: Tower): boolean;
     setSlotIndex(index: number): void;
     setPosition(x: number, y: number): void;

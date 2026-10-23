@@ -159,6 +159,9 @@ export class Tower {
         this.infectionSpeedMultiplier = 1.0;
         this.infectionSideEffect = '';
         this.infectionVampiric = false;
+        // 奇点炮光球系统
+        this.orbs = [];
+        this.orbSpawned = false;
         // ── 技能系统 ──
         /** 技能修饰物。Lv2/Lv3 选技能时往里叠。 */
         this.skillMods = { ...DEFAULT_SKILL_MODS };
@@ -216,6 +219,11 @@ export class Tower {
         }
         if (type === TowerType.ELECTRIC) {
             this.skillMods.aoeRadius = 70;
+        }
+        // 引力塔：持续范围减速（等级越高范围越大）
+        if (type === TowerType.MAGNETIC) {
+            this.skillMods.aoeSlow = true;
+            this.skillMods.aoeRadius = 60 + (level - 1) * 20; // Lv1: 60, Lv2: 80, Lv3: 100, Lv4: 120, Lv5: 140
         }
         // 先应用稀有度成长，再应用等级成长。
         // 顺序有讲究：稀有度是「底子」，等级是在这个底子上按百分比叠加，
@@ -412,6 +420,65 @@ export class Tower {
             if (this.overloadCooldown < 0)
                 this.overloadCooldown = 0;
         }
+    }
+    /** 更新奇点炮光球位置和攻击 */
+    updateOrbs(deltaTime, enemies) {
+        const currentTime = Date.now() / 1000;
+        for (const orb of this.orbs) {
+            // 光球绕塔旋转
+            orb.angle += deltaTime * 1.5; // 旋转速度
+            orb.x = this.x + Math.cos(orb.angle) * 40;
+            orb.y = this.y + Math.sin(orb.angle) * 40;
+            // 光球攻击逻辑
+            if (currentTime - orb.lastAttackTime >= orb.attackInterval) {
+                orb.lastAttackTime = currentTime;
+                // 攻击最近的目标
+                const target = this.findNearestEnemy(orb.x, orb.y, orb.range, enemies);
+                if (target) {
+                    this.orbAttack(orb, target);
+                }
+            }
+        }
+    }
+    /** 光球攻击敌人 */
+    orbAttack(orb, target) {
+        const amount = orb.damage;
+        target.takeDamage(amount, { pierce: this.skillMods.armorPierce });
+        // 光球减速效果
+        target.applySlow(0.3, 1.5); // 30%减速，持续1.5秒
+        // 视觉反馈
+        if (this.vfx) {
+            const ang = Math.atan2(target.getY() - orb.y, target.getX() - orb.x);
+            target.applyHitFeedback(ang, 1);
+            this.vfx.floater(target.getX(), target.getY() - target.getSize() - 6, Math.max(1, Math.round(amount)).toString(), '#C084FC', 10, false);
+        }
+    }
+    /** 查找最近敌人 */
+    findNearestEnemy(x, y, range, enemies) {
+        let nearest = null;
+        let minDist = Infinity;
+        for (const enemy of enemies) {
+            if (!enemy.isAlive())
+                continue;
+            const dx = enemy.getX() - x;
+            const dy = enemy.getY() - y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist <= range && dist < minDist) {
+                minDist = dist;
+                nearest = enemy;
+            }
+        }
+        return nearest;
+    }
+    /** 更新光球（供GameManager调用） */
+    updateOrbsWithEnemies(deltaTime, enemies) {
+        if (this.type === TowerType.SINGULARITY && this.orbs.length > 0) {
+            this.updateOrbs(deltaTime, enemies);
+        }
+    }
+    /** 获取光球列表（供渲染使用） */
+    getOrbs() {
+        return this.orbs.map(orb => ({ x: orb.x, y: orb.y, level: orb.level }));
     }
     isOverloaded() {
         return this.overloadActive;
@@ -1070,6 +1137,35 @@ export class Tower {
         this.damage *= config.levelUpDamageMultiplier;
         this.range += config.levelUpRangeBonus;
         this.attackInterval *= config.levelUpSpeedMultiplier;
+        // 奇点炮：4级生成1个光球，5级生成第2个光球
+        if (this.type === TowerType.SINGULARITY) {
+            if (this.level === 4 && this.orbs.length === 0) {
+                this.spawnOrb(3); // 攻击力等同3级奇点炮
+            }
+            else if (this.level === 5 && this.orbs.length === 1) {
+                this.spawnOrb(4); // 攻击力等同4级奇点炮
+            }
+        }
+    }
+    /** 生成奇点炮光球 */
+    spawnOrb(orbLevel) {
+        const config = TOWER_CONFIGS[TowerType.SINGULARITY];
+        // 计算该等级的伤害
+        let orbDamage = config.damage;
+        for (let i = 1; i < orbLevel; i++) {
+            orbDamage *= config.levelUpDamageMultiplier;
+        }
+        const orb = {
+            x: this.x,
+            y: this.y,
+            angle: this.orbs.length * Math.PI, // 多个光球错开角度
+            damage: orbDamage,
+            range: config.range * 0.8, // 光球射程略小于主塔
+            attackInterval: config.attackSpeed * 1.2, // 光球攻速略慢
+            lastAttackTime: 0,
+            level: orbLevel
+        };
+        this.orbs.push(orb);
     }
     canMergeWith(other) {
         // 同类合成：相同类型、相同等级。

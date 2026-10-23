@@ -297,7 +297,7 @@ export const TOWER_CONFIGS = {
     },
     [TowerType.SINGULARITY]: {
         type: TowerType.SINGULARITY, name: '奇点炮', icon: 'SINGULARITY', color: '#C084FC', cost: 110,
-        damage: 31, range: 120, attackSpeed: 1.55, special: '重弹范围爆发，克制密集装甲', attackEffect: '奇点爆炸波及周围敌人',
+        damage: 40, range: 120, attackSpeed: 1.55, special: '重弹范围爆发，克制密集装甲', attackEffect: '奇点爆炸波及周围敌人',
         levelUpDamageMultiplier: 1.42, levelUpRangeBonus: 7, levelUpSpeedMultiplier: 0.93
     },
 };

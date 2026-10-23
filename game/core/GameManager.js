@@ -1576,6 +1576,10 @@ export class GameManager {
             if (wasOverloaded && !tower.isOverloaded()) {
                 this.soundManager.playParalyze();
             }
+            // 更新奇点炮光球
+            if (tower.getType() === TowerType.SINGULARITY) {
+                tower.updateOrbsWithEnemies(scaledDelta, this.waveManager.getAliveEnemies());
+            }
         }
         // 更新动画效果
         this.updateEffects(scaledDelta);
@@ -2851,10 +2855,39 @@ export class GameManager {
                 ctx.arc(x, y, tower.getRange(), 0, Math.PI * 2);
                 ctx.stroke();
                 ctx.setLineDash([]);
-                ctx.fillStyle = 'rgba(0, 240, 255, 0.10)';
-                ctx.beginPath();
-                ctx.arc(x, y, tower.getRange(), 0, Math.PI * 2);
-                ctx.fill();
+            }
+            // ── 奇点炮光球渲染 ──
+            if (tower.getType() === TowerType.SINGULARITY) {
+                const orbs = tower.getOrbs();
+                for (const orb of orbs) {
+                    // 光球本体 - 黑色球体带紫色辉光
+                    ctx.save();
+                    ctx.shadowColor = '#C084FC';
+                    ctx.shadowBlur = 15;
+                    // 黑色球体
+                    const gradient = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, 12);
+                    gradient.addColorStop(0, '#1a1a2e');
+                    gradient.addColorStop(0.7, '#0f0f1a');
+                    gradient.addColorStop(1, '#000000');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(orb.x, orb.y, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                    // 紫色外圈
+                    ctx.strokeStyle = '#C084FC';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(orb.x, orb.y, 12, 0, Math.PI * 2);
+                    ctx.stroke();
+                    // 旋转的能量纹路
+                    ctx.strokeStyle = 'rgba(192, 132, 252, 0.6)';
+                    ctx.lineWidth = 1.5;
+                    const rotation = this.gameTime * 2;
+                    ctx.beginPath();
+                    ctx.arc(orb.x, orb.y, 10, rotation, rotation + Math.PI * 0.8);
+                    ctx.stroke();
+                    ctx.restore();
+                }
             }
             // ── 「可升级」高亮（仅召唤选卡时）──
             // 选卡面板打开时，把"这张卡能吃掉哪座塔"直接标在塔身上。
