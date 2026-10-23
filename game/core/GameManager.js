@@ -392,6 +392,9 @@ export class GameManager {
         };
     }
     handlePointerDown(e) {
+        // 重置拖拽状态，确保 upgrade_select 等状态下点击不会被误判为拖拽
+        const prevState = this.hasDragged;
+        this.hasDragged = false;
         if (this.gameState !== 'playing')
             return;
         const { x, y } = this.getCanvasCoords(e);
@@ -403,7 +406,6 @@ export class GameManager {
         }
         this.dragStartX = x;
         this.dragStartY = y;
-        this.hasDragged = false;
         // 检查是否点击了合成区域的防御塔
         for (let i = 0; i < this.mergeAreaSlots.length; i++) {
             const slot = this.mergeAreaSlots[i];

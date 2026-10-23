@@ -1,0 +1,8 @@
+{
+  "name": "cyber-defense-site",
+  "private": true,
+  "description": "《赛博防线：机械入侵》线上静态站点（tsc 产物 + 音频）",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
