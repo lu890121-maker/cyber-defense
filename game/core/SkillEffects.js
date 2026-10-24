@@ -73,7 +73,7 @@ export const SKILL_EFFECT_HANDLERS = {
     // aoe_poison → 毒素随命中扩散到主目标周围（与「瘟疫扩散」同一实现）
     aoe_poison: (t) => t.applySkillMod({ poisonSpread: true }),
     burn: (t, p) => t.applySkillMod({ burnDamageMult: 1 + p.value / 100 }),
-    aoe_slow: (t) => t.applySkillMod({ aoeSlow: true }),
+    aoe_slow: (t) => t.enableAoESlow(80),
     range: (t, p) => t.applySkillMod({ rangeMult: 1 + p.value / 100 }),
     explosion: (t, p) => t.setExplosionRadius(t.getExplosionRadius() * (1 + p.value / 100)),
     heavy: (t) => {

@@ -426,6 +426,18 @@ export var EnemyType;
     // ── 第 3 关「核心反应堆」新增 ──
     EnemyType["SHIELD"] = "shield";
     EnemyType["BOMBER"] = "bomber";
+    // ── 新增 6 种小怪 ──
+    EnemyType["EMP_DRONE"] = "emp_drone";
+    EnemyType["REFLECTOR"] = "reflector";
+    EnemyType["ACCELERATOR"] = "accelerator";
+    EnemyType["ASSASSIN"] = "assassin";
+    EnemyType["MAGNETIC_GUARD"] = "magnetic_guard";
+    EnemyType["REGENERATOR"] = "regenerator";
+    // ── 新增 4 种精英怪 ──
+    EnemyType["ELITE_STORM"] = "elite_storm";
+    EnemyType["ELITE_FORTRESS"] = "elite_fortress";
+    EnemyType["ELITE_COMMANDER"] = "elite_commander";
+    EnemyType["ELITE_VOIDWALKER"] = "elite_voidwalker";
     // ── 三个关卡各自的 Boss ──
     EnemyType["BOSS"] = "boss";
     EnemyType["BOSS_WARDEN"] = "boss_warden";
@@ -471,8 +483,8 @@ export const ENEMY_CONFIGS = {
         type: EnemyType.FAST,
         name: '侦察机兵',
         color: '#FFD700',
-        hp: 145,
-        speed: 72,
+        hp: 180,
+        speed: 65,
         reward: 1,
         size: 12,
         escapeDamage: 1
@@ -557,7 +569,7 @@ export const ENEMY_CONFIGS = {
         type: EnemyType.BOMBER,
         name: '自爆机雷',
         color: '#FF4D6D',
-        hp: 240,
+        hp: 260,
         speed: 37,
         reward: 4,
         size: 17,
@@ -565,6 +577,146 @@ export const ENEMY_CONFIGS = {
         special: '死亡瘫痪附近防御塔',
         deathParalyzeRadius: 95,
         deathParalyzeDuration: 3.0
+    },
+    // ── 新增 6 种小怪 ──
+    [EnemyType.EMP_DRONE]: {
+        type: EnemyType.EMP_DRONE,
+        name: 'EMP无人机',
+        color: '#FFAA00',
+        hp: 180,
+        speed: 38,
+        reward: 2,
+        size: 14,
+        escapeDamage: 1,
+        special: '沉默防御塔',
+        empRadius: 70,
+        empDuration: 1.5,
+        empCooldown: 8.0
+    },
+    [EnemyType.REFLECTOR]: {
+        type: EnemyType.REFLECTOR,
+        name: '反射甲虫',
+        color: '#E0E0E0',
+        hp: 280,
+        speed: 28,
+        reward: 2,
+        size: 17,
+        escapeDamage: 1,
+        special: '反射25%伤害',
+        reflectRatio: 0.25
+    },
+    [EnemyType.ACCELERATOR]: {
+        type: EnemyType.ACCELERATOR,
+        name: '加速引擎兵',
+        color: '#00FF88',
+        hp: 200,
+        speed: 34,
+        reward: 2,
+        size: 15,
+        escapeDamage: 1,
+        special: '群体加速光环',
+        auraRadius: 80,
+        auraSpeedBoost: 1.35
+    },
+    [EnemyType.ASSASSIN]: {
+        type: EnemyType.ASSASSIN,
+        name: '隐身刺客',
+        color: '#6B5BFF',
+        hp: 160,
+        speed: 55,
+        reward: 2,
+        size: 13,
+        escapeDamage: 1,
+        special: '半透明不可锁定',
+        stealthAlpha: 0.3,
+        coreRevealDistance: 50
+    },
+    [EnemyType.MAGNETIC_GUARD]: {
+        type: EnemyType.MAGNETIC_GUARD,
+        name: '磁力盾卫',
+        color: '#4488FF',
+        hp: 400,
+        speed: 24,
+        reward: 2,
+        size: 20,
+        escapeDamage: 1,
+        special: '吸引弹道',
+        attractRadius: 100
+    },
+    [EnemyType.REGENERATOR]: {
+        type: EnemyType.REGENERATOR,
+        name: '再生巨虫',
+        color: '#44DD44',
+        hp: 420,
+        speed: 20,
+        reward: 2,
+        size: 21,
+        escapeDamage: 1,
+        special: '快速回复',
+        regenRate: 0.025,
+        lowHpRegenRate: 0.05
+    },
+    // ── 新增 4 种精英怪 ──
+    [EnemyType.ELITE_STORM]: {
+        type: EnemyType.ELITE_STORM,
+        name: '精英·电磁风暴',
+        color: '#FF8800',
+        hp: 900,
+        speed: 28,
+        reward: 4,
+        size: 24,
+        escapeDamage: 2,
+        special: 'EMP范围120px，沉默2.5秒',
+        empRadius: 120,
+        empDuration: 2.5,
+        empCooldown: 6.0,
+        deathEmpRadius: 200,
+        deathEmpDuration: 2.0
+    },
+    [EnemyType.ELITE_FORTRESS]: {
+        type: EnemyType.ELITE_FORTRESS,
+        name: '精英·反射堡垒',
+        color: '#C0C0C0',
+        hp: 1400,
+        speed: 20,
+        reward: 4,
+        size: 26,
+        escapeDamage: 2,
+        special: '反射40%伤害，护盾减伤50%',
+        reflectRatio: 0.4,
+        shieldRatio: 0.5,
+        deathSplitCount: 2
+    },
+    [EnemyType.ELITE_COMMANDER]: {
+        type: EnemyType.ELITE_COMMANDER,
+        name: '精英·战旗指挥官',
+        color: '#FF4444',
+        hp: 1000,
+        speed: 24,
+        reward: 4,
+        size: 25,
+        escapeDamage: 2,
+        special: '全场敌人+20%速度+15%减伤',
+        // ⚠️ auraRadius 必须显式给：getAuraParams() 以 auraRadius > 0 作为开关，
+        // 少了它，战旗指挥官的光环是**静默失效**的（描述写着加成，实际一点效果没有）。
+        auraRadius: 160,
+        auraSpeedBoost: 1.2,
+        auraDamageReduction: 0.15
+    },
+    [EnemyType.ELITE_VOIDWALKER]: {
+        type: EnemyType.ELITE_VOIDWALKER,
+        name: '精英·虚空行者',
+        color: '#8B5CF6',
+        hp: 600,
+        speed: 58,
+        reward: 4,
+        size: 20,
+        escapeDamage: 2,
+        special: '永久隐身+相位化',
+        stealthAlpha: 0.2,
+        phaseCycle: 5.0,
+        phaseDuration: 2.0,
+        deathCoreDamage: 5
     },
     // ── 三个关卡 Boss ──
     [EnemyType.BOSS]: {
@@ -702,23 +854,24 @@ export const WAVE_STAT_GROWTH = 1.015;
  * 「每关 ×1.6」从第 2 关就开始发力：L2 就 1.6 倍、L3 2.56 倍，前三关
  * 一点也不轻松；而到第 9 关又膨胀到 1.6^8 ≈ 43.0 倍，血量全靠堆数字。
  *
- * 新曲线是**加速型**的：前段近乎平坦（1.0 → 1.12 → 1.32），中段稳步
- * 抬升，7→8→9 关陡然拉起来（7.5 → 13.0 → 40.0），关间增幅从 1.12
- * 一路走到 3.08，这就是「前松后紧、末段指数级」的数学表达。
+ * 新曲线是**平滑加速型**的：前段近乎平坦（1.0 → 1.12 → 1.32），中段
+ * 每关约 ×1.3~1.37 稳步抬升，末段 L7→L8→L9（4.5 → 6.5 → 10.0）收在
+ * ×1.44 / ×1.54 —— 既保留「前松后紧」的手感，又不会出现单关 ×3 的断崖。
+ * 旧版 L7/L8/L9 = 7.5 / 13.0 / 40.0 属于纯堆血条，已被本次平衡替换。
  *
  * ⚠️ 改这里必须同时改 `LEVEL_TROOP_TUNING` 的怪潮规模，两者相乘才是
  * 真实压力（单波压力 ≈ 小怪数 × 该关倍率）。改完跑 `npm run verify:all`。
  */
 export const LEVEL_DIFFICULTY_MULTIPLIERS = [
-    1.00, // L1  外环循轨   —— 教学，血少怪少
-    1.12, // L2  机械蛇穴
+    1.00, // L1  外环防线   —— 教学，血少怪少
+    1.12, // L2  机械巢穴
     1.32, // L3  核心反应堆
-    1.85, // L4  螺旋岔口   —— 开始施压
-    2.75, // L5  蛛网阵中
-    4.20, // L6  跃迁迷宫
-    7.50, // L7  紊乱空间   —— 高压
-    13.00, // L8  迷雾回廊   —— 海量
-    40.00 // L9  终焉核心   —— 终局，血量指数级
+    1.70, // L4  螺旋岔口   —— 开始施压
+    2.20, // L5  蛛网阵中
+    3.00, // L6  跃迁迷宫
+    4.50, // L7  紊乱空间   —— 高压
+    6.50, // L8  迷雾回廊   —— 海量
+    10.00 // L9  终焉核心   —— 终局
 ];
 /** 取某关的难度系数（越界钳制到首尾） */
 export function getLevelDifficultyMultiplier(levelIndex) {
@@ -808,7 +961,8 @@ const L2_WAVES = [
             { type: EnemyType.NORMAL, count: 8 },
             { type: EnemyType.FAST, count: 23 },
             { type: EnemyType.GHOST, count: 8 },
-            { type: EnemyType.HEALER, count: 2 }
+            { type: EnemyType.HEALER, count: 2 },
+            { type: EnemyType.ACCELERATOR, count: 3 }
         ],
         spawnWindow: 12,
         reward: 110
@@ -820,7 +974,8 @@ const L2_WAVES = [
             { type: EnemyType.FAST, count: 15 },
             { type: EnemyType.GHOST, count: 8 },
             { type: EnemyType.SPLIT, count: 5 },
-            { type: EnemyType.HEALER, count: 3 }
+            { type: EnemyType.HEALER, count: 3 },
+            { type: EnemyType.ACCELERATOR, count: 3 }
         ],
         spawnWindow: 12,
         reward: 125
@@ -833,6 +988,7 @@ const L2_WAVES = [
             { type: EnemyType.GHOST, count: 6 },
             { type: EnemyType.SPLIT, count: 2 },
             { type: EnemyType.HEALER, count: 4 },
+            { type: EnemyType.ACCELERATOR, count: 4 },
             { type: EnemyType.HEAVY, count: 2 }
         ],
         spawnWindow: 11,
@@ -844,6 +1000,7 @@ const L2_WAVES = [
             { type: EnemyType.NORMAL, count: 8 },
             { type: EnemyType.FAST, count: 13 },
             { type: EnemyType.GHOST, count: 8 },
+            { type: EnemyType.ACCELERATOR, count: 3 },
             { type: EnemyType.HEAVY, count: 6 },
             { type: EnemyType.HEALER, count: 6 },
             { type: EnemyType.BOSS_STORM, count: 1 }
@@ -865,6 +1022,7 @@ const L3_WAVES = [
             { type: EnemyType.SHIELD, count: 10 },
             { type: EnemyType.GHOST, count: 10 },
             { type: EnemyType.HEALER, count: 6 },
+            { type: EnemyType.EMP_DRONE, count: 3 },
             { type: EnemyType.HEAVY, count: 4 }
         ],
         spawnWindow: 12,
@@ -877,6 +1035,7 @@ const L3_WAVES = [
             { type: EnemyType.BOMBER, count: 8 },
             { type: EnemyType.SHIELD, count: 7 },
             { type: EnemyType.HEALER, count: 5 },
+            { type: EnemyType.ACCELERATOR, count: 3 },
             { type: EnemyType.HEAVY, count: 6 }
         ],
         spawnWindow: 12,
@@ -889,6 +1048,7 @@ const L3_WAVES = [
             { type: EnemyType.SHIELD, count: 11 },
             { type: EnemyType.BOMBER, count: 6 },
             { type: EnemyType.HEALER, count: 6 },
+            { type: EnemyType.EMP_DRONE, count: 4 },
             { type: EnemyType.SPLIT, count: 6 }
         ],
         spawnWindow: 12,
@@ -903,6 +1063,7 @@ const L3_WAVES = [
             { type: EnemyType.BOMBER, count: 4 },
             { type: EnemyType.GHOST, count: 7 },
             { type: EnemyType.HEALER, count: 5 },
+            { type: EnemyType.EMP_DRONE, count: 4 },
             { type: EnemyType.HEAVY, count: 1 }
         ],
         spawnWindow: 12,
@@ -915,6 +1076,7 @@ const L3_WAVES = [
             { type: EnemyType.SHIELD, count: 9 },
             { type: EnemyType.BOMBER, count: 6 },
             { type: EnemyType.HEALER, count: 5 },
+            { type: EnemyType.EMP_DRONE, count: 3 },
             { type: EnemyType.SPLIT, count: 4 },
             { type: EnemyType.BOSS_WARDEN, count: 1 }
         ],
@@ -1055,7 +1217,7 @@ const extraLevelData = [
             [{ x: 280, y: 80 }, { x: 280, y: 220 }, { x: 300, y: 360 }, { x: 225, y: 560 }, { x: 225, y: 640 }],
             [{ x: 390, y: 80 }, { x: 390, y: 220 }, { x: 300, y: 360 }, { x: 225, y: 560 }, { x: 225, y: 640 }]
         ],
-        groups: [[{ type: EnemyType.GHOST, count: 12 }, { type: EnemyType.FAST, count: 12 }], [{ type: EnemyType.SPLIT, count: 10 }, { type: EnemyType.HEALER, count: 5 }], [{ type: EnemyType.HEAVY, count: 7 }, { type: EnemyType.BOSS_PHANTOM, count: 1 }]] },
+        groups: [[{ type: EnemyType.GHOST, count: 12 }, { type: EnemyType.FAST, count: 12 }, { type: EnemyType.ASSASSIN, count: 4 }], [{ type: EnemyType.SPLIT, count: 10 }, { type: EnemyType.HEALER, count: 5 }, { type: EnemyType.ASSASSIN, count: 5 }], [{ type: EnemyType.HEAVY, count: 7 }, { type: EnemyType.ASSASSIN, count: 4 }, { type: EnemyType.BOSS_PHANTOM, count: 1 }]] },
     // L5 蛛网阵中：4 入口中心放射（allowUpward）
     { name: '蛛网阵中', subtitle: '四向放射 · 核心协议', accent: '#FF873D', theme: 'forge', desc: '敌人从四角向中心核心推进', skill: 'earthquake', mode: 'random', routes: [
             [{ x: 45, y: 80 }, { x: 120, y: 200 }, { x: 225, y: 380 }],
@@ -1063,14 +1225,14 @@ const extraLevelData = [
             [{ x: 45, y: 680 }, { x: 120, y: 540 }, { x: 225, y: 380 }],
             [{ x: 405, y: 680 }, { x: 330, y: 540 }, { x: 225, y: 380 }]
         ],
-        groups: [[{ type: EnemyType.BOMBER, count: 8 }, { type: EnemyType.FAST, count: 12 }], [{ type: EnemyType.HEAVY, count: 8 }, { type: EnemyType.SHIELD, count: 8 }], [{ type: EnemyType.BOMBER, count: 10 }, { type: EnemyType.BOSS_TITAN, count: 1 }]] },
+        groups: [[{ type: EnemyType.BOMBER, count: 8 }, { type: EnemyType.FAST, count: 12 }, { type: EnemyType.MAGNETIC_GUARD, count: 3 }], [{ type: EnemyType.HEAVY, count: 8 }, { type: EnemyType.SHIELD, count: 8 }, { type: EnemyType.MAGNETIC_GUARD, count: 4 }], [{ type: EnemyType.BOMBER, count: 10 }, { type: EnemyType.MAGNETIC_GUARD, count: 3 }, { type: EnemyType.BOSS_TITAN, count: 1 }]] },
     // L6 跃迁迷宫：3 入口 + 3 传送门
     { name: '跃迁迷宫', subtitle: '空间折叠 · 跃迁协议', accent: '#43BDF5', theme: 'tide', desc: '敌人通过传送门在空间内跳跃', skill: 'silence_field', mode: 'random', routes: [
             [{ x: 60, y: 80 }, { x: 60, y: 200 }, { x: 120, y: 300 }],
             [{ x: 225, y: 80 }, { x: 225, y: 200 }, { x: 280, y: 300 }],
             [{ x: 390, y: 80 }, { x: 390, y: 200 }, { x: 340, y: 300 }]
         ],
-        groups: [[{ type: EnemyType.FAST, count: 16 }, { type: EnemyType.NORMAL, count: 10 }], [{ type: EnemyType.HEALER, count: 6 }, { type: EnemyType.GHOST, count: 12 }], [{ type: EnemyType.SHIELD, count: 10 }, { type: EnemyType.BOSS_NIGHTMARE, count: 1 }]] },
+        groups: [[{ type: EnemyType.FAST, count: 16 }, { type: EnemyType.NORMAL, count: 10 }, { type: EnemyType.REFLECTOR, count: 4 }], [{ type: EnemyType.HEALER, count: 6 }, { type: EnemyType.GHOST, count: 12 }, { type: EnemyType.REFLECTOR, count: 4 }], [{ type: EnemyType.SHIELD, count: 10 }, { type: EnemyType.REFLECTOR, count: 5 }, { type: EnemyType.BOSS_NIGHTMARE, count: 1 }]] },
     // L7 紊乱空间：4 入口 + 4 传送门
     { name: '紊乱空间', subtitle: '紊乱跃迁 · 超载协议', accent: '#C084FC', theme: 'gravity', desc: '四座传送门构成紊乱网络', skill: 'time_stop', mode: 'balanced', routes: [
             [{ x: 60, y: 80 }, { x: 60, y: 180 }, { x: 100, y: 280 }],
@@ -1078,13 +1240,13 @@ const extraLevelData = [
             [{ x: 60, y: 440 }, { x: 100, y: 360 }, { x: 150, y: 300 }],
             [{ x: 390, y: 440 }, { x: 350, y: 360 }, { x: 300, y: 300 }]
         ],
-        groups: [[{ type: EnemyType.HEAVY, count: 7 }, { type: EnemyType.NORMAL, count: 12 }], [{ type: EnemyType.SPLIT, count: 12 }, { type: EnemyType.BOMBER, count: 7 }], [{ type: EnemyType.SHIELD, count: 12 }, { type: EnemyType.BOSS_VENOM, count: 1 }]] },
+        groups: [[{ type: EnemyType.HEAVY, count: 7 }, { type: EnemyType.NORMAL, count: 12 }, { type: EnemyType.REGENERATOR, count: 4 }], [{ type: EnemyType.SPLIT, count: 12 }, { type: EnemyType.BOMBER, count: 7 }, { type: EnemyType.REGENERATOR, count: 4 }], [{ type: EnemyType.SHIELD, count: 12 }, { type: EnemyType.REGENERATOR, count: 3 }, { type: EnemyType.BOSS_VENOM, count: 1 }]] },
     // L8 迷雾回廊：2 入口 + 2 传送门 + 2 雾区
     { name: '迷雾回廊', subtitle: '信号盲区 · 迷雾协议', accent: '#B58CFF', theme: 'archive', desc: '迷雾笼罩禁区，炮塔无法锁定其中目标', skill: 'death_ray', mode: 'balanced', routes: [
             [{ x: 80, y: 80 }, { x: 80, y: 220 }, { x: 130, y: 360 }],
             [{ x: 370, y: 80 }, { x: 370, y: 220 }, { x: 320, y: 360 }]
         ],
-        groups: [[{ type: EnemyType.GHOST, count: 15 }, { type: EnemyType.SHIELD, count: 6 }], [{ type: EnemyType.HEALER, count: 9 }, { type: EnemyType.SPLIT, count: 8 }], [{ type: EnemyType.GHOST, count: 12 }, { type: EnemyType.BOSS_INFERNO, count: 1 }]] },
+        groups: [[{ type: EnemyType.GHOST, count: 15 }, { type: EnemyType.SHIELD, count: 6 }, { type: EnemyType.ASSASSIN, count: 6 }], [{ type: EnemyType.HEALER, count: 9 }, { type: EnemyType.SPLIT, count: 8 }, { type: EnemyType.REFLECTOR, count: 5 }], [{ type: EnemyType.GHOST, count: 12 }, { type: EnemyType.ASSASSIN, count: 4 }, { type: EnemyType.BOSS_INFERNO, count: 1 }]] },
     // L9 终焉核心：4 入口复杂迷宫
     { name: '终焉核心', subtitle: '终焉双路 · 日蚀协议', accent: '#FFD166', theme: 'eclipse', desc: '炮塔攻速降低15%；终局Boss周期冻结全场', skill: 'eclipse_protocol', mode: 'random', routes: [
             [{ x: 60, y: 80 }, { x: 60, y: 170 }, { x: 160, y: 170 }, { x: 160, y: 300 }, { x: 280, y: 300 }, { x: 280, y: 430 }, { x: 225, y: 430 }, { x: 225, y: 640 }],
@@ -1092,7 +1254,7 @@ const extraLevelData = [
             [{ x: 60, y: 500 }, { x: 120, y: 500 }, { x: 120, y: 420 }, { x: 190, y: 420 }, { x: 225, y: 500 }, { x: 225, y: 640 }],
             [{ x: 225, y: 80 }, { x: 225, y: 180 }, { x: 180, y: 260 }, { x: 270, y: 340 }, { x: 225, y: 430 }, { x: 225, y: 640 }]
         ],
-        groups: [[{ type: EnemyType.FAST, count: 20 }, { type: EnemyType.HEAVY, count: 8 }], [{ type: EnemyType.SHIELD, count: 12 }, { type: EnemyType.HEALER, count: 8 }, { type: EnemyType.BOMBER, count: 8 }], [{ type: EnemyType.SPLIT, count: 12 }, { type: EnemyType.BOSS_FROST, count: 1 }]] }
+        groups: [[{ type: EnemyType.FAST, count: 20 }, { type: EnemyType.HEAVY, count: 8 }, { type: EnemyType.ASSASSIN, count: 5 }, { type: EnemyType.ACCELERATOR, count: 4 }], [{ type: EnemyType.SHIELD, count: 12 }, { type: EnemyType.HEALER, count: 8 }, { type: EnemyType.BOMBER, count: 8 }, { type: EnemyType.EMP_DRONE, count: 5 }, { type: EnemyType.REFLECTOR, count: 4 }], [{ type: EnemyType.SPLIT, count: 12 }, { type: EnemyType.REGENERATOR, count: 4 }, { type: EnemyType.MAGNETIC_GUARD, count: 3 }, { type: EnemyType.BOSS_FROST, count: 1 }]] }
 ];
 /** 塔位中心到任一路径中线至少50px：塔位框半宽22px、道路半宽19px，边缘净空至少9px。 */
 const MIN_TOWER_SLOT_PATH_DISTANCE = 50;
@@ -1225,18 +1387,50 @@ function capSplitShare(groups) {
  */
 export const LEVEL_TROOP_TUNING = [
     { small: 20, elite: 2, hp: 0.80 }, // L1 教学：血少怪少
-    { small: 20, elite: 3, hp: 1.00 },
-    { small: 22, elite: 3, hp: 1.00 },
-    { small: 24, elite: 3, hp: 1.00 },
-    { small: 26, elite: 3, hp: 1.00 },
-    { small: 30, elite: 4, hp: 1.00 },
-    { small: 36, elite: 4, hp: 1.00 }, // L7 高压
-    { small: 44, elite: 5, hp: 1.00 }, // L8 海量
-    { small: 52, elite: 5, hp: 1.00 } // L9 终局
+    { small: 22, elite: 3, hp: 1.00 }, // L2
+    { small: 24, elite: 3, hp: 1.00 }, // L3
+    { small: 26, elite: 3, hp: 1.00 }, // L4
+    { small: 28, elite: 3, hp: 1.00 }, // L5
+    { small: 30, elite: 4, hp: 1.00 }, // L6
+    { small: 34, elite: 4, hp: 1.00 }, // L7 高压
+    { small: 40, elite: 5, hp: 1.00 }, // L8 海量
+    { small: 48, elite: 5, hp: 1.00 } // L9 终局
 ];
 export const WAVE_END_GOLD_REWARD = 60;
 const WAVE_CLEAR_GOLD = WAVE_END_GOLD_REWARD;
-const SMALL_ENEMY_TYPES = new Set([EnemyType.NORMAL, EnemyType.FAST, EnemyType.SPLIT, EnemyType.HEALER, EnemyType.MINI, EnemyType.GHOST]);
+const SMALL_ENEMY_TYPES = new Set([
+    EnemyType.NORMAL, EnemyType.FAST, EnemyType.SPLIT, EnemyType.HEALER, EnemyType.MINI, EnemyType.GHOST,
+    // v1.9 新增 6 种机制小怪：只做「塔的状态压制」，绝不攻击塔、塔也没有 HP。
+    EnemyType.EMP_DRONE, EnemyType.REFLECTOR, EnemyType.ACCELERATOR,
+    EnemyType.ASSASSIN, EnemyType.MAGNETIC_GUARD, EnemyType.REGENERATOR
+]);
+/**
+ * 每关 3 个精英波（第 3/6/9 波）各自出什么精英。
+ * 索引 0..8 对应 L1..L9；前两关只用老三样（重装/护盾/自爆），
+ * 从 L3 开始逐个引入 v1.9 的 4 种新精英，保证「新机制一次只来一个」。
+ */
+const LEVEL_ELITE_TYPES = [
+    [EnemyType.HEAVY, EnemyType.SHIELD, EnemyType.BOMBER], // L1
+    [EnemyType.HEAVY, EnemyType.SHIELD, EnemyType.BOMBER], // L2
+    [EnemyType.SHIELD, EnemyType.BOMBER, EnemyType.ELITE_STORM], // L3 电磁风暴
+    [EnemyType.BOMBER, EnemyType.ELITE_STORM, EnemyType.ELITE_COMMANDER], // L4 战旗指挥官
+    [EnemyType.ELITE_STORM, EnemyType.ELITE_COMMANDER, EnemyType.ELITE_FORTRESS], // L5 反射堡垒
+    [EnemyType.ELITE_COMMANDER, EnemyType.ELITE_FORTRESS, EnemyType.ELITE_VOIDWALKER], // L6 虚空行者
+    [EnemyType.ELITE_FORTRESS, EnemyType.ELITE_VOIDWALKER, EnemyType.ELITE_STORM], // L7 三系轮转
+    [EnemyType.ELITE_VOIDWALKER, EnemyType.ELITE_STORM, EnemyType.ELITE_COMMANDER], // L8
+    [EnemyType.ELITE_FORTRESS, EnemyType.ELITE_COMMANDER, EnemyType.ELITE_VOIDWALKER] // L9
+];
+const LEVEL_ELITE_NAMES = [
+    ['重装精英截击', '护盾精英推进', '自爆精英突袭'],
+    ['重装精英截击', '护盾精英推进', '自爆精英突袭'],
+    ['护盾精英推进', '自爆精英突袭', '电磁风暴降临'],
+    ['自爆精英突袭', '电磁风暴降临', '战旗指挥官压境'],
+    ['电磁风暴降临', '战旗指挥官压境', '反射堡垒封锁'],
+    ['战旗指挥官压境', '反射堡垒封锁', '虚空行者突入'],
+    ['反射堡垒封锁', '虚空行者突入', '电磁风暴降临'],
+    ['虚空行者突入', '电磁风暴降临', '战旗指挥官压境'],
+    ['反射堡垒封锁', '战旗指挥官压境', '虚空行者突入']
+];
 function makeSmallEnemyGroups(source, total = SMALL_ENEMIES_PER_WAVE) {
     const weights = source.filter(g => SMALL_ENEMY_TYPES.has(g.type));
     const usable = weights.length ? weights : [{ type: EnemyType.NORMAL, count: 1 }];
@@ -1257,8 +1451,8 @@ function expandLevelWaves(level) {
     const smallTotal = level.smallEnemiesPerWave ?? SMALL_ENEMIES_PER_WAVE;
     const eliteBase = level.eliteCountBase ?? 3;
     const result = [];
-    const eliteTypes = [EnemyType.HEAVY, EnemyType.SHIELD, EnemyType.BOMBER];
-    const eliteNames = ['重装精英截击', '护盾精英推进', '自爆精英突袭'];
+    const eliteTypes = LEVEL_ELITE_TYPES[level.id - 1] ?? LEVEL_ELITE_TYPES[0];
+    const eliteNames = LEVEL_ELITE_NAMES[level.id - 1] ?? LEVEL_ELITE_NAMES[0];
     for (let i = 0; i < 9; i++) {
         const template = templates[i % templates.length];
         // capSplitShare 必须在加精英之前跑：它按"当前小怪总量"算占比。

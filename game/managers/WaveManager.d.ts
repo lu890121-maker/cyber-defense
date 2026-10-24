@@ -55,6 +55,8 @@ export declare class WaveManager {
     getWaveState(): WaveState;
     getEnemies(): Enemy[];
     getAliveEnemies(): Enemy[];
+    /** 动态添加敌人（用于精英怪分裂等场景） */
+    addEnemy(enemy: Enemy): void;
     getKilledCount(): number;
     getTotalKilled(): number;
     getRemainingCount(): number;

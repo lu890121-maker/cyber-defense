@@ -1667,6 +1667,33 @@ export class GameManager {
             if (paralyze) {
                 this.applyBomberParalyze(enemy.getX(), enemy.getY(), paralyze.radius, paralyze.duration);
             }
+            // 精英·电磁风暴：死亡时释放全屏 EMP
+            const deathEmp = enemy.getDeathEmpParams();
+            if (deathEmp) {
+                this.applyEmpEffect(enemy.getX(), enemy.getY(), deathEmp.radius, deathEmp.duration);
+                this.showEnhanceToast(`精英·电磁风暴死亡：全场防御塔沉默 ${deathEmp.duration} 秒`, '#ff8800');
+            }
+            // 精英·反射堡垒：死亡时分裂出反射甲虫
+            const deathSplitCount = enemy.getDeathSplitCount();
+            if (deathSplitCount > 0) {
+                for (let i = 0; i < deathSplitCount; i++) {
+                    const offset = 20;
+                    const angle = (Math.PI * 2 * i) / deathSplitCount;
+                    const spawnX = enemy.getX() + Math.cos(angle) * offset;
+                    const spawnY = enemy.getY() + Math.sin(angle) * offset;
+                    const mini = new Enemy(EnemyType.REFLECTOR, enemy.getWaveMultiplier(), enemy.getPathPoints(), undefined, enemy.getLevelIndex(), enemy.getWarpSegments());
+                    mini.setPosition(spawnX, spawnY);
+                    mini.setPathIndex(enemy.getPathIndex());
+                    this.waveManager.addEnemy(mini);
+                }
+                this.showEnhanceToast(`精英·反射堡垒死亡：分裂出 ${deathSplitCount} 只反射甲虫`, '#c0c0c0');
+            }
+            // 精英·虚空行者：死亡时对核心造成伤害
+            const deathCoreDamage = enemy.getDeathCoreDamage();
+            if (deathCoreDamage > 0) {
+                this.resourceManager.damageBase(deathCoreDamage);
+                this.showEnhanceToast(`精英·虚空行者死亡：对核心造成 ${deathCoreDamage} 点伤害`, '#8b5cf6');
+            }
             // 关卡环境词缀「感染扩散」：任何敌人死亡都有概率裂变出小怪。
             // 与分裂孢子机的固定裂变叠加，让机械巢穴这一关的清场压力贯穿始终。
             const lvMod = getActiveLevel().modifier;
@@ -1702,6 +1729,39 @@ export class GameManager {
             // 火焰塔/毒液塔地面持续伤害效果
             if (tower.getType() === TowerType.FLAME || tower.getType() === TowerType.POISON) {
                 tower.applyGroundEffect(this.waveManager.getAliveEnemies(), scaledDelta, PATH_POINTS);
+            }
+        }
+        // 更新新怪物效果
+        const aliveEnemies = this.waveManager.getAliveEnemies();
+        for (const enemy of aliveEnemies) {
+            // EMP 无人机/精英：定期沉默防御塔
+            if (enemy.shouldEmp()) {
+                const empParams = enemy.getEmpParams();
+                if (empParams) {
+                    this.applyEmpEffect(enemy.getX(), enemy.getY(), empParams.radius, empParams.duration);
+                    enemy.resetEmpTimer();
+                    this.showEnhanceToast(`${enemy.getType() === EnemyType.EMP_DRONE ? 'EMP无人机' : '精英·电磁风暴'}释放 EMP：沉默防御塔 ${empParams.duration} 秒`, '#ffaa00');
+                }
+            }
+            // 加速引擎兵/指挥官：为周围友军提供加速和减伤
+            const auraParams = enemy.getAuraParams();
+            if (auraParams) {
+                for (const other of aliveEnemies) {
+                    if (other === enemy || !other.isAlive())
+                        continue;
+                    const dx = other.getX() - enemy.getX();
+                    const dy = other.getY() - enemy.getY();
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist <= auraParams.radius) {
+                        // 应用加速效果
+                        other.applyTimedSpeedBoost(auraParams.speedBoost, 0.5);
+                        // 应用减伤效果（通过增加护盾实现）
+                        if (auraParams.damageReduction > 0) {
+                            const shieldAmount = other.getMaxHp() * auraParams.damageReduction * 0.1;
+                            other.applyShield(shieldAmount);
+                        }
+                    }
+                }
             }
         }
         // 更新动画效果
@@ -1835,6 +1895,28 @@ export class GameManager {
             this.pulseEffects.push({
                 x, y, radius: 10, maxRadius: radius,
                 alpha: 0.8, color: '#FF4D6D'
+            });
+        }
+    }
+    /**
+     * EMP 无人机/精英：沉默半径内的所有防御塔（禁止使用技能）。
+     * 与瘫痪不同，沉默只禁止技能，塔仍可普通攻击。
+     */
+    applyEmpEffect(x, y, radius, duration) {
+        let hit = 0;
+        for (const tower of this.towerMergeSystem.getAllTowers()) {
+            const d = Math.hypot(tower.getX() - x, tower.getY() - y);
+            if (d <= radius) {
+                tower.silenceSkills(duration);
+                hit++;
+            }
+        }
+        if (hit > 0) {
+            this.soundManager.playParalyze();
+            // 用黄色脉冲标记 EMP 范围
+            this.pulseEffects.push({
+                x, y, radius: 10, maxRadius: radius,
+                alpha: 0.8, color: '#FFAA00'
             });
         }
     }
@@ -2070,10 +2152,10 @@ export class GameManager {
                 })[0];
                 if (target) {
                     target.paralyze(2.0); // 蓄力期间无法移动
-                    // 2 秒后摧毁炮塔：造成 1000 点伤害（炮塔默认 100 HP，必定摧毁）
+                    // 2 秒后直接移除炮塔
                     setTimeout(() => {
-                        if (target && !target.isDestroyed()) {
-                            target.takeDamage(1000);
+                        if (target && !target.isParalyzed()) {
+                            this.towerMergeSystem.removeTowerByInstance(target);
                             this.showEnhanceToast(`Boss发动「毁灭射线」：最强炮塔被摧毁！`, '#ff6b8a');
                         }
                     }, 2000);
@@ -3198,6 +3280,12 @@ export class GameManager {
             // 敌人阴影：随离地高度收缩变淡（跳起来的时候影子要变小）
             const lift = anim.hop + anim.lift;
             const shk = Math.max(0.45, 1 - lift * 0.075);
+            // 隐身刺客 / 虚空行者：半透明可见但不可锁定。
+            // 用透明度表达"它在，但你锁不住"，比让它彻底消失更公平 ——
+            // 玩家能看见威胁接近，只是打不到，挫败感来自规则而不是信息缺失。
+            const stealthMul = enemy.isStealthed() ? enemy.getStealthAlpha() : 1;
+            ctx.save();
+            ctx.globalAlpha = stealthMul;
             ctx.fillStyle = `rgba(0, 0, 0, ${(0.4 * shk).toFixed(3)})`;
             ctx.beginPath();
             ctx.ellipse(enemy.getX(), enemy.getY() + size + 2, size * 0.9 * shk, size * 0.35 * shk, 0, 0, Math.PI * 2);
@@ -3206,6 +3294,43 @@ export class GameManager {
             // 状态色（中毒/燃烧/冻结）以预染色形式进入精灵，而不是在精灵上糊一个纯色圆碟
             const statusEarly = enemy.getStatusTint();
             this.spriteLoader.drawEnemy(ctx, x, y, enemy.getType(), size * 2.5 * spawn, statusEarly?.color, anim, this.currentLevelIndex);
+            ctx.restore();
+            // ── 光环敌（加速引擎兵 / 战旗指挥官）：地面画一圈脉动范围环 ──
+            // 光环是"这只怪在给周围怪加成"，不画出来玩家只会觉得"这波怪莫名其妙变快了"。
+            const aura = enemy.getAuraParams();
+            if (aura) {
+                const pulse = 0.5 + Math.sin(this.gameTime * 3.2) * 0.18;
+                ctx.save();
+                ctx.globalAlpha = pulse * 0.55;
+                ctx.strokeStyle = aura.damageReduction > 0 ? '#FF4444' : '#00FF88';
+                ctx.lineWidth = 1.6;
+                ctx.setLineDash([6, 5]);
+                ctx.lineDashOffset = -this.gameTime * 22;
+                ctx.beginPath();
+                ctx.ellipse(x, y + size * 0.7, aura.radius * 0.62, aura.radius * 0.3, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.restore();
+            }
+            // ── EMP 敌（EMP无人机 / 电磁风暴）：头顶蓄能电弧，冷却越满越亮 ──
+            const empP = enemy.getEmpChargeRatio();
+            if (empP > 0) {
+                const r = size * 1.15;
+                ctx.save();
+                ctx.globalAlpha = 0.35 + empP * 0.6;
+                ctx.strokeStyle = '#FFAA00';
+                ctx.shadowColor = '#FFAA00';
+                ctx.shadowBlur = 8 * empP;
+                ctx.lineWidth = 1.4;
+                for (let k = 0; k < 3; k++) {
+                    const ang = this.gameTime * 4 + k * (Math.PI * 2 / 3);
+                    ctx.beginPath();
+                    ctx.moveTo(x + Math.cos(ang) * r * 0.55, y + Math.sin(ang) * r * 0.55 - size * 0.15);
+                    ctx.lineTo(x + Math.cos(ang) * r, y + Math.sin(ang) * r - size * 0.15);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
             // 每个章节Boss有独立的技能徽记与配色，轮廓环和技能名可在混战中快速辨认。
             if (isBossType(enemy.getType())) {
                 const bossSkill = enemy.getBossSkill() || 'freeze';
@@ -3941,6 +4066,21 @@ export class GameManager {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
     }
+    /**
+     * 波次预览条里的敌种简写（2~3 字）。
+     *
+     * 直接 `name.slice(0,2)` 会把「精英·电磁风暴」压成「精英」、「EMP无人机」
+     * 压成「EM」—— 前者把四个不同的精英全叫成同一个名字，后者读不出是什么。
+     * 所以先剥掉精英前缀，再剥掉 ASCII 前缀，最后取 2 个汉字；
+     * EMP 是玩家唯一认得的英文缩写，单独保留。
+     */
+    enemyBriefName(name) {
+        if (/^EMP/i.test(name))
+            return 'EMP';
+        const base = name.includes('·') ? name.split('·').pop() : name;
+        const cn = base.replace(/^[A-Za-z0-9\s]+/, '');
+        return (cn || base).slice(0, 2);
+    }
     renderNextWavePreview() {
         const preview = WaveManager.getWavePreview(this.waveManager.getCurrentWave() + 1);
         if (!preview)
@@ -3951,7 +4091,7 @@ export class GameManager {
             const bb = isBossType(b.type) ? 1 : 0;
             return ab !== bb ? bb - ab : b.count - a.count;
         });
-        const brief = ordered.slice(0, 2).map(enemy => `${isBossType(enemy.type) ? 'Boss' : enemy.name.slice(0, 2)}×${enemy.count}`).join(' · ');
+        const brief = ordered.slice(0, 2).map(enemy => `${isBossType(enemy.type) ? 'Boss' : this.enemyBriefName(enemy.name)}×${enemy.count}`).join(' · ');
         const bossSkills = {
             freeze: '冻结', silence: '静默', jam: 'EMP', drain: '抽金', surge: '减速',
             mark: '标记', quake: '震波', overload: '打断', ambush: '伏击', eclipse: '日蚀'

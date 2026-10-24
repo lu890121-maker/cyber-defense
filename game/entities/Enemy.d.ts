@@ -84,6 +84,24 @@ export declare class Enemy {
     private phased;
     private deathParalyzeRadius;
     private deathParalyzeDuration;
+    private empRadius;
+    private empDuration;
+    private empCooldown;
+    private empTimer;
+    private deathEmpRadius;
+    private deathEmpDuration;
+    private reflectRatio;
+    private auraRadius;
+    private auraSpeedBoost;
+    private auraDamageReduction;
+    private stealthAlpha;
+    private coreRevealDistance;
+    private stealthed;
+    private attractRadius;
+    private newRegenRate;
+    private lowHpRegenRate;
+    private deathSplitCount;
+    private deathCoreDamage;
     private hitFlash;
     private hitDir;
     private knockX;
@@ -117,6 +135,43 @@ export declare class Enemy {
         radius: number;
         duration: number;
     } | null;
+    /** EMP 无人机/精英：是否应该释放 EMP */
+    shouldEmp(): boolean;
+    /** EMP 无人机/精英：重置 EMP 计时器 */
+    resetEmpTimer(): void;
+    /** EMP 无人机/精英：获取 EMP 参数 */
+    getEmpParams(): {
+        radius: number;
+        duration: number;
+    } | null;
+    /**
+     * EMP 蓄能进度 0..1（0 = 刚放完，1 = 即将再次释放）。
+     * 纯表现层用：渲染层据此决定头顶电弧的亮度，让玩家能预判下一次干扰。
+     */
+    getEmpChargeRatio(): number;
+    /** 精英·电磁风暴：死亡 EMP 参数 */
+    getDeathEmpParams(): {
+        radius: number;
+        duration: number;
+    } | null;
+    /** 反射甲虫/精英：获取反射比例 */
+    getReflectRatio(): number;
+    /** 加速引擎兵/指挥官：获取光环参数 */
+    getAuraParams(): {
+        radius: number;
+        speedBoost: number;
+        damageReduction: number;
+    } | null;
+    /** 隐身刺客/虚空行者：是否隐身状态 */
+    isStealthed(): boolean;
+    /** 隐身刺客/虚空行者：获取透明度 */
+    getStealthAlpha(): number;
+    /** 磁力盾卫：获取吸引半径 */
+    getAttractRadius(): number;
+    /** 精英·反射堡垒：死亡分裂数量 */
+    getDeathSplitCount(): number;
+    /** 精英·虚空行者：死亡对核心伤害 */
+    getDeathCoreDamage(): number;
     getType(): EnemyType;
     getLevelIndex(): number;
     getX(): number;
@@ -233,6 +288,7 @@ export declare class Enemy {
     getConfig(): EnemyConfig;
     setPositionAndPathIndex(x: number, y: number, pathIndex: number): void;
     getPathIndex(): number;
+    setPathIndex(index: number): void;
     applyTimedSpeedBoost(multiplier: number, duration: number): void;
     applyMutation(mutationType: string, hpMultiplier: number, speedMultiplier: number, special?: string): void;
     getMutation(): string;

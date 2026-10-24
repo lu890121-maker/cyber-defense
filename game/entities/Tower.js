@@ -192,9 +192,6 @@ export class Tower {
         /** 后坐位移：开火时朝反方向顶一下，弹簧回位 */
         this.recoil = 0;
         this.recoilAngle = 0;
-        /** 对炮塔造成伤害（用于 Boss 技能如震撼重击） */
-        this.hp = 100; // 炮塔默认 100 HP
-        this.maxHp = 100;
         /** 缩减射程（用于 Boss 技能如日蚀协议） */
         this.rangeMultiplier = 1.0;
         this.type = type;
@@ -383,12 +380,6 @@ export class Tower {
         this.bossSlowMultiplier = Math.max(this.bossSlowMultiplier, intervalMultiplier);
     }
     isBossAttackSlowed() { return this.bossSlowTimer > 0; }
-    takeDamage(amount) {
-        this.hp = Math.max(0, this.hp - amount);
-    }
-    getHp() { return this.hp; }
-    getMaxHp() { return this.maxHp; }
-    isDestroyed() { return this.hp <= 0; }
     reduceRange(multiplier, duration) {
         this.rangeMultiplier = multiplier;
         // 注意：这里简化处理，实际应该用 timer 控制持续时间
@@ -625,11 +616,20 @@ export class Tower {
     findTarget(enemies) {
         let closestEnemy = null;
         let minDistance = Infinity;
+        // 磁力盾卫：它的「吸引弹道」= 把塔的火力强行拉到自己身上。
+        // 本项目伤害即时结算、没有真实弹道，所以这条机制落地为**锁定优先级**：
+        // 只要盾卫在塔的吸引半径内且本身可打，塔就优先打它。
+        let magnetEnemy = null;
+        let magnetDistance = Infinity;
         // 用 getRange() 而不是 this.range —— 过载的 1.5 倍射程要真的生效，
         // 否则"过载加射程"在 UI 上写着好看，实际打不到更远的敌人。
         const range = this.getRange();
         for (const enemy of enemies) {
             if (!enemy.isAlive())
+                continue;
+            // ── 隐身刺客过滤 ──
+            // 隐身刺客半透明可见但不可锁定，只有靠近核心时才显形
+            if (enemy.isStealthed())
                 continue;
             // ── 迷雾禁区过滤（L8）──
             // 雾内敌人无法被防御塔锁定/攻击，但移动/逃脱不受影响
@@ -644,12 +644,19 @@ export class Tower {
             const dx = enemy.getX() - this.x;
             const dy = enemy.getY() - this.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance <= range && distance < minDistance) {
+            if (distance > range)
+                continue;
+            const attract = enemy.getAttractRadius();
+            if (attract > 0 && distance <= attract && distance < magnetDistance) {
+                magnetDistance = distance;
+                magnetEnemy = enemy;
+            }
+            if (distance < minDistance) {
                 minDistance = distance;
                 closestEnemy = enemy;
             }
         }
-        return closestEnemy;
+        return magnetEnemy ?? closestEnemy;
     }
     /**
      * 选出本回合要攻击的所有目标（含「多重射击」）。
@@ -690,6 +697,16 @@ export class Tower {
             if (!target.isAlive())
                 continue;
             const { amount, isCrit } = this.resolveDamage(target);
+            // 反射甲虫/精英：反射部分伤害给塔（转化为负面状态，塔没有 HP）
+            const reflectRatio = target.getReflectRatio();
+            if (reflectRatio > 0) {
+                const reflectedDamage = amount * reflectRatio;
+                // 反射伤害 → 塔的瘫痪时长。必须给一个 0.25s 的**保底**：
+                // 早期低伤塔（单发十几点）反射出来只有 0.07s，会被阈值直接吃掉，
+                // 玩家看到的就是"这怪写着会反射但完全没感觉"。
+                const paralyzeDuration = Math.max(0.25, Math.min(3.0, 0.15 + reflectedDamage / 90));
+                this.paralyze(paralyzeDuration);
+            }
             target.takeDamage(amount, { pierce: this.skillMods.armorPierce });
             this.onHitLanded(target, isCrit);
             // 命中瞬间：白闪 + 击退 + 伤害飘字（飘字跟着弹道落地节奏）
@@ -882,6 +899,24 @@ export class Tower {
             m.sniperPierce = patch.sniperPierce;
         if (patch.vanishSpeed !== undefined)
             m.vanishSpeed = patch.vanishSpeed;
+        // v1.9 地面持续伤害（火海 / 毒液池）—— 漏这两行会让 UI 能选、实战完全无效
+        if (patch.fireSea !== undefined)
+            m.fireSea = patch.fireSea;
+        if (patch.poisonPool !== undefined)
+            m.poisonPool = patch.poisonPool;
+    }
+    /**
+     * 开启「范围减速」（寒霜领域 / 磁力场）。
+     *
+     * 为什么不直接 `applySkillMod({ aoeSlow: true })`：
+     * `applyAoESlow()` 用 `aoeRadius` 当半径，而寒霜塔的默认 aoeRadius 是 0，
+     * 引力塔默认就已经开着 aoeSlow —— 前者选了技能等于没选，后者选了毫无变化。
+     * 所以这里统一收口：**保证半径至少 baseRadius，且每次都实际变大 20%**，
+     * 两种塔都能拿到真实收益。
+     */
+    enableAoESlow(baseRadius = 80) {
+        this.skillMods.aoeSlow = true;
+        this.skillMods.aoeRadius = Math.max(this.skillMods.aoeRadius * 1.2, baseRadius);
     }
     learnSkill(skillId) {
         if (!this.learnedSkills.includes(skillId))

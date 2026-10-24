@@ -81,6 +81,33 @@ export class Enemy {
         // ── 死亡特效（自爆机雷）──
         this.deathParalyzeRadius = 0;
         this.deathParalyzeDuration = 0;
+        // ── 新怪物机制 ──
+        // EMP无人机/精英
+        this.empRadius = 0;
+        this.empDuration = 0;
+        this.empCooldown = 0;
+        this.empTimer = 0;
+        this.deathEmpRadius = 0;
+        this.deathEmpDuration = 0;
+        // 反射甲虫/精英
+        this.reflectRatio = 0;
+        // 加速引擎兵/指挥官
+        this.auraRadius = 0;
+        this.auraSpeedBoost = 1;
+        this.auraDamageReduction = 0;
+        // 隐身刺客/虚空行者
+        this.stealthAlpha = 1;
+        this.coreRevealDistance = 0;
+        this.stealthed = false;
+        // 磁力盾卫
+        this.attractRadius = 0;
+        // 再生巨虫
+        this.newRegenRate = 0;
+        this.lowHpRegenRate = 0;
+        // 精英·反射堡垒
+        this.deathSplitCount = 0;
+        // 精英·虚空行者
+        this.deathCoreDamage = 0;
         // 受击表现（白闪 + 击退位移），不参与任何数值计算
         this.hitFlash = 0;
         this.hitDir = 0;
@@ -118,6 +145,50 @@ export class Enemy {
         if (config.deathParalyzeRadius) {
             this.deathParalyzeRadius = config.deathParalyzeRadius;
             this.deathParalyzeDuration = config.deathParalyzeDuration || 3;
+        }
+        // EMP无人机/精英
+        if (config.empRadius) {
+            this.empRadius = config.empRadius;
+            this.empDuration = config.empDuration || 1.5;
+            this.empCooldown = config.empCooldown || 8;
+            this.empTimer = this.empCooldown * Math.random(); // 随机初始冷却
+        }
+        if (config.deathEmpRadius) {
+            this.deathEmpRadius = config.deathEmpRadius;
+            this.deathEmpDuration = config.deathEmpDuration || 2;
+        }
+        // 反射甲虫/精英
+        if (config.reflectRatio) {
+            this.reflectRatio = config.reflectRatio;
+        }
+        // 加速引擎兵/指挥官
+        if (config.auraRadius) {
+            this.auraRadius = config.auraRadius;
+            this.auraSpeedBoost = config.auraSpeedBoost || 1.2;
+            this.auraDamageReduction = config.auraDamageReduction || 0;
+        }
+        // 隐身刺客/虚空行者
+        if (config.stealthAlpha !== undefined) {
+            this.stealthAlpha = config.stealthAlpha;
+            this.coreRevealDistance = config.coreRevealDistance || 50;
+            this.stealthed = true;
+        }
+        // 磁力盾卫
+        if (config.attractRadius) {
+            this.attractRadius = config.attractRadius;
+        }
+        // 再生巨虫
+        if (config.regenRate) {
+            this.newRegenRate = config.regenRate;
+            this.lowHpRegenRate = config.lowHpRegenRate || 0.05;
+        }
+        // 精英·反射堡垒
+        if (config.deathSplitCount) {
+            this.deathSplitCount = config.deathSplitCount;
+        }
+        // 精英·虚空行者
+        if (config.deathCoreDamage) {
+            this.deathCoreDamage = config.deathCoreDamage;
         }
         // 初始位置
         this.x = this.pathPoints[0].x;
@@ -189,6 +260,65 @@ export class Enemy {
         if (this.deathParalyzeRadius <= 0)
             return null;
         return { radius: this.deathParalyzeRadius, duration: this.deathParalyzeDuration };
+    }
+    /** EMP 无人机/精英：是否应该释放 EMP */
+    shouldEmp() {
+        return this.empRadius > 0 && this.empTimer <= 0;
+    }
+    /** EMP 无人机/精英：重置 EMP 计时器 */
+    resetEmpTimer() {
+        this.empTimer = this.empCooldown;
+    }
+    /** EMP 无人机/精英：获取 EMP 参数 */
+    getEmpParams() {
+        if (this.empRadius <= 0)
+            return null;
+        return { radius: this.empRadius, duration: this.empDuration };
+    }
+    /**
+     * EMP 蓄能进度 0..1（0 = 刚放完，1 = 即将再次释放）。
+     * 纯表现层用：渲染层据此决定头顶电弧的亮度，让玩家能预判下一次干扰。
+     */
+    getEmpChargeRatio() {
+        if (this.empRadius <= 0 || this.empCooldown <= 0)
+            return 0;
+        return Math.max(0, Math.min(1, 1 - this.empTimer / this.empCooldown));
+    }
+    /** 精英·电磁风暴：死亡 EMP 参数 */
+    getDeathEmpParams() {
+        if (this.deathEmpRadius <= 0)
+            return null;
+        return { radius: this.deathEmpRadius, duration: this.deathEmpDuration };
+    }
+    /** 反射甲虫/精英：获取反射比例 */
+    getReflectRatio() {
+        return this.reflectRatio;
+    }
+    /** 加速引擎兵/指挥官：获取光环参数 */
+    getAuraParams() {
+        if (this.auraRadius <= 0)
+            return null;
+        return { radius: this.auraRadius, speedBoost: this.auraSpeedBoost, damageReduction: this.auraDamageReduction };
+    }
+    /** 隐身刺客/虚空行者：是否隐身状态 */
+    isStealthed() {
+        return this.stealthed;
+    }
+    /** 隐身刺客/虚空行者：获取透明度 */
+    getStealthAlpha() {
+        return this.stealthAlpha;
+    }
+    /** 磁力盾卫：获取吸引半径 */
+    getAttractRadius() {
+        return this.attractRadius;
+    }
+    /** 精英·反射堡垒：死亡分裂数量 */
+    getDeathSplitCount() {
+        return this.deathSplitCount;
+    }
+    /** 精英·虚空行者：死亡对核心伤害 */
+    getDeathCoreDamage() {
+        return this.deathCoreDamage;
     }
     getType() {
         return this.type;
@@ -276,6 +406,27 @@ export class Enemy {
                 this.healTimer = 0;
                 this.healNearby(allEnemies);
             }
+        }
+        // EMP 无人机/精英：定期沉默防御塔
+        if (this.empRadius > 0) {
+            this.empTimer -= deltaTime;
+            if (this.empTimer <= 0) {
+                this.empTimer = this.empCooldown;
+                // EMP 效果由 GameManager 处理
+            }
+        }
+        // 再生巨虫：持续回复
+        if (this.newRegenRate > 0) {
+            const hpPercent = this.hp / this.maxHp;
+            const rate = hpPercent < 0.5 ? this.lowHpRegenRate : this.newRegenRate;
+            this.heal(this.maxHp * rate * deltaTime);
+        }
+        // 隐身刺客/虚空行者：根据距离核心的距离决定是否可见
+        if (this.stealthAlpha < 1) {
+            // 计算到核心的距离（假设核心在路径终点）
+            const corePoint = this.pathPoints[this.pathPoints.length - 1];
+            const distToCore = Math.sqrt((this.x - corePoint.x) ** 2 + (this.y - corePoint.y) ** 2);
+            this.stealthed = distToCore > this.coreRevealDistance;
         }
     }
     updateStatusEffects(deltaTime, allEnemies) {
@@ -694,6 +845,9 @@ export class Enemy {
     }
     getPathIndex() {
         return this.pathIndex;
+    }
+    setPathIndex(index) {
+        this.pathIndex = index;
     }
     applyTimedSpeedBoost(multiplier, duration) {
         if (!Number.isFinite(multiplier) || !Number.isFinite(duration) || duration <= 0)

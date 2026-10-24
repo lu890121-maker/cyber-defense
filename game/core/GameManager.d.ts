@@ -314,6 +314,11 @@ export declare class GameManager {
      */
     private applyBomberParalyze;
     /**
+     * EMP 无人机/精英：沉默半径内的所有防御塔（禁止使用技能）。
+     * 与瘫痪不同，沉默只禁止技能，塔仍可普通攻击。
+     */
+    private applyEmpEffect;
+    /**
      * 本波结束后是否给强化机会。
      * 强化只在**每关通关时**给一次（用户诉求：每一关只能强化一次，就是这一关通过后），
      * 由 isLevelCleared 分支直接触发，因此这里恒返回 false 是预期行为。
@@ -448,6 +453,15 @@ export declare class GameManager {
      * 横幅画了也看不见，没必要画。
      */
     private renderEnhanceToast;
+    /**
+     * 波次预览条里的敌种简写（2~3 字）。
+     *
+     * 直接 `name.slice(0,2)` 会把「精英·电磁风暴」压成「精英」、「EMP无人机」
+     * 压成「EM」—— 前者把四个不同的精英全叫成同一个名字，后者读不出是什么。
+     * 所以先剥掉精英前缀，再剥掉 ASCII 前缀，最后取 2 个汉字；
+     * EMP 是玩家唯一认得的英文缩写，单独保留。
+     */
+    private enemyBriefName;
     private renderNextWavePreview;
     /**
      * 升级 UP! 特效。

@@ -55,6 +55,17 @@ const GAIT = {
     [EnemyType.GHOST]: { hop: 0.0, squash: 0.030, sway: 2.6, lean: 0.025, freq: 0.55, mode: 'float' },
     [EnemyType.SHIELD]: { hop: 2.4, squash: 0.100, sway: 1.6, lean: 0.028, freq: 0.75, mode: 'ground' },
     [EnemyType.BOMBER]: { hop: 3.0, squash: 0.110, sway: 2.6, lean: 0.060, freq: 1.10, mode: 'ground' },
+    // v1.9：悬浮系（无人机/虚空行者）用 float，重甲系用低频大压扁
+    [EnemyType.EMP_DRONE]: { hop: 0.0, squash: 0.020, sway: 2.4, lean: 0.020, freq: 0.50, mode: 'float' },
+    [EnemyType.REFLECTOR]: { hop: 2.2, squash: 0.120, sway: 1.4, lean: 0.026, freq: 0.70, mode: 'ground' },
+    [EnemyType.ACCELERATOR]: { hop: 3.0, squash: 0.090, sway: 2.0, lean: 0.040, freq: 1.15, mode: 'ground' },
+    [EnemyType.ASSASSIN]: { hop: 4.2, squash: 0.090, sway: 2.8, lean: 0.070, freq: 1.35, mode: 'ground' },
+    [EnemyType.MAGNETIC_GUARD]: { hop: 1.8, squash: 0.130, sway: 1.2, lean: 0.022, freq: 0.58, mode: 'ground' },
+    [EnemyType.REGENERATOR]: { hop: 2.6, squash: 0.110, sway: 2.0, lean: 0.030, freq: 0.72, mode: 'ground' },
+    [EnemyType.ELITE_STORM]: { hop: 0.0, squash: 0.030, sway: 1.8, lean: 0.022, freq: 0.45, mode: 'float' },
+    [EnemyType.ELITE_FORTRESS]: { hop: 1.6, squash: 0.075, sway: 1.0, lean: 0.018, freq: 0.48, mode: 'ground' },
+    [EnemyType.ELITE_COMMANDER]: { hop: 2.4, squash: 0.085, sway: 1.6, lean: 0.030, freq: 0.66, mode: 'ground' },
+    [EnemyType.ELITE_VOIDWALKER]: { hop: 0.0, squash: 0.030, sway: 2.8, lean: 0.030, freq: 0.55, mode: 'float' },
     [EnemyType.BOSS]: { hop: 1.9, squash: 0.070, sway: 1.1, lean: 0.020, freq: 0.45, mode: 'ground' },
     [EnemyType.BOSS_WARDEN]: { hop: 2.4, squash: 0.090, sway: 1.5, lean: 0.030, freq: 0.52, mode: 'ground' },
     [EnemyType.BOSS_NIGHTMARE]: { hop: 2.8, squash: 0.075, sway: 1.8, lean: 0.040, freq: 0.60, mode: 'ground' }
@@ -1418,6 +1429,37 @@ export class SpriteLoader {
             case EnemyType.BOMBER:
                 this.drawBomberEnemy(ctx, accent, mechColors);
                 break;
+            // v1.9 新敌种：剪影互不相似，混战里靠轮廓就能认出来
+            case EnemyType.EMP_DRONE:
+                this.drawEmpDroneEnemy(ctx, accent, mechColors);
+                break;
+            case EnemyType.REFLECTOR:
+                this.drawReflectorEnemy(ctx, accent, mechColors);
+                break;
+            case EnemyType.ACCELERATOR:
+                this.drawAcceleratorEnemy(ctx, accent, mechColors);
+                break;
+            case EnemyType.ASSASSIN:
+                this.drawAssassinEnemy(ctx, accent, mechColors);
+                break;
+            case EnemyType.MAGNETIC_GUARD:
+                this.drawMagneticGuardEnemy(ctx, accent, mechColors);
+                break;
+            case EnemyType.REGENERATOR:
+                this.drawRegeneratorEnemy(ctx, accent, mechColors);
+                break;
+            case EnemyType.ELITE_STORM:
+                this.drawEliteStormEnemy(ctx, accent, mechColors);
+                break;
+            case EnemyType.ELITE_FORTRESS:
+                this.drawEliteFortressEnemy(ctx, accent, mechColors);
+                break;
+            case EnemyType.ELITE_COMMANDER:
+                this.drawEliteCommanderEnemy(ctx, accent, mechColors);
+                break;
+            case EnemyType.ELITE_VOIDWALKER:
+                this.drawEliteVoidwalkerEnemy(ctx, accent, mechColors);
+                break;
             case EnemyType.BOSS:
             case EnemyType.BOSS_WARDEN:
             case EnemyType.BOSS_NIGHTMARE:
@@ -1998,6 +2040,670 @@ export class SpriteLoader {
         ctx.fillStyle = `rgba(255, 0, 51, ${0.45 + blink * 0.5})`;
         ctx.beginPath();
         ctx.arc(0, 0, 4.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+    // ══════════════════════════════════════════════════════════
+    // v1.9 新增 6 种机制小怪 + 4 种精英
+    // 设计原则：每种的**剪影**必须彼此不同，玩家在混战里靠轮廓就能
+    // 认出「这只是沉默我的 / 那只是会反弹的」，而不是靠血条下面的小字。
+    // ══════════════════════════════════════════════════════════
+    /**
+     * EMP无人机：悬浮四旋翼，机腹挂一枚橙色放电环。
+     * 剪影 = 菱形机体 + 四个旋翼圈 + 下垂电弧锥（悬浮，无腿）。
+     */
+    drawEmpDroneEnemy(ctx, accent, mechColors) {
+        const t = this.time;
+        const dark = mechColors?.dark || MECH_DARK;
+        const mid = mechColors?.mid || MECH_MID;
+        const hi = mechColors?.hi || MECH_HI;
+        const rgb = this.hexRgb(accent);
+        const spark = Math.sin(t * 11) * 0.5 + 0.5;
+        // 四个旋翼（十字臂 + 旋转桨叶虚影）
+        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
+        ctx.lineWidth = 1.8;
+        ctx.lineCap = 'round';
+        for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+            ctx.beginPath();
+            ctx.moveTo(0, -2);
+            ctx.lineTo(dx * 9, dy * 5 - 2);
+            ctx.stroke();
+            ctx.save();
+            ctx.globalAlpha = 0.55;
+            ctx.strokeStyle = this.rgbaStr(rgb, 0.55);
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.ellipse(dx * 9, dy * 5 - 2, 5, 1.6, t * 9 + dx, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+        // 菱形机体
+        const g = ctx.createLinearGradient(0, -8, 0, 8);
+        g.addColorStop(0, hi);
+        g.addColorStop(0.55, mid);
+        g.addColorStop(1, dark);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(0, -8);
+        ctx.lineTo(7, 0);
+        ctx.lineTo(0, 8);
+        ctx.lineTo(-7, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        // 机腹放电环（主题色，闪烁 = 正在蓄能）
+        ctx.save();
+        ctx.shadowColor = accent;
+        ctx.shadowBlur = 10 * (0.4 + spark * 0.6);
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.45 + spark * 0.5);
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(0, 3, 5.2, t * 6, t * 6 + Math.PI * 1.4);
+        ctx.stroke();
+        ctx.restore();
+        // 下垂电弧（断续 = 干扰范围）
+        ctx.save();
+        ctx.globalAlpha = 0.35 + spark * 0.45;
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1.1;
+        for (let i = 0; i < 3; i++) {
+            const ox = (i - 1) * 3.4;
+            ctx.beginPath();
+            ctx.moveTo(ox, 7);
+            ctx.lineTo(ox + (i % 2 ? 1.6 : -1.6), 10.5);
+            ctx.lineTo(ox, 13.5);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+    /**
+     * 反射甲虫：半球甲壳 + 镜面分格。
+     * 剪影 = 低矮半圆壳 + 六条短足 + 壳面上的镜面高光切块。
+     */
+    drawReflectorEnemy(ctx, accent, mechColors) {
+        const t = this.time;
+        const dark = mechColors?.dark || MECH_DARK;
+        const mid = mechColors?.mid || MECH_MID;
+        const hi = mechColors?.hi || MECH_HI;
+        const rgb = this.hexRgb(accent);
+        const glint = Math.sin(t * 3.4) * 0.5 + 0.5;
+        // 六条短足
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = 1.8;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 3; i++) {
+            const bx = -5 + i * 5;
+            ctx.beginPath();
+            ctx.moveTo(bx, 5);
+            ctx.lineTo(bx - 3, 11);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(bx, 5);
+            ctx.lineTo(bx + 3, 11);
+            ctx.stroke();
+        }
+        // 半球甲壳
+        const g = ctx.createLinearGradient(0, -11, 0, 6);
+        g.addColorStop(0, hi);
+        g.addColorStop(0.45, mid);
+        g.addColorStop(1, dark);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 12, 9.5, 0, Math.PI, Math.PI * 2);
+        ctx.lineTo(12, 5);
+        ctx.ellipse(0, 5, 12, 4, 0, 0, Math.PI);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        // 镜面分格（三块，随视角轻微闪动 = "会反弹"的视觉暗示）
+        ctx.save();
+        ctx.globalAlpha = 0.55 + glint * 0.35;
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.85);
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 3; i++) {
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 4 + i * 3.2, 3 + i * 2.4, 0, Math.PI, Math.PI * 2);
+            ctx.stroke();
+        }
+        // 高光斜切
+        ctx.beginPath();
+        ctx.moveTo(-7, -3);
+        ctx.lineTo(2, -9);
+        ctx.stroke();
+        ctx.restore();
+        // 头前小灯
+        this.drawLens(ctx, 10, 3, 2.2, accent, 0.5 + glint * 0.5);
+    }
+    /**
+     * 加速引擎兵：背后双喷口的轻装机。
+     * 剪影 = 前倾机体 + 两条向后拉长的绿色尾焰。
+     */
+    drawAcceleratorEnemy(ctx, accent, mechColors) {
+        const t = this.time;
+        const dark = mechColors?.dark || MECH_DARK;
+        const mid = mechColors?.mid || MECH_MID;
+        const hi = mechColors?.hi || MECH_HI;
+        const rgb = this.hexRgb(accent);
+        const flame = 0.6 + Math.sin(t * 14) * 0.4;
+        // 尾焰（向后 = -x）
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (const oy of [-4, 4]) {
+            const fg = ctx.createLinearGradient(-6, oy, -20, oy);
+            fg.addColorStop(0, this.rgbaStr(rgb, 0.85));
+            fg.addColorStop(1, this.rgbaStr(rgb, 0));
+            ctx.fillStyle = fg;
+            ctx.beginPath();
+            ctx.moveTo(-6, oy - 2.6);
+            ctx.lineTo(-16 - flame * 5, oy);
+            ctx.lineTo(-6, oy + 2.6);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.restore();
+        // 腿（前倾步态）
+        ctx.fillStyle = dark;
+        ctx.fillRect(-4, 5, 4, 8);
+        ctx.fillRect(3, 5, 4, 8);
+        // 机体（前倾平行四边形）
+        const g = ctx.createLinearGradient(-8, -10, 8, 8);
+        g.addColorStop(0, hi);
+        g.addColorStop(0.5, mid);
+        g.addColorStop(1, dark);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(-7, -8);
+        ctx.lineTo(8, -5);
+        ctx.lineTo(6, 6);
+        ctx.lineTo(-6, 3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        // 背部喷口
+        ctx.fillStyle = dark;
+        ctx.fillRect(-9, -6, 3, 4);
+        ctx.fillRect(-9, 2, 3, 4);
+        // 速度条纹
+        ctx.save();
+        ctx.globalAlpha = 0.6 + flame * 0.35;
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1.4;
+        for (let i = 0; i < 2; i++) {
+            ctx.beginPath();
+            ctx.moveTo(-4 + i * 5, -2 + i * 3);
+            ctx.lineTo(3 + i * 5, -2 + i * 3);
+            ctx.stroke();
+        }
+        ctx.restore();
+        this.drawLens(ctx, 7, -3, 2.4, accent, 0.6 + flame * 0.4);
+    }
+    /**
+     * 隐身刺客：细长人形 + 单刃。
+     * 本体已经很淡（外部再乘 stealthAlpha），所以线条必须**亮**才看得见，
+     * 否则半透明 + 暗装甲 = 完全消失，玩家会以为是 bug。
+     */
+    drawAssassinEnemy(ctx, accent, mechColors) {
+        const t = this.time;
+        const dark = mechColors?.dark || MECH_DARK;
+        const rgb = this.hexRgb(accent);
+        const shimmer = Math.sin(t * 6) * 0.5 + 0.5;
+        // 双腿（细）
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = 2.4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-2, 2);
+        ctx.lineTo(-4, 11);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(2, 2);
+        ctx.lineTo(4, 11);
+        ctx.stroke();
+        // 躯干（细长梭形）
+        const g = ctx.createLinearGradient(0, -11, 0, 4);
+        g.addColorStop(0, this.rgbaStr(rgb, 0.9));
+        g.addColorStop(1, dark);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(0, -12);
+        ctx.lineTo(5, -2);
+        ctx.lineTo(0, 4);
+        ctx.lineTo(-5, -2);
+        ctx.closePath();
+        ctx.fill();
+        // 披风（后半透明，随呼吸摆动）
+        ctx.save();
+        ctx.globalAlpha = 0.3 + shimmer * 0.2;
+        ctx.fillStyle = accent;
+        ctx.beginPath();
+        ctx.moveTo(-4, -8);
+        ctx.quadraticCurveTo(-13 - shimmer * 3, 0, -6, 7);
+        ctx.lineTo(-2, 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        // 单刃（右前）
+        ctx.save();
+        ctx.shadowColor = accent;
+        ctx.shadowBlur = 8;
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.85);
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(4, -4);
+        ctx.lineTo(14, -10);
+        ctx.stroke();
+        ctx.restore();
+        // 单眼（唯一的实心亮点 = 混战里的定位锚）
+        ctx.save();
+        ctx.shadowColor = accent;
+        ctx.shadowBlur = 9 * (0.5 + shimmer * 0.5);
+        ctx.fillStyle = accent;
+        ctx.beginPath();
+        ctx.arc(2, -8, 1.9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+    /**
+     * 磁力盾卫：方块机身 + 两侧磁极。
+     * 剪影 = 又矮又宽的重甲 + 左右两个「U 型磁铁」半环。
+     */
+    drawMagneticGuardEnemy(ctx, accent, mechColors) {
+        const t = this.time;
+        const dark = mechColors?.dark || MECH_DARK;
+        const mid = mechColors?.mid || MECH_MID;
+        const hi = mechColors?.hi || MECH_HI;
+        const rgb = this.hexRgb(accent);
+        const spin = t * 2.2;
+        // 履带底座
+        ctx.fillStyle = dark;
+        ctx.beginPath();
+        ctx.roundRect(-11, 6, 22, 6, 2);
+        ctx.fill();
+        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        // 方块机身
+        const g = ctx.createLinearGradient(0, -10, 0, 8);
+        g.addColorStop(0, hi);
+        g.addColorStop(0.55, mid);
+        g.addColorStop(1, dark);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.roundRect(-10, -9, 20, 16, 2.5);
+        ctx.fill();
+        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
+        ctx.lineWidth = 1.3;
+        ctx.stroke();
+        // 左右磁极（U 型半环）
+        ctx.save();
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.8);
+        ctx.shadowColor = accent;
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = 2.2;
+        for (const sx of [-1, 1]) {
+            ctx.beginPath();
+            ctx.arc(sx * 13, 0, 5, sx > 0 ? -1.1 : 2.05, sx > 0 ? 1.1 : 4.25);
+            ctx.stroke();
+        }
+        ctx.restore();
+        // 磁力场弧（旋转虚线，表示吸引弹道）
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 6]);
+        ctx.lineDashOffset = -spin * 8;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 16, 10, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+        this.drawLens(ctx, 0, -2, 3.4, accent, 0.7);
+    }
+    /**
+     * 再生巨虫：分节蠕虫。
+     * 剪影 = 四节由大到小的圆节 + 体内绿色再生核（脉冲 = 正在回血）。
+     */
+    drawRegeneratorEnemy(ctx, accent, mechColors) {
+        const t = this.time;
+        const dark = mechColors?.dark || MECH_DARK;
+        const mid = mechColors?.mid || MECH_MID;
+        const hi = mechColors?.hi || MECH_HI;
+        const rgb = this.hexRgb(accent);
+        const beat = Math.sin(t * 3.6) * 0.5 + 0.5;
+        // 分节（从尾到头，头在前 = +x）
+        const segs = [[-11, 0, 6.5], [-5, -1, 8], [2, -1.5, 9], [8, -2, 7.5]];
+        for (let i = 0; i < segs.length; i++) {
+            const [sx, sy, r] = segs[i];
+            const g = ctx.createRadialGradient(sx - r * 0.35, sy - r * 0.45, 0, sx, sy, r);
+            g.addColorStop(0, hi);
+            g.addColorStop(0.6, mid);
+            g.addColorStop(1, dark);
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(sx, sy, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
+            ctx.lineWidth = 1.1;
+            ctx.stroke();
+        }
+        // 体内再生核（多圈脉冲 = 细胞分裂）
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 2; i++) {
+            const pr = 3 + ((t * 6 + i * 1.6) % 3.2) * 2.2;
+            ctx.globalAlpha = Math.max(0, 0.5 - ((t * 6 + i * 1.6) % 3.2) * 0.15);
+            ctx.strokeStyle = this.rgbaStr(rgb, 0.9);
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(2, -1.5, pr, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        ctx.restore();
+        // 头前口器
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = 1.6;
+        for (const a of [-0.5, 0.5]) {
+            ctx.beginPath();
+            ctx.moveTo(13, -2);
+            ctx.lineTo(13 + Math.cos(a) * 5, -2 + Math.sin(a) * 5);
+            ctx.stroke();
+        }
+        this.drawLens(ctx, 10, -4, 2, accent, 0.55 + beat * 0.45);
+    }
+    /**
+     * 精英·电磁风暴：巨型四旋翼 + 头顶特斯拉线圈。
+     * 比普通 EMP 无人机多一圈「电弧冠」，一眼区分精英与杂兵。
+     */
+    drawEliteStormEnemy(ctx, accent, mechColors) {
+        const t = this.time;
+        const dark = mechColors?.dark || MECH_DARK;
+        const mid = mechColors?.mid || MECH_MID;
+        const hi = mechColors?.hi || MECH_HI;
+        const rgb = this.hexRgb(accent);
+        const arc = Math.sin(t * 13) * 0.5 + 0.5;
+        // 六臂旋翼
+        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 6; i++) {
+            const a = (i / 6) * Math.PI * 2 + t * 0.8;
+            const ex = Math.cos(a) * 13, ey = Math.sin(a) * 7 - 1;
+            ctx.beginPath();
+            ctx.moveTo(0, -1);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
+            ctx.save();
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = this.rgbaStr(rgb, 0.7);
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.ellipse(ex, ey, 4.5, 1.5, t * 12 + i, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+        // 主舱
+        const g = ctx.createRadialGradient(-3, -5, 0, 0, 0, 13);
+        g.addColorStop(0, hi);
+        g.addColorStop(0.55, mid);
+        g.addColorStop(1, dark);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        // 特斯拉线圈（顶部三环）
+        ctx.save();
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.85);
+        ctx.shadowColor = accent;
+        ctx.shadowBlur = 9 * (0.4 + arc * 0.6);
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < 3; i++) {
+            ctx.beginPath();
+            ctx.ellipse(0, -10 - i * 2.4, 6 - i * 1.3, 1.8, 0, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        ctx.restore();
+        // 电弧冠（向外劈出的锯齿）
+        ctx.save();
+        ctx.globalAlpha = 0.4 + arc * 0.5;
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1.2;
+        for (let i = 0; i < 4; i++) {
+            const a = t * 5 + i * (Math.PI / 2);
+            const r0 = 11, r1 = 16;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+            ctx.lineTo(Math.cos(a + 0.16) * (r0 + r1) / 2, Math.sin(a + 0.16) * (r0 + r1) / 2);
+            ctx.lineTo(Math.cos(a) * r1, Math.sin(a) * r1);
+            ctx.stroke();
+        }
+        ctx.restore();
+        this.drawLens(ctx, 0, 0, 4, accent, 0.65 + arc * 0.35);
+    }
+    /**
+     * 精英·反射堡垒：移动要塞。
+     * 剪影 = 梯形主堡 + 两侧镜面塔楼 + 中央六边核心（反射盾）。
+     */
+    drawEliteFortressEnemy(ctx, accent, mechColors) {
+        const t = this.time;
+        const dark = mechColors?.dark || MECH_DARK;
+        const mid = mechColors?.mid || MECH_MID;
+        const hi = mechColors?.hi || MECH_HI;
+        const rgb = this.hexRgb(accent);
+        const glint = Math.sin(t * 2.6) * 0.5 + 0.5;
+        // 履带
+        ctx.fillStyle = dark;
+        ctx.beginPath();
+        ctx.roundRect(-14, 8, 28, 6, 2);
+        ctx.fill();
+        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        // 主堡（梯形）
+        const g = ctx.createLinearGradient(0, -12, 0, 8);
+        g.addColorStop(0, hi);
+        g.addColorStop(0.4, mid);
+        g.addColorStop(1, dark);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(-9, -12);
+        ctx.lineTo(9, -12);
+        ctx.lineTo(13, 8);
+        ctx.lineTo(-13, 8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
+        ctx.lineWidth = 1.3;
+        ctx.stroke();
+        // 两侧镜面塔楼
+        for (const sx of [-1, 1]) {
+            ctx.fillStyle = mid;
+            ctx.beginPath();
+            ctx.roundRect(sx * 11 - 4, -17, 8, 12, 1.5);
+            ctx.fill();
+            ctx.stroke();
+            // 镜面切面
+            ctx.save();
+            ctx.globalAlpha = 0.6 + glint * 0.3;
+            ctx.strokeStyle = this.rgbaStr(rgb, 0.9);
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(sx * 11 - 3, -5);
+            ctx.lineTo(sx * 11 + 3, -16);
+            ctx.stroke();
+            ctx.restore();
+        }
+        // 中央六边反射核
+        ctx.save();
+        ctx.shadowColor = accent;
+        ctx.shadowBlur = 10 * (0.4 + glint * 0.6);
+        ctx.fillStyle = this.rgbaStr(rgb, 0.2);
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.7 + glint * 0.3);
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+            const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+            const px = Math.cos(a) * 5.5, py = Math.sin(a) * 5.5 - 2;
+            if (i === 0)
+                ctx.moveTo(px, py);
+            else
+                ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
+    /**
+     * 精英·战旗指挥官：扛旗的重装机。
+     * 剪影 = 高举的旗杆 + 飘动的红旗 + 厚肩甲（旗子是"全场加成"的视觉源头）。
+     */
+    drawEliteCommanderEnemy(ctx, accent, mechColors) {
+        const t = this.time;
+        const dark = mechColors?.dark || MECH_DARK;
+        const mid = mechColors?.mid || MECH_MID;
+        const hi = mechColors?.hi || MECH_HI;
+        const rgb = this.hexRgb(accent);
+        const wave = Math.sin(t * 3.2);
+        // 双腿
+        ctx.fillStyle = dark;
+        ctx.fillRect(-7, 6, 6, 9);
+        ctx.fillRect(2, 6, 6, 9);
+        // 躯干
+        const g = ctx.createLinearGradient(0, -12, 0, 8);
+        g.addColorStop(0, hi);
+        g.addColorStop(0.5, mid);
+        g.addColorStop(1, dark);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.roundRect(-8, -9, 16, 16, 2);
+        ctx.fill();
+        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        // 厚肩甲
+        ctx.fillStyle = mid;
+        ctx.beginPath();
+        ctx.roundRect(-14, -13, 8, 9, 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.roundRect(6, -13, 8, 9, 2);
+        ctx.fill();
+        ctx.stroke();
+        // 旗杆（从右手举起）
+        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(10, -10);
+        ctx.lineTo(13, -24);
+        ctx.stroke();
+        // 旗面（波浪）
+        ctx.save();
+        ctx.shadowColor = accent;
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = this.rgbaStr(rgb, 0.85);
+        ctx.beginPath();
+        ctx.moveTo(13, -24);
+        ctx.quadraticCurveTo(19 + wave * 2, -23, 24, -21 + wave * 1.5);
+        ctx.quadraticCurveTo(19 + wave * 2, -18, 13, -16);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        // 胸前指挥徽记
+        ctx.save();
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.9);
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.arc(0, -2, 3.2, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-2.2, -2);
+        ctx.lineTo(2.2, -2);
+        ctx.stroke();
+        ctx.restore();
+        this.drawLens(ctx, 0, -7, 2.6, accent, 0.75);
+    }
+    /**
+     * 精英·虚空行者：胸口的虚空洞。
+     * 剪影 = 高瘦人形 + 胸口一个「吸光」的黑洞（用径向渐变把周围压暗）。
+     */
+    drawEliteVoidwalkerEnemy(ctx, accent, mechColors) {
+        const t = this.time;
+        const dark = mechColors?.dark || MECH_DARK;
+        const rgb = this.hexRgb(accent);
+        const breathe = Math.sin(t * 2.4) * 0.5 + 0.5;
+        // 长腿
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = 2.6;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-3, 3);
+        ctx.lineTo(-6, 13);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(3, 3);
+        ctx.lineTo(6, 13);
+        ctx.stroke();
+        // 躯干（高瘦）
+        const g = ctx.createLinearGradient(0, -14, 0, 5);
+        g.addColorStop(0, this.rgbaStr(rgb, 0.75));
+        g.addColorStop(1, dark);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(0, -15);
+        ctx.lineTo(6, -3);
+        ctx.lineTo(3, 5);
+        ctx.lineTo(-3, 5);
+        ctx.lineTo(-6, -3);
+        ctx.closePath();
+        ctx.fill();
+        // 肩部虚空裂隙（两根向外的短线）
+        ctx.save();
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.6 + breathe * 0.4);
+        ctx.lineWidth = 1.2;
+        for (const sx of [-1, 1]) {
+            ctx.beginPath();
+            ctx.moveTo(sx * 5, -9);
+            ctx.lineTo(sx * (10 + breathe * 2), -13 - breathe * 2);
+            ctx.stroke();
+        }
+        ctx.restore();
+        // 胸口虚空洞：先压黑再套一圈紫边
+        const hole = ctx.createRadialGradient(0, -3, 0, 0, -3, 6.5);
+        hole.addColorStop(0, 'rgba(0,0,0,1)');
+        hole.addColorStop(0.55, 'rgba(10,4,26,0.95)');
+        hole.addColorStop(1, this.rgbaStr(rgb, 0));
+        ctx.fillStyle = hole;
+        ctx.beginPath();
+        ctx.arc(0, -3, 6.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.save();
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.5 + breathe * 0.5);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(0, -3, 4.2, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+        // 双眼（两点紫光）
+        ctx.save();
+        ctx.shadowColor = accent;
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = accent;
+        ctx.beginPath();
+        ctx.arc(-2, -11, 1.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(2.6, -11, 1.3, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
     }

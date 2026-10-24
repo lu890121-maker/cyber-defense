@@ -258,6 +258,57 @@ export declare class SpriteLoader {
      */
     private drawBomberEnemy;
     /**
+     * EMP无人机：悬浮四旋翼，机腹挂一枚橙色放电环。
+     * 剪影 = 菱形机体 + 四个旋翼圈 + 下垂电弧锥（悬浮，无腿）。
+     */
+    private drawEmpDroneEnemy;
+    /**
+     * 反射甲虫：半球甲壳 + 镜面分格。
+     * 剪影 = 低矮半圆壳 + 六条短足 + 壳面上的镜面高光切块。
+     */
+    private drawReflectorEnemy;
+    /**
+     * 加速引擎兵：背后双喷口的轻装机。
+     * 剪影 = 前倾机体 + 两条向后拉长的绿色尾焰。
+     */
+    private drawAcceleratorEnemy;
+    /**
+     * 隐身刺客：细长人形 + 单刃。
+     * 本体已经很淡（外部再乘 stealthAlpha），所以线条必须**亮**才看得见，
+     * 否则半透明 + 暗装甲 = 完全消失，玩家会以为是 bug。
+     */
+    private drawAssassinEnemy;
+    /**
+     * 磁力盾卫：方块机身 + 两侧磁极。
+     * 剪影 = 又矮又宽的重甲 + 左右两个「U 型磁铁」半环。
+     */
+    private drawMagneticGuardEnemy;
+    /**
+     * 再生巨虫：分节蠕虫。
+     * 剪影 = 四节由大到小的圆节 + 体内绿色再生核（脉冲 = 正在回血）。
+     */
+    private drawRegeneratorEnemy;
+    /**
+     * 精英·电磁风暴：巨型四旋翼 + 头顶特斯拉线圈。
+     * 比普通 EMP 无人机多一圈「电弧冠」，一眼区分精英与杂兵。
+     */
+    private drawEliteStormEnemy;
+    /**
+     * 精英·反射堡垒：移动要塞。
+     * 剪影 = 梯形主堡 + 两侧镜面塔楼 + 中央六边核心（反射盾）。
+     */
+    private drawEliteFortressEnemy;
+    /**
+     * 精英·战旗指挥官：扛旗的重装机。
+     * 剪影 = 高举的旗杆 + 飘动的红旗 + 厚肩甲（旗子是"全场加成"的视觉源头）。
+     */
+    private drawEliteCommanderEnemy;
+    /**
+     * 精英·虚空行者：胸口的虚空洞。
+     * 剪影 = 高瘦人形 + 胸口一个「吸光」的黑洞（用径向渐变把周围压暗）。
+     */
+    private drawEliteVoidwalkerEnemy;
+    /**
      * 10种关卡 Boss，每种都有独特外观：
      * - 机械统领（红）：基础重型机体
      * - 要塞核心（青）：装甲加厚，双联炮管

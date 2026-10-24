@@ -232,13 +232,6 @@ export declare class Tower {
     areSkillsSilenced(): boolean;
     slowAttacks(duration: number, intervalMultiplier?: number): void;
     isBossAttackSlowed(): boolean;
-    /** 对炮塔造成伤害（用于 Boss 技能如震撼重击） */
-    private hp;
-    private maxHp;
-    takeDamage(amount: number): void;
-    getHp(): number;
-    getMaxHp(): number;
-    isDestroyed(): boolean;
     /** 缩减射程（用于 Boss 技能如日蚀协议） */
     private rangeMultiplier;
     reduceRange(multiplier: number, duration: number): void;
@@ -321,6 +314,16 @@ export declare class Tower {
      * 布尔型字段一旦学到就永久生效。
      */
     applySkillMod(patch: Partial<TowerSkillMods>): void;
+    /**
+     * 开启「范围减速」（寒霜领域 / 磁力场）。
+     *
+     * 为什么不直接 `applySkillMod({ aoeSlow: true })`：
+     * `applyAoESlow()` 用 `aoeRadius` 当半径，而寒霜塔的默认 aoeRadius 是 0，
+     * 引力塔默认就已经开着 aoeSlow —— 前者选了技能等于没选，后者选了毫无变化。
+     * 所以这里统一收口：**保证半径至少 baseRadius，且每次都实际变大 20%**，
+     * 两种塔都能拿到真实收益。
+     */
+    enableAoESlow(baseRadius?: number): void;
     learnSkill(skillId: string): void;
     getLearnedSkills(): string[];
     /** 技能变体（0/1/2）：决定每档自动发第几个技能 */

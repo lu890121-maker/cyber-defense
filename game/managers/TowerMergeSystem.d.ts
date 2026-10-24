@@ -27,6 +27,7 @@ export declare class TowerMergeSystem {
     placeTower(type: TowerType, slotIndex: number, rarity?: Rarity): Tower | null;
     placeExistingTower(tower: Tower, slotIndex: number): boolean;
     removeTower(slotIndex: number): Tower | undefined;
+    removeTowerByInstance(tower: Tower): Tower | undefined;
     canMergeSame(slot1: number, slot2: number): boolean;
     mergeSame(slot1: number, slot2: number): MergeResult;
     /**

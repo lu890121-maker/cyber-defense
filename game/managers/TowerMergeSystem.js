@@ -84,6 +84,15 @@ export class TowerMergeSystem {
         }
         return tower;
     }
+    // 按实例移除防御塔（Boss「毁灭射线」等场景只有 Tower 引用、没有槽位号）
+    removeTowerByInstance(tower) {
+        for (const [slotIndex, t] of this.towers.entries()) {
+            if (t === tower) {
+                return this.removeTower(slotIndex);
+            }
+        }
+        return undefined;
+    }
     // 检查同类合成
     canMergeSame(slot1, slot2) {
         const tower1 = this.towers.get(slot1);

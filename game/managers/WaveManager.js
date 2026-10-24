@@ -40,6 +40,10 @@ export class WaveManager {
     getAliveEnemies() {
         return this.enemies.filter(e => e.isAlive());
     }
+    /** 动态添加敌人（用于精英怪分裂等场景） */
+    addEnemy(enemy) {
+        this.enemies.push(enemy);
+    }
     getKilledCount() {
         return this.killedEnemies;
     }

@@ -153,6 +153,16 @@ export declare enum EnemyType {
     GHOST = "ghost",// 相位隐形机：周期性相位化，相位期间免疫伤害
     SHIELD = "shield",// 护盾机兵：护盾吸收伤害且克制低单发攻击
     BOMBER = "bomber",// 自爆机雷：死亡时瘫痪附近防御塔
+    EMP_DRONE = "emp_drone",// EMP无人机：沉默防御塔
+    REFLECTOR = "reflector",// 反射甲虫：反弹伤害
+    ACCELERATOR = "accelerator",// 加速引擎兵：群体加速光环
+    ASSASSIN = "assassin",// 隐身刺客：半透明不可锁定
+    MAGNETIC_GUARD = "magnetic_guard",// 磁力盾卫：吸引弹道
+    REGENERATOR = "regenerator",// 再生巨虫：快速回复
+    ELITE_STORM = "elite_storm",// 精英·电磁风暴
+    ELITE_FORTRESS = "elite_fortress",// 精英·反射堡垒
+    ELITE_COMMANDER = "elite_commander",// 精英·战旗指挥官
+    ELITE_VOIDWALKER = "elite_voidwalker",// 精英·虚空行者
     BOSS = "boss",// 第1关：机械统领
     BOSS_WARDEN = "boss_warden",// 第2关：要塞核心
     BOSS_NIGHTMARE = "boss_nightmare",// 第3关：机械神谕
@@ -195,6 +205,38 @@ export interface EnemyConfig {
         shell: string;
         eye: string;
     };
+    /** EMP 无人机/精英：沉默半径 */
+    empRadius?: number;
+    /** EMP 无人机/精英：沉默持续时间 */
+    empDuration?: number;
+    /** EMP 无人机/精英：沉默冷却 */
+    empCooldown?: number;
+    /** 反射甲虫/精英：反射伤害比例 */
+    reflectRatio?: number;
+    /** 加速引擎兵/指挥官：光环半径 */
+    auraRadius?: number;
+    /** 加速引擎兵/指挥官：速度加成倍率 */
+    auraSpeedBoost?: number;
+    /** 指挥官：伤害减免 */
+    auraDamageReduction?: number;
+    /** 隐身刺客/虚空行者：透明度 */
+    stealthAlpha?: number;
+    /** 隐身刺客：核心揭示距离 */
+    coreRevealDistance?: number;
+    /** 磁力盾卫：弹道吸引半径 */
+    attractRadius?: number;
+    /** 再生巨虫：常规回复率 */
+    regenRate?: number;
+    /** 再生巨虫：低血量回复率 */
+    lowHpRegenRate?: number;
+    /** 精英·电磁风暴：死亡 EMP 半径 */
+    deathEmpRadius?: number;
+    /** 精英·电磁风暴：死亡 EMP 持续时间 */
+    deathEmpDuration?: number;
+    /** 精英·反射堡垒：死亡分裂数量 */
+    deathSplitCount?: number;
+    /** 精英·虚空行者：死亡对核心伤害 */
+    deathCoreDamage?: number;
 }
 /**
  * 敌人配置。
@@ -254,9 +296,10 @@ export declare const WAVE_STAT_GROWTH = 1.015;
  * 「每关 ×1.6」从第 2 关就开始发力：L2 就 1.6 倍、L3 2.56 倍，前三关
  * 一点也不轻松；而到第 9 关又膨胀到 1.6^8 ≈ 43.0 倍，血量全靠堆数字。
  *
- * 新曲线是**加速型**的：前段近乎平坦（1.0 → 1.12 → 1.32），中段稳步
- * 抬升，7→8→9 关陡然拉起来（7.5 → 13.0 → 40.0），关间增幅从 1.12
- * 一路走到 3.08，这就是「前松后紧、末段指数级」的数学表达。
+ * 新曲线是**平滑加速型**的：前段近乎平坦（1.0 → 1.12 → 1.32），中段
+ * 每关约 ×1.3~1.37 稳步抬升，末段 L7→L8→L9（4.5 → 6.5 → 10.0）收在
+ * ×1.44 / ×1.54 —— 既保留「前松后紧」的手感，又不会出现单关 ×3 的断崖。
+ * 旧版 L7/L8/L9 = 7.5 / 13.0 / 40.0 属于纯堆血条，已被本次平衡替换。
  *
  * ⚠️ 改这里必须同时改 `LEVEL_TROOP_TUNING` 的怪潮规模，两者相乘才是
  * 真实压力（单波压力 ≈ 小怪数 × 该关倍率）。改完跑 `npm run verify:all`。
