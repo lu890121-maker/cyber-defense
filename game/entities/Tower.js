@@ -194,6 +194,14 @@ export class Tower {
         this.recoilAngle = 0;
         /** 缩减射程（用于 Boss 技能如日蚀协议） */
         this.rangeMultiplier = 1.0;
+        /**
+         * 归属玩家（0 = P1，1 = P2）。
+         *
+         * 双人合作模式下用来统计"谁的塔打死了多少"—— 金币是共享的，塔也是共享的，
+         * 但贡献面板必须能说清两个人各自做了什么，否则合作模式里没人有成就感。
+         * 单人模式恒为 0，不影响任何逻辑。
+         */
+        this.ownerIndex = 0;
         this.type = type;
         this.level = level;
         this.rarity = rarity;
@@ -708,6 +716,10 @@ export class Tower {
                 this.paralyze(paralyzeDuration);
             }
             target.takeDamage(amount, { pierce: this.skillMods.armorPierce });
+            // 记下"最后一下是谁打的"：双人合作按这个把击杀算到各自名下。
+            // 放在扣血之后是安全的 —— takeDamage 只把 alive 置 false，
+            // 真正的击杀结算在 GameManager 的 killed 循环里，那时读到的正是这一下。
+            target.setLastHitBy(this.ownerIndex);
             this.onHitLanded(target, isCrit);
             // 命中瞬间：白闪 + 击退 + 伤害飘字（飘字跟着弹道落地节奏）
             const ang = Math.atan2(target.getY() - this.y, target.getX() - this.x);
@@ -1314,6 +1326,12 @@ export class Tower {
     }
     setSlotIndex(index) {
         this.slotIndex = index;
+    }
+    setOwner(index) {
+        this.ownerIndex = index;
+    }
+    getOwner() {
+        return this.ownerIndex;
     }
     setPosition(x, y) {
         this.x = x;

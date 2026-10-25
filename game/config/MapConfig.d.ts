@@ -63,6 +63,14 @@ export interface LevelMap {
     mechanics: string[];
     /** 进攻路线；数量 = 入口数。传送门关卡：末点 = 入口门 */
     routes: MapRoute[];
+    /**
+     * 双人合作模式的路线（可选）。
+     *
+     * 只有"入口数 < 2"的关卡才需要它 —— 双人玩法要求至少两个出怪口，
+     * 而 L1 是单入口教学图，直接沿用会让两个玩家抢同一条路，失去合作意义。
+     * 单人模式**永远走 `routes`**，这里的数据不会影响原有平衡。
+     */
+    coopRoutes?: MapRoute[];
     /** 随机传送门网络（L6/L7/L8） */
     portals?: PortalNode[];
     /** 迷雾禁区（L8） */

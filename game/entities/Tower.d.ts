@@ -395,6 +395,16 @@ export declare class Tower {
     private spawnOrb;
     canMergeWith(other: Tower): boolean;
     setSlotIndex(index: number): void;
+    /**
+     * 归属玩家（0 = P1，1 = P2）。
+     *
+     * 双人合作模式下用来统计"谁的塔打死了多少"—— 金币是共享的，塔也是共享的，
+     * 但贡献面板必须能说清两个人各自做了什么，否则合作模式里没人有成就感。
+     * 单人模式恒为 0，不影响任何逻辑。
+     */
+    private ownerIndex;
+    setOwner(index: 0 | 1): void;
+    getOwner(): 0 | 1;
     setPosition(x: number, y: number): void;
     /**
      * 应用全局升级状态（用于新防御塔继承已有升级）

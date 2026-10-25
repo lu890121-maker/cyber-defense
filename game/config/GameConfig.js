@@ -1571,18 +1571,64 @@ export function getActiveLevel() {
     return LEVELS[ACTIVE_LEVEL_INDEX];
 }
 /** 切换活动关卡：重绑定地图与波次，并清空塔位占位状态 */
+// ══ 双人合作模式（同屏 2 人）══════════════════════════════════
+/**
+ * 双人合作模式的怪潮倍率。
+ *
+ * 两个人手速翻倍，怪也必须跟着翻 —— 否则「合作」等于把难度直接砍半，
+ * 玩家会觉得联机是个无脑模式。翻倍后总压力与单人持平，但需要真的分工。
+ */
+export const COOP_TROOP_MULTIPLIER = 2;
+/** 双人模式下每波至少几个出怪口（用户硬性要求：2 个以上） */
+export const COOP_MIN_ROUTES = 2;
+/** 当前是否处于双人合作模式（live binding，setActiveLevel 会读它） */
+export let COOP_MODE = false;
+/**
+ * 切换双人合作模式。
+ *
+ * ⚠️ 必须在 `setActiveLevel()` **之前**调用 —— 关卡激活时才会按模式
+ * 选地图、重算塔位、缩放怪潮。切完之后要重新 `setActiveLevel(当前关)`。
+ */
+export function setCoopMode(on) {
+    COOP_MODE = on;
+}
+/**
+ * 双人模式波次变换：怪潮 ×2 + 强制两路都出怪。
+ *
+ * · 只放大小怪与精英，**Boss 不复制** —— Boss 血量本来就占满一条血条，
+ *   复制一只等于血量翻倍，那是折磨不是配合。
+ * · `routeMode` 必须改成 `balanced`：单人图的 `'main'` 只让敌人走第一条路，
+ *   直接沿用的话第二个玩家的入口一个怪都不会来。
+ */
+function scaleWavesForCoop(waves, routeCount) {
+    const multiRoute = routeCount >= COOP_MIN_ROUTES;
+    return waves.map(w => ({
+        ...w,
+        enemies: w.enemies.map(g => isBossType(g.type)
+            ? { ...g }
+            : { ...g, count: Math.max(1, Math.round(g.count * COOP_TROOP_MULTIPLIER)) }),
+        routeMode: multiRoute ? 'balanced' : w.routeMode
+    }));
+}
 export function setActiveLevel(index) {
     const idx = Math.max(0, Math.min(LEVELS.length - 1, index));
     ACTIVE_LEVEL_INDEX = idx;
     const lv = LEVELS[idx];
-    PATH_POINTS = lv.path;
-    PATH_ROUTES = lv.routes ?? [lv.path];
-    PATH_WARP_SEGMENTS = lv.warpSegments ?? [];
-    TOWER_SLOTS = cloneSlots(lv.slots);
-    WAVE_CONFIGS = lv.waves;
-    TOTAL_WAVES = lv.waves.length;
-    // 同步传送门网络和雾区（L6/L7/L8 使用）
     const mapDef = getLevelMap(lv.id);
+    // 双人模式：优先用 coopRoutes（目前只有 L1 单入口图需要，其余关本来就 ≥2 入口）。
+    // 单人模式永远走 lv.routes，coopRoutes 的数据不影响原有平衡。
+    const useCoopMap = COOP_MODE && (mapDef.coopRoutes?.length ?? 0) >= COOP_MIN_ROUTES;
+    const routes = useCoopMap ? mapDef.coopRoutes.map(r => r.points) : (lv.routes ?? [lv.path]);
+    PATH_POINTS = routes[0];
+    PATH_ROUTES = routes;
+    PATH_WARP_SEGMENTS = lv.warpSegments ?? [];
+    // coopRoutes 是新几何，必须按新路重算塔位 —— 沿用单人图的塔位会全部落在路外。
+    TOWER_SLOTS = useCoopMap
+        ? cloneSlots(makeExtraSlots(routes, 16, lv.warpSegments ?? []))
+        : cloneSlots(lv.slots);
+    WAVE_CONFIGS = COOP_MODE ? scaleWavesForCoop(lv.waves, routes.length) : lv.waves;
+    TOTAL_WAVES = WAVE_CONFIGS.length;
+    // 同步传送门网络和雾区（L6/L7/L8 使用）
     ACTIVE_PORTALS = mapDef.portals ?? [];
     ACTIVE_FOG_ZONES = mapDef.fogZones ?? [];
     return lv;

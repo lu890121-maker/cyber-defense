@@ -100,6 +100,13 @@ export declare class Enemy {
     private attractRadius;
     private newRegenRate;
     private lowHpRegenRate;
+    /**
+     * 最后命中它的玩家（0 = P1，1 = P2）。
+     *
+     * 双人合作的金币是共享的（谁打死都进同一个钱包），所以这个字段**不参与经济**，
+     * 只用来把击杀记到对应玩家的贡献上 —— 否则合作模式里没人知道自己做了什么。
+     */
+    private lastHitBy;
     private deathSplitCount;
     private deathCoreDamage;
     private hitFlash;
@@ -166,6 +173,9 @@ export declare class Enemy {
     isStealthed(): boolean;
     /** 隐身刺客/虚空行者：获取透明度 */
     getStealthAlpha(): number;
+    /** 记录"最后一下是谁打的"（双人合作统计击杀用，不影响金币） */
+    setLastHitBy(index: 0 | 1): void;
+    getLastHitBy(): 0 | 1;
     /** 磁力盾卫：获取吸引半径 */
     getAttractRadius(): number;
     /** 精英·反射堡垒：死亡分裂数量 */

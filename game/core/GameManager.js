@@ -2,7 +2,9 @@
  * 游戏主管理器
  * 控制游戏状态、循环、交互
  */
-import { GAME_CONSTANTS, TowerType, TOWER_CONFIGS, TOWER_SLOTS, PATH_POINTS, PATH_ROUTES, PATH_WARP_SEGMENTS, EnemyType, MUTATION_TYPES, TOTAL_WAVES, isBossWave, autoSkillFor, findSkillById, isBossType, ENEMY_CONFIGS, LEVELS, getActiveLevel, setActiveLevel, getLevelCount, Rarity, RARITY_CONFIGS, rarityIndex, rollRarity, SUMMON_PITY_LIMIT, summonPrice, SUMMON_PRICE_MIN, SUMMON_PRICE_MAX, getGlobalWave, WAVE_AUTO_ADVANCE_SECONDS, WAVE_END_GOLD_REWARD, MAX_TOWER_LEVEL, toRoman, WAVE_FORCE_ADVANCE_SECONDS, NO_WAVE_TIME_LIMIT, getWaveTimeLimit, PREMIUM_SUMMON_COST, PREMIUM_SUMMON_PITY_LIMIT, rollPremiumRarity, ACTIVE_PORTALS, ACTIVE_FOG_ZONES } from '../config/GameConfig.js';
+import { GAME_CONSTANTS, TowerType, TOWER_CONFIGS, TOWER_SLOTS, PATH_POINTS, PATH_ROUTES, PATH_WARP_SEGMENTS, EnemyType, MUTATION_TYPES, TOTAL_WAVES, isBossWave, autoSkillFor, findSkillById, isBossType, ENEMY_CONFIGS, LEVELS, getActiveLevel, setActiveLevel, getLevelCount, Rarity, RARITY_CONFIGS, rarityIndex, rollRarity, SUMMON_PITY_LIMIT, summonPrice, SUMMON_PRICE_MIN, SUMMON_PRICE_MAX, getGlobalWave, WAVE_AUTO_ADVANCE_SECONDS, WAVE_END_GOLD_REWARD, MAX_TOWER_LEVEL, toRoman, WAVE_FORCE_ADVANCE_SECONDS, NO_WAVE_TIME_LIMIT, getWaveTimeLimit, PREMIUM_SUMMON_COST, PREMIUM_SUMMON_PITY_LIMIT, rollPremiumRarity, ACTIVE_PORTALS, ACTIVE_FOG_ZONES, 
+// 双人合作模式（配置层开关，影响 setActiveLevel 选哪张图、怪潮倍率）
+setCoopMode as setConfigCoopMode } from '../config/GameConfig.js';
 import { ResourceManager } from '../managers/ResourceManager.js';
 import { WaveManager } from '../managers/WaveManager.js';
 import { TowerMergeSystem } from '../managers/TowerMergeSystem.js';
@@ -16,16 +18,47 @@ import { EnvironmentRenderer, levelKeyOf } from './EnvironmentRenderer.js';
 import { SoundManager } from './SoundManager.js';
 import { TechnicalArtRenderer } from './TechnicalArtRenderer.js';
 import { CYBER, cutRectPath, neonText } from '../config/CyberTheme.js';
-import { renderTutorial, getTutorialLayout, TUTORIAL_PAGES } from './TutorialScreen.js';
-/** 主菜单两个按钮的位置：渲染与点击判定共用，避免画的和点的错位 */
+import { renderTutorial, getTutorialLayout, TUTORIAL_PAGES, COOP_TUTORIAL_PAGES } from './TutorialScreen.js';
+/** 主菜单三个按钮的位置：渲染与点击判定共用，避免画的和点的错位 */
 const MENU_BUTTONS = {
-    start: { x: 60, y: 400, w: 160, h: 62 },
-    tutorial: { x: 230, y: 400, w: 160, h: 62 },
+    /** 单人战役 */
+    start: { x: 45, y: 380, w: 172, h: 60 },
+    /** 双人同屏合作 */
+    coop: { x: 233, y: 380, w: 172, h: 60 },
+    tutorial: { x: 145, y: 450, w: 160, h: 44 },
 };
+/**
+ * 双人模式底部两条操作条的布局。
+ *
+ * 竖屏 450×800 里，底部 162px（y 638~800）要同时塞下：6 格合成区 + 两条操作条。
+ * 单人模式那套「点召唤 → 全屏三选一」在双人下**不可用** —— 模态面板会挡住
+ * 另一个人的整个战场，等于把合作变成轮流玩。所以改成常驻卡槽：
+ * 每人 3 张普通牌 + 1 张特级牌，点卡直接扣费进合成区，全程不遮挡战场。
+ */
+const COOP_BARS = {
+    p1: { x: 8, y: 706, w: 434, h: 44 },
+    p2: { x: 8, y: 754, w: 434, h: 44 }
+};
+/** 一条操作条内部的热区（相对条左缘）。宽 434 = 12+86*3+间距+特级+卖出 */
+const COOP_SLOT_LAYOUT = {
+    /** 3 张普通牌的左缘（相对） */
+    cardX: [8, 96, 184],
+    cardW: 84,
+    premiumX: 274,
+    premiumW: 72,
+    sellX: 352,
+    sellW: 74,
+    /** 热区高度（条内上下各留 1px） */
+    innerH: 42
+};
+/** 双人模式下合成区格子的中心 y（比单人模式高 32px，给两条操作条腾地方） */
+const COOP_MERGE_Y = 668;
 /** 召唤面板底部的「玩法教程」入口 —— 战斗中想看教程，不必等这局结束 */
 const SUMMON_TUTORIAL_BTN = { x: 105, y: 650, w: 240, h: 40 };
 /** 结算面板（失败/胜利）的「玩法教程」入口 */
 const RESULT_TUTORIAL_BTN = { x: 150, y: 562, w: 150, h: 44 };
+/** 鼠标指针的固定 id。触摸 identifier 从 0 起，所以用负数才不会撞。 */
+const MOUSE_POINTER_ID = -1;
 /** 每次通关可带入下一关的炮塔数量。999表示无限制，所有塔都能带入。 */
 const CARRY_TOWER_LIMIT = 999;
 export class GameManager {
@@ -35,8 +68,14 @@ export class GameManager {
         this.tutorialPage = 0;
         /** 教程界面的独立时钟（暂停状态下也要驱动扫描线/呼吸动画） */
         this.tutorialElapsed = 0;
-        /** 从哪进的教程，退出时回到哪（菜单 / 战场 / 召唤面板） */
+        /** 从哪进的教程，退出时回到哪（菜单 / 战场 / 召唤面板 / 开场序幕） */
         this.tutorialReturn = 'menu';
+        /**
+         * 当前展示的是哪一套教程页。
+         * 单人 6 页（TUTORIAL_PAGES）、双人 4 页（COOP_TUTORIAL_PAGES）——
+         * 双人玩家已经会玩塔防了，只需要补"和单人不一样"的那几点。
+         */
+        this.tutorialPages = TUTORIAL_PAGES;
         /** 开场序幕时间，点击开始后自动播放，点击可跳过 */
         this.openingElapsed = 0;
         this.gameTime = 0;
@@ -122,11 +161,33 @@ export class GameManager {
         this.bgParticles = [];
         // 战斗特效中枢：弹道 / 撞击溅射 / 冲击环 / 焦痕 / 飘字 / 震屏 / 顿帧
         this.vfx = new VfxSystem();
-        // 拖拽系统
-        this.draggingTower = null;
-        this.dragStartX = 0;
-        this.dragStartY = 0;
-        this.hasDragged = false;
+        // 拖拽系统：多指针（双人同屏时两人可同时拖塔，互不干扰）
+        this.dragStates = new Map();
+        // ── 双人合作模式 ──
+        /** 是否双人合作（同屏 2 人）。开局前由菜单决定，中途不变 */
+        this.isCoopMode = false;
+        /**
+         * 每位玩家的常驻卡槽（双人模式专用）。
+         *
+         * 单人模式走「点召唤 → 全屏三选一」；双人模式**不能弹模态面板** ——
+         * 一个人开着面板，另一个人的战场就被挡住了。所以改成两条常驻操作条，
+         * 每人 3 张牌 + 1 张特级牌，点卡直接扣费进合成区。
+         */
+        this.coopCards = [[], []];
+        /** 双人贡献统计 */
+        this.contributions = [
+            { placed: 0, merges: 0, spent: 0, kills: 0 },
+            { placed: 0, merges: 0, spent: 0, kills: 0 }
+        ];
+        /**
+         * 双人通关强化轮到谁（0 = P1 / 1 = P2）。
+         *
+         * 单人每关通关给 1 次强化；双人给 2 次（P1 先选、P2 再选），
+         * 因为怪潮也是 2 倍 —— 只给 1 次强化等于把难度翻倍却不给对应成长。
+         * 两次都写进**同一个**全局强化状态（UpgradeSystem 只有一份 GlobalUpgradeState），
+         * 所以不会出现"P1 的塔和 P2 的塔数值不一样"这种割裂。
+         */
+        this.coopUpgradeTurn = 0;
         // 防御塔信息面板
         this.showTowerInfo = false;
         this.towerInfoTower = null;
@@ -148,6 +209,14 @@ export class GameManager {
         this.buttons = new Map();
         // 防止双重输入
         this.touchHandled = false;
+        /**
+         * 触摸结束后延迟清除 `touchHandled` 的定时器。
+         *
+         * 不能用"谁先到谁消费"的写法：微信适配层和浏览器都会在 touchend 之后
+         * 补发 mouseup/click，一个布尔量只够消费一次 —— 双人同屏时第二根手指
+         * 抬起，补发的 click 就会漏进 handleClick（松手白买一张卡）。
+         */
+        this.touchHandledTimer = null;
         // 音频：首次用户交互后解锁并启动环境层/音乐
         this.audioStarted = false;
         // 音频：上一秒的倒计时读数（避免重复播放滴答）
@@ -284,74 +353,88 @@ export class GameManager {
         this.buttons.set('restart', { x: 375, y: 10, w: 36, h: 26 });
         // 静音开关（右上角）
         this.buttons.set('mute', { x: 415, y: 10, w: 26, h: 26 });
-        // 六个合成格均匀铺满底栏，留出塔名显示空间。
-        const mergeAreaY = GAME_CONSTANTS.CANVAS_HEIGHT - 100;
-        const mergeAreaStartX = 53;
-        const mergeAreaSpacing = 68;
-        for (let i = 0; i < this.mergeAreaSlots.length; i++) {
-            this.mergeAreaSlots[i].x = mergeAreaStartX + i * mergeAreaSpacing;
-            this.mergeAreaSlots[i].y = mergeAreaY;
-        }
+        // 六个合成格 + 按模式决定的按钮排布（双人模式底部要腾出两条操作条）
+        this.layoutForMode();
     }
     setupInput() {
-        // 修复：只使用 touchstart，不再同时绑定 click，防止双重触发
+        // ── 多点触控 ──
+        // 双人同屏要求两人**同时**拖各自的塔，所以每个 touch 必须独立成一条拖拽状态。
+        // 只取 touches[0] 的话，第二个人手指按下去会顶掉第一个人的拖拽（塔直接弹回原格）。
+        // 用 changedTouches 逐指处理：touchstart/move 各自增量，互不覆盖。
         this.canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            const touch = e.touches[0];
             this.touchHandled = true;
-            this.handlePointerDown(touch);
+            if (this.touchHandledTimer !== null) {
+                clearTimeout(this.touchHandledTimer);
+                this.touchHandledTimer = null;
+            }
+            for (const touch of Array.from(e.changedTouches)) {
+                this.handlePointerDown(touch, touch.identifier);
+            }
         });
         this.canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
-            const touch = e.touches[0];
-            this.handlePointerMove(touch);
+            for (const touch of Array.from(e.changedTouches)) {
+                this.handlePointerMove(touch, touch.identifier);
+            }
         });
         this.canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
-            // 拖拽结束后不应再触发 handleClick，否则刚放下的塔会被"点"一下，
-            // 导致意外合成（例如：把第二座塔拖到空塔位 → 立即与第一座合成）。
-            // 只有非拖拽的轻触才应走 handleClick 路径。
-            const wasDragging = this.draggingTower !== null || this.hasDragged;
-            this.handlePointerUp();
-            const touch = e.changedTouches[0];
-            if (touch && !wasDragging) {
-                this.handleClick(touch);
+            for (const touch of Array.from(e.changedTouches)) {
+                // 这个指针按下时抓住了塔/卡 → 不走 handleClick，
+                // 否则刚放下的塔会被"点"一下，导致意外合成（把第二座塔拖到空塔位 → 立即与第一座合成）。
+                const wasDragging = this.dragStates.has(touch.identifier);
+                this.handlePointerUp(touch.identifier);
+                if (!wasDragging) {
+                    this.handleClick(touch);
+                }
             }
+            // ⚠️ 触摸结束后**延迟**清除标志，而不是让 mousedown/click 去消费它。
+            // 微信适配层会在每次 touchend 后补发 mouseup + click，浏览器也会补发
+            // 一套鼠标事件；那个布尔量只够消费一次 —— 双人同屏时第二根手指抬起，
+            // 补发的 click 就会漏进 handleClick（表现是"松手又买了一张卡"）。
+            if (this.touchHandledTimer !== null)
+                clearTimeout(this.touchHandledTimer);
+            this.touchHandledTimer = window.setTimeout(() => {
+                this.touchHandled = false;
+                this.touchHandledTimer = null;
+            }, 600);
         });
         // 只在没有触摸事件时处理 click（用于桌面浏览器）
         this.canvas.addEventListener('mousedown', (e) => {
-            if (this.touchHandled) {
-                this.touchHandled = false;
+            // 触摸后补发的鼠标事件一律忽略（标志由 touchend 的定时器清除，这里不消费）
+            if (this.touchHandled)
                 return;
-            }
-            this.handlePointerDown(e);
+            this.handlePointerDown(e, MOUSE_POINTER_ID);
         });
         this.canvas.addEventListener('mousemove', (e) => {
-            this.handlePointerMove(e);
+            this.handlePointerMove(e, MOUSE_POINTER_ID);
         });
         this.canvas.addEventListener('mouseup', (e) => {
-            this.handlePointerUp();
+            this.handlePointerUp(MOUSE_POINTER_ID);
         });
-        // 拖到画布外面松手：canvas 上的 mouseup 根本不会触发，draggingTower 会
-        // 一直留在"拖拽中"状态。此时鼠标哪怕只是在画布上空晃一圈（mousemove 会
-        // 把 draggingTower.x/y 改到指针位置），下一次 mouseup 就会把塔甩到指针
-        // 所在的格子上 —— 玩家看到的就是"塔自己飞走了 / 莫名其妙合成了"。
+        // 拖到画布外面松手：canvas 上的 mouseup 根本不会触发，拖拽状态会一直留着。
+        // 此时鼠标哪怕只是在画布上空晃一圈（mousemove 会把状态里的 x/y 改到指针位置），
+        // 下一次 mouseup 就会把塔甩到指针所在的格子上 —— 玩家看到的就是"塔自己飞走了"。
         // 所以画布外的松手统一按"取消拖拽"处理：塔留在原地，什么都不发生。
         window.addEventListener('mouseup', (e) => {
-            if (!this.draggingTower)
+            if (!this.dragStates.has(MOUSE_POINTER_ID))
                 return;
             if (e.target === this.canvas)
                 return; // 画布内的松手交给上面的处理器
-            this.draggingTower = null;
+            this.dragStates.delete(MOUSE_POINTER_ID);
         });
         // 切窗口 / 触摸被系统打断同样按取消处理
-        window.addEventListener('blur', () => { this.draggingTower = null; });
-        this.canvas.addEventListener('touchcancel', () => { this.draggingTower = null; });
-        this.canvas.addEventListener('click', (e) => {
-            if (this.touchHandled) {
-                this.touchHandled = false;
-                return;
+        window.addEventListener('blur', () => { this.dragStates.clear(); });
+        this.canvas.addEventListener('touchcancel', (e) => {
+            for (const touch of Array.from(e.changedTouches)) {
+                this.dragStates.delete(touch.identifier);
             }
+        });
+        this.canvas.addEventListener('click', (e) => {
+            // 同上：不消费标志，多指抬起时每一次补发的 click 都会被挡掉
+            if (this.touchHandled)
+                return;
             this.handleClick(e);
         });
         // 键盘快捷键：M 静音切换
@@ -393,10 +476,19 @@ export class GameManager {
             y: (e.clientY - rect.top) * scaleY
         };
     }
-    handlePointerDown(e) {
-        // 重置拖拽状态，确保 upgrade_select 等状态下点击不会被误判为拖拽
-        const prevState = this.hasDragged;
-        this.hasDragged = false;
+    /**
+     * 双人模式下这个点属于哪位玩家。
+     *
+     * 判据只看纵坐标：两条操作条是上下排列的（P1 在上、P2 在最底），
+     * 玩家站在自己那条上点卡，就记在自己名下。
+     * 战场和合成区不属于任何人 —— 谁都能碰，这是合作模式的核心。
+     */
+    playerAtPoint(_x, y) {
+        if (!this.isCoopMode)
+            return 0;
+        return y >= COOP_BARS.p2.y - 4 ? 1 : 0;
+    }
+    handlePointerDown(e, pointerId) {
         if (this.gameState !== 'playing')
             return;
         const { x, y } = this.getCanvasCoords(e);
@@ -406,13 +498,17 @@ export class GameManager {
             this.towerInfoTower = null;
             return;
         }
-        this.dragStartX = x;
-        this.dragStartY = y;
         // 检查是否点击了合成区域的防御塔
         for (let i = 0; i < this.mergeAreaSlots.length; i++) {
             const slot = this.mergeAreaSlots[i];
             if (slot.tower && Math.abs(x - slot.x) < 32 && Math.abs(y - slot.y) < 34) {
-                this.draggingTower = { slotIndex: -1 - i, x: slot.x, y: slot.y };
+                this.dragStates.set(pointerId, {
+                    pointerId,
+                    owner: this.isCoopMode ? slot.tower.getOwner() : 0,
+                    slotIndex: -1 - i,
+                    x: slot.x, y: slot.y,
+                    startX: x, startY: y, hasDragged: false
+                });
                 return;
             }
         }
@@ -421,23 +517,30 @@ export class GameManager {
             const slot = TOWER_SLOTS[i];
             const tower = this.towerMergeSystem.getTowerAt(i);
             if (tower && Math.abs(x - slot.x) < 22 && Math.abs(y - slot.y) < 22) {
-                this.draggingTower = { slotIndex: i, x: slot.x, y: slot.y };
+                this.dragStates.set(pointerId, {
+                    pointerId,
+                    owner: this.isCoopMode ? tower.getOwner() : 0,
+                    slotIndex: i,
+                    x: slot.x, y: slot.y,
+                    startX: x, startY: y, hasDragged: false
+                });
                 return;
             }
         }
     }
-    handlePointerMove(e) {
-        if (!this.draggingTower)
+    handlePointerMove(e, pointerId) {
+        const st = this.dragStates.get(pointerId);
+        if (!st)
             return;
         const { x, y } = this.getCanvasCoords(e);
         // 检测是否真的发生了拖拽（移动距离超过阈值）
-        const dx = x - this.dragStartX;
-        const dy = y - this.dragStartY;
+        const dx = x - st.startX;
+        const dy = y - st.startY;
         if (Math.sqrt(dx * dx + dy * dy) > 5) {
-            this.hasDragged = true;
+            st.hasDragged = true;
         }
-        this.draggingTower.x = x;
-        this.draggingTower.y = y;
+        st.x = x;
+        st.y = y;
     }
     /**
      * 槽位编码 → 防御塔。全游戏只有这一处解码逻辑，别再各写一遍。
@@ -469,7 +572,7 @@ export class GameManager {
             }
         }
         const sellArea = this.getSellArea();
-        if (x >= sellArea.x && x <= sellArea.x + sellArea.w && y >= sellArea.y && y <= sellArea.y + sellArea.h) {
+        if (this.isInSellArea(x, y)) {
             return { kind: 'sell', index: -1, tower: null };
         }
         for (let i = 0; i < TOWER_SLOTS.length; i++) {
@@ -480,14 +583,15 @@ export class GameManager {
         }
         return { kind: null, index: -1, tower: null };
     }
-    handlePointerUp() {
-        if (!this.draggingTower)
+    handlePointerUp(pointerId) {
+        const st = this.dragStates.get(pointerId);
+        if (!st)
             return;
-        const { x, y } = this.draggingTower;
-        const fromSlot = this.draggingTower.slotIndex;
-        this.draggingTower = null;
+        this.dragStates.delete(pointerId);
+        const { x, y } = st;
+        const fromSlot = st.slotIndex;
         // 如果没有真正拖拽，视为点击，显示防御塔信息
-        if (!this.hasDragged) {
+        if (!st.hasDragged) {
             const tower = this.towerAtSlot(fromSlot);
             if (tower) {
                 this.showTowerInfo = true;
@@ -569,9 +673,8 @@ export class GameManager {
                 return;
             }
         }
-        // 检查是否放在卖钱区域
-        const sellArea = this.getSellArea();
-        if (x >= sellArea.x && x <= sellArea.x + sellArea.w && y >= sellArea.y && y <= sellArea.y + sellArea.h) {
+        // 检查是否放在卖钱区域（双人模式两条操作条各有一个，任一都算）
+        if (this.isInSellArea(x, y)) {
             const fromTower = getFromTower();
             if (fromTower) {
                 const config = fromTower.getConfig();
@@ -660,6 +763,24 @@ export class GameManager {
     getSellArea() {
         return { x: 294, y: 752, w: 138, h: 40 };
     }
+    /**
+     * 所有卖出热区。
+     *
+     * 双人模式下两条操作条各带一个卖出格，拖到任意一个都算卖 ——
+     * 判定必须遍历全部，只认 `getSellArea()` 那一个会让 P2 的卖出格变成死区。
+     */
+    getSellAreas() {
+        if (!this.isCoopMode)
+            return [this.getSellArea()];
+        const players = [0, 1];
+        return players.map(p => {
+            const r = this.coopSlotRects(p).find(s => s.kind === 'sell');
+            return { x: r.x, y: r.y, w: r.w, h: r.h };
+        });
+    }
+    isInSellArea(x, y) {
+        return this.getSellAreas().some(a => x >= a.x && x <= a.x + a.w && y >= a.y && y <= a.y + a.h);
+    }
     handleClick(e) {
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = this.canvas.width / rect.width;
@@ -684,14 +805,32 @@ export class GameManager {
         }
         if (this.gameState === 'menu') {
             // 教程按钮优先：主菜单里任何点击都等于"开始游戏"，必须先拦住它
+            // 当前处于双人模式时给双人那套 —— 菜单里点「游戏教程」的人
+            // 想看的一定是"我正在玩的这个模式"的规则。
             if (this.isInButton(x, y, MENU_BUTTONS.tutorial)) {
                 this.soundManager.playButtonClick();
-                this.openTutorial('menu');
+                this.openTutorial('menu', this.isCoopMode ? 'coop' : 'solo');
+                return;
+            }
+            // 双人合作：必须**先**切模式再进 opening，
+            // 因为 setActiveLevel() 会按模式选地图、重算塔位、缩放怪潮。
+            if (this.isInButton(x, y, MENU_BUTTONS.coop)) {
+                this.soundManager.unlock();
+                this.soundManager.playMenuStart();
+                this.applyCoopMode(true);
+                this.openingElapsed = 0;
+                this.gameState = 'opening';
+                // 第一次点双人 → 先补一课再开局。双人不是"单人×2"：
+                // 多了第二条操作条、金币共享、每人各选一次强化，不看一遍必踩坑。
+                // 关闭教程后回到 opening（序幕），点一下就直接开打。
+                if (!this.hasSeenCoopTutorial())
+                    this.openTutorial('opening', 'coop');
                 return;
             }
             // 解锁音频上下文（浏览器要求用户交互后才能播放音频）
             this.soundManager.unlock();
             this.soundManager.playMenuStart();
+            this.applyCoopMode(false);
             this.openingElapsed = 0;
             this.gameState = 'opening';
             return;
@@ -717,7 +856,9 @@ export class GameManager {
             // 玩法教程入口：看完返回菜单（这局已经结束了，回战场没有意义）
             if (this.isInButton(x, y, RESULT_TUTORIAL_BTN)) {
                 this.soundManager.playButtonClick();
-                this.openTutorial('menu');
+                // 双人局里点「玩法教程」要给双人那套 —— 输了往往就是没搞懂
+                // 双人和单人的差别（金币共享、两条操作条），补单人教程等于没补
+                this.openTutorial('menu', this.isCoopMode ? 'coop' : 'solo');
                 return;
             }
             return;
@@ -732,6 +873,10 @@ export class GameManager {
         }
         if (this.gameState === 'level_clear') {
             this.handleLevelClearClick(x, y);
+            return;
+        }
+        // 双人模式：常驻操作条的点击（必须在按钮循环之前 —— 双人模式下没有 summon/overload 按钮）
+        if (this.isCoopMode && this.handleCoopClick(x, y)) {
             return;
         }
         // 检查底部按钮
@@ -768,15 +913,16 @@ export class GameManager {
         }
     }
     // ── 教程 ──
-    openTutorial(from) {
+    openTutorial(from, kind = 'solo') {
         this.tutorialReturn = from;
+        this.tutorialPages = kind === 'coop' ? COOP_TUTORIAL_PAGES : TUTORIAL_PAGES;
         this.tutorialPage = 0;
         this.tutorialElapsed = 0;
         this.gameState = 'tutorial';
     }
     handleTutorialClick(x, y) {
         const layout = getTutorialLayout(this.canvas.width, this.canvas.height);
-        const isLast = this.tutorialPage === TUTORIAL_PAGES.length - 1;
+        const isLast = this.tutorialPage === this.tutorialPages.length - 1;
         if (this.isInButton(x, y, layout.close)) {
             this.soundManager.playButtonClick();
             this.gameState = this.tutorialReturn;
@@ -996,7 +1142,11 @@ export class GameManager {
      * 没有这一步，玩家买重复卡只会把 6 个格子塞满，还得手动拖一次才算合成 ——
      * 而"买到重复卡 = 白白浪费一次召唤"本身就是最劝退的体验。
      */
-    placeTowerInMergeArea(type, rarity = Rarity.N) {
+    /**
+     * 往合成区放一座新塔。
+     * @param owner 双人模式下是谁买的（决定贡献归属；单人模式恒为 0）
+     */
+    placeTowerInMergeArea(type, rarity = Rarity.N, owner = 0) {
         const twinIndex = this.mergeAreaSlots.findIndex(s => s.tower !== null
             && s.tower.getType() === type
             && s.tower.getLevel() === 1
@@ -1004,6 +1154,7 @@ export class GameManager {
         if (twinIndex !== -1) {
             const twin = this.mergeAreaSlots[twinIndex].tower;
             const incoming = new Tower(type, twin.getX(), twin.getY(), -1, 1, rarity);
+            incoming.setOwner(owner);
             const upgraded = TowerMergeSystem.combine(twin, incoming);
             if (upgraded) {
                 this.towerMergeSystem.applyMergeUpgrades(upgraded);
@@ -1011,6 +1162,7 @@ export class GameManager {
                 // 同卡自动升级也是一次合成，必须计入 mergeCount，
                 // 否则结算界面「合成次数」会比玩家实际合成的少
                 this.mergeCount++;
+                this.contributions[owner].merges++;
                 this.triggerLevelUpFeedback(upgraded, twin.getX(), twin.getY());
                 // 升级后可能和合成区里另一座同型同级的塔凑成新的一对，
                 // 必须再扫一次，否则会出现「两个 Lv2 躺在那儿却不合成」
@@ -1022,7 +1174,9 @@ export class GameManager {
         if (emptySlot === -1)
             return false;
         const slot = this.mergeAreaSlots[emptySlot];
-        slot.tower = new Tower(type, slot.x, slot.y, -1, 1, rarity);
+        const fresh = new Tower(type, slot.x, slot.y, -1, 1, rarity);
+        fresh.setOwner(owner);
+        slot.tower = fresh;
         // 放置后检查自动合成（包括同卡升级和同等级合成）
         this.autoMergeCheck();
         return true;
@@ -1084,6 +1238,143 @@ export class GameManager {
      * 若上一次没选就退出了，会**复用同一批卡**。否则"退出再进"等于免费换一批，
      * 20 金的换牌费就形同虚设了。
      */
+    // ══ 双人合作：常驻卡槽 ══════════════════════════════════════════
+    //
+    // 为什么不用单人那套「点召唤 → 全屏三选一」：
+    // 那是**模态面板**，一个人开着面板，另一个人的整个战场就被盖住了 ——
+    // 合作模式里这等于强制两人轮流操作，直接毁掉"一起打"的意义。
+    // 所以双人改成两条常驻操作条：每人 3 张普通牌 + 1 张特级牌，
+    // 点卡立刻扣费进合成区，全程不遮挡战场。
+    /**
+     * 切换合作模式并重排界面。
+     *
+     * ⚠️ 必须在 `startLevel()` 之前调用 —— 关卡激活时才按模式选地图、
+     * 重算塔位、缩放怪潮。切完再进 opening，才不会出现"界面是双人的、
+     * 地图还是单人的"这种半截状态。
+     *
+     * 双人进度**不进存档**：合作要两个人在场，一个人打开游戏时自动续上
+     * 双人进度只会让人莫名其妙。
+     */
+    applyCoopMode(on) {
+        this.isCoopMode = on;
+        setConfigCoopMode(on);
+        this.layoutForMode();
+        this.coopCards = [[], []];
+        this.contributions = [
+            { placed: 0, merges: 0, spent: 0, kills: 0 },
+            { placed: 0, merges: 0, spent: 0, kills: 0 }
+        ];
+    }
+    /** 一条操作条内 5 个热区（世界坐标）。渲染与点击共用同一份计算，避免画的和点的错位 */
+    coopSlotRects(p) {
+        const bar = p === 0 ? COOP_BARS.p1 : COOP_BARS.p2;
+        const y = bar.y + 1;
+        const h = COOP_SLOT_LAYOUT.innerH;
+        const rects = COOP_SLOT_LAYOUT.cardX.map((dx, i) => ({
+            kind: 'card',
+            index: i,
+            x: bar.x + dx, y, w: COOP_SLOT_LAYOUT.cardW, h
+        }));
+        rects.push({
+            kind: 'premium', index: 0,
+            x: bar.x + COOP_SLOT_LAYOUT.premiumX, y, w: COOP_SLOT_LAYOUT.premiumW, h
+        });
+        rects.push({
+            kind: 'sell', index: 0,
+            x: bar.x + COOP_SLOT_LAYOUT.sellX, y, w: COOP_SLOT_LAYOUT.sellW, h
+        });
+        return rects;
+    }
+    /** 抽一张卡（不登记保底 —— 保底在真正买走时才结算） */
+    rollCoopCard(premium) {
+        const floor = premium
+            ? (this.premiumSummonPity >= PREMIUM_SUMMON_PITY_LIMIT ? Rarity.SSR : Rarity.R)
+            : (this.summonPity >= SUMMON_PITY_LIMIT ? Rarity.SR : Rarity.N);
+        const pool = this.summonPool;
+        const type = pool[Math.floor(Math.random() * pool.length)] ?? TowerType.MACHINE_GUN;
+        return { type, rarity: premium ? rollPremiumRarity() : rollRarity(floor) };
+    }
+    /** 把某位玩家的卡槽补满 3 张 */
+    refillCoopCards(p) {
+        while (this.coopCards[p].length < 3) {
+            this.coopCards[p].push(this.rollCoopCard(false));
+        }
+    }
+    /** 双人：买走一张普通牌（扣费 → 进合成区 → 原地补一张新牌） */
+    buyCoopCard(p, index) {
+        const opt = this.coopCards[p][index];
+        if (!opt)
+            return;
+        const price = summonPrice(opt.rarity);
+        if (this.resourceManager.getGold() < price) {
+            this.soundManager.playDenied();
+            return;
+        }
+        if (this.mergeAreaSlots.every(s => s.tower !== null)) {
+            this.soundManager.playDenied();
+            return;
+        }
+        this.resourceManager.spendGold(price);
+        this.contributions[p].spent += price;
+        if (!this.placeTowerInMergeArea(opt.type, opt.rarity, p)) {
+            // 合成区被刚才那一帧塞满了：退钱，别让玩家白花
+            this.resourceManager.addGold(price);
+            this.contributions[p].spent -= price;
+            this.soundManager.playDenied();
+            return;
+        }
+        this.contributions[p].placed++;
+        this.registerSummonResult([opt]);
+        this.soundManager.playPlaceTower();
+        // 原地补一张新牌，保持 3 张常驻
+        this.coopCards[p][index] = this.rollCoopCard(false);
+    }
+    /** 双人：买一张特级牌（50 金直接出一座，保留 10 抽保底） */
+    buyCoopPremium(p) {
+        if (this.resourceManager.getGold() < PREMIUM_SUMMON_COST) {
+            this.soundManager.playDenied();
+            return;
+        }
+        if (this.mergeAreaSlots.every(s => s.tower !== null)) {
+            this.soundManager.playDenied();
+            return;
+        }
+        const opt = this.rollCoopCard(true);
+        this.resourceManager.spendGold(PREMIUM_SUMMON_COST);
+        this.contributions[p].spent += PREMIUM_SUMMON_COST;
+        this.premiumSummonCount++;
+        this.premiumSummonPity++;
+        if (opt.rarity === Rarity.SSR)
+            this.premiumSummonPity = 0;
+        if (!this.placeTowerInMergeArea(opt.type, opt.rarity, p)) {
+            this.resourceManager.addGold(PREMIUM_SUMMON_COST);
+            this.contributions[p].spent -= PREMIUM_SUMMON_COST;
+            this.soundManager.playDenied();
+            return;
+        }
+        this.contributions[p].placed++;
+        this.soundManager.playPlaceTower();
+    }
+    /**
+     * 双人模式点击处理。
+     * @returns 是否命中了操作条（命中就吞掉这次点击，不再往下走）
+     */
+    handleCoopClick(x, y) {
+        const players = [0, 1];
+        for (const p of players) {
+            for (const r of this.coopSlotRects(p)) {
+                if (x < r.x || x > r.x + r.w || y < r.y || y > r.y + r.h)
+                    continue;
+                if (r.kind === 'card')
+                    this.buyCoopCard(p, r.index);
+                else if (r.kind === 'premium')
+                    this.buyCoopPremium(p);
+                // sell 是拖拽落点，不响应点击
+                return true;
+            }
+        }
+        return false;
+    }
     summonTower() {
         // 合成区满则无法接收新防御塔
         if (this.mergeAreaSlots.every(s => s.tower !== null)) {
@@ -1259,13 +1550,29 @@ export class GameManager {
      * 通关强化 → 清挂起标志并进入关卡结算（handleLevelCleared）；
      * 普通强化 → 回 playing + exitUpgradePhase。
      * 两个入口（随机 / 点选卡片）都必须走这里，否则通关后会卡在 upgrade_select。
+     *
+     * 双人模式（v1.10）：通关强化要**连选两次** —— P1 选完重开一批给 P2 选。
+     * 两次都写进同一个全局强化状态，所以不会出现两边塔数值不同。
      */
     finishUpgradeSelection() {
         this.upgradeNoticeText = '';
         if (this.pendingLevelClearAfterUpgrade) {
+            if (this.isCoopMode && this.coopUpgradeTurn === 0) {
+                this.coopUpgradeTurn = 1;
+                const next = this.upgradeSystem.generateOptions(this.summonPool);
+                if (next.length > 0) {
+                    // 还有得选 → 留在面板上，只是换了个人
+                    this.upgradeOptions = next;
+                    this.upgradeNoticeText = 'P1 已选定 · 现在轮到 P2';
+                    this.soundManager.playUpgradeSelect();
+                    return;
+                }
+                // 池子已被选空（强化都有上限）→ 直接进结算，别给玩家看空面板
+            }
             this.pendingLevelClearAfterUpgrade = false;
             this.isLevelClearUpgrade = false;
             this.levelClearRewardText = '';
+            this.coopUpgradeTurn = 0;
             this.handleLevelCleared();
         }
         else {
@@ -1280,6 +1587,12 @@ export class GameManager {
     }
     startGame() {
         this.pendingCarryTowers = [];
+        if (this.isCoopMode) {
+            // 双人模式独立结算：不吃单人存档的金币/进度，否则"上次单人打到第 5 关
+            // 攒了 800 金"会直接带进双人局，第一波就能铺满塔。
+            this.resourceManager.reset(2);
+            this.currentLevelIndex = 0;
+        }
         this.startLevel(0);
     }
     /**
@@ -1394,13 +1707,15 @@ export class GameManager {
         if (this.currentLevelIndex + 1 >= getLevelCount()) {
             this.gameState = 'victory';
             this.waveManager.enterVictory();
-            // 通关后清除存档
-            this.clearSaveData();
+            // 通关后清除存档（双人模式不写存档，所以也不该清掉单人的）
+            if (!this.isCoopMode)
+                this.clearSaveData();
         }
         else {
-            // 进入下一关前保存进度
+            // 进入下一关前保存进度（双人模式是 session 级体验，不落盘）
             this.currentLevelIndex++;
-            this.saveGame();
+            if (!this.isCoopMode)
+                this.saveGame();
             this.startLevel(this.currentLevelIndex);
         }
     }
@@ -1417,7 +1732,8 @@ export class GameManager {
         this.startLevel(this.currentLevelIndex + 1);
     }
     restartGame() {
-        this.resourceManager.reset();
+        // 双人模式初始金币 ×2（怪潮翻倍，钱不翻就买不起第二路的塔）
+        this.resourceManager.reset(this.isCoopMode ? 2 : 1);
         this.waveManager.reset();
         this.towerMergeSystem.reset();
         this.upgradeSystem.reset();
@@ -1454,6 +1770,7 @@ export class GameManager {
         this.pendingLevelClearAfterUpgrade = false;
         this.isLevelClearUpgrade = false;
         this.levelClearRewardText = '';
+        this.coopUpgradeTurn = 0;
         this.normalSummonOptions = [];
         this.premiumSummonOptions = [];
         this.mergeCount = 0;
@@ -1475,8 +1792,8 @@ export class GameManager {
     }
     /** 重新开始当前关卡（保留存档进度） */
     restartCurrentLevel() {
-        // 重置资源
-        this.resourceManager.reset();
+        // 重置资源（双人模式初始金币 ×2，见 ResourceManager.reset 注释）
+        this.resourceManager.reset(this.isCoopMode ? 2 : 1);
         // 重置波次管理器
         this.waveManager.reset();
         // 重置塔合并系统
@@ -1504,6 +1821,7 @@ export class GameManager {
         this.pendingLevelClearAfterUpgrade = false;
         this.isLevelClearUpgrade = false;
         this.levelClearRewardText = '';
+        this.coopUpgradeTurn = 0;
         this.normalSummonOptions = [];
         this.premiumSummonOptions = [];
         this.mergeCount = 0;
@@ -1547,8 +1865,22 @@ export class GameManager {
         }
         this.openTutorial('menu');
     }
+    /**
+     * 双人教程是否已看过（独立 key）。
+     * 单独一个 key 而不是复用单人的：单人教程看完的老玩家第一次点双人，
+     * 恰恰是最需要看"双人和单人哪里不一样"的人。
+     */
+    hasSeenCoopTutorial() {
+        try {
+            return !!localStorage.getItem('cyber-defense.coopTutorial.seen');
+        }
+        catch (e) {
+            return true; // 读不到就当看过，别让 localStorage 异常变成每次都弹
+        }
+    }
     markTutorialSeen() {
-        const KEY = 'cyber-defense.tutorial.seen';
+        const isCoop = this.tutorialPages === COOP_TUTORIAL_PAGES;
+        const KEY = isCoop ? 'cyber-defense.coopTutorial.seen' : 'cyber-defense.tutorial.seen';
         try {
             localStorage.setItem(KEY, '1');
         }
@@ -1638,9 +1970,14 @@ export class GameManager {
         }
         // 处理击杀的敌人
         for (const enemy of waveResult.killed) {
+            // 金币进同一个钱包 —— 这就是「无论谁打死，双方都加钱」
             this.resourceManager.addGold(enemy.getReward());
             this.soundManager.playGoldGain();
             this.levelKillCount++;
+            if (this.isCoopMode) {
+                // 击杀归属只影响贡献面板，不影响金币
+                this.contributions[enemy.getLastHitBy()].kills++;
+            }
             // 击杀音效（按敌人类型分级 + 空间定位）
             const pan = this.panFromX(enemy.getX());
             if (isBossType(enemy.getType())) {
@@ -1864,6 +2201,7 @@ export class GameManager {
                 this.levelClearRewardText = `最终波次奖励 +${waveGoldBonus} 金币`;
                 this.pendingLevelClearAfterUpgrade = true;
                 this.isLevelClearUpgrade = true;
+                this.coopUpgradeTurn = 0; // 双人：从 P1 开始选
                 this.gameState = 'upgrade_select';
                 this.waveManager.enterUpgradePhase();
             }
@@ -2261,17 +2599,21 @@ export class GameManager {
             this.renderOpening();
             return;
         }
-        // 教程：先画它背后的那一层（战场 / 召唤面板 / 菜单），再压半透明面板
+        // 教程：先画它背后的那一层（战场 / 召唤面板 / 菜单 / 开场序幕），再压半透明面板
         if (this.gameState === 'tutorial') {
             if (this.tutorialReturn === 'menu') {
                 this.renderMenu();
+            }
+            else if (this.tutorialReturn === 'opening') {
+                // 首次进双人时教程压在序幕之上：关掉直接回到"点击开始"那一屏
+                this.renderOpening();
             }
             else {
                 this.renderGame();
                 if (this.tutorialReturn === 'summon_select')
                     this.renderSummonSelect();
             }
-            renderTutorial(ctx, this.canvas.width, this.canvas.height, this.tutorialPage, this.tutorialElapsed);
+            renderTutorial(ctx, this.canvas.width, this.canvas.height, this.tutorialPage, this.tutorialElapsed, this.tutorialPages);
             return;
         }
         this.renderGame();
@@ -2389,7 +2731,7 @@ export class GameManager {
             ctx.fillRect(cx - w / 2, y, w, 2);
         }
         ctx.restore();
-        // ── 开始 / 教程 两个主按钮（位置见 MENU_BUTTONS，点击判定共用）──
+        // ── 单人 / 双人 / 教程 三个主按钮（位置见 MENU_BUTTONS，点击判定共用）──
         const drawMenuButton = (r, label, color, glow) => {
             const breathe = 0.55 + Math.sin(t * 2.4) * 0.25;
             ctx.save();
@@ -2401,8 +2743,9 @@ export class GameManager {
             cutRectPath(ctx, r.x, r.y, r.w, r.h, 14);
             ctx.fill();
             ctx.restore();
+            // 描边跟着按钮主题色走：三个按钮长得一样的话，玩家分不清哪个是双人
             ctx.strokeStyle = glow
-                ? `rgba(0, 240, 255, ${breathe.toFixed(3)})`
+                ? `${color}${Math.round(breathe * 255).toString(16).padStart(2, '0')}`
                 : 'rgba(157, 0, 255, 0.55)';
             ctx.lineWidth = 2;
             cutRectPath(ctx, r.x, r.y, r.w, r.h, 14);
@@ -2413,10 +2756,11 @@ export class GameManager {
             ctx.stroke();
             neonText(ctx, label, r.x + r.w / 2, r.y + r.h / 2, color, { blur: glow ? 10 : 6, font: 'bold 20px sans-serif' });
         };
-        drawMenuButton(MENU_BUTTONS.start, '开始游戏', CYBER.cyan, true);
+        drawMenuButton(MENU_BUTTONS.start, '单人战役', CYBER.cyan, true);
+        drawMenuButton(MENU_BUTTONS.coop, '双人合作', '#FF4FD8', true);
         drawMenuButton(MENU_BUTTONS.tutorial, '游戏教程', CYBER.purple, false);
         // ── 玩法速览：把新手需要做的三件事放在主按钮下方，避免压缩标题区 ──
-        const tipX = 48, tipY = 480, tipW = this.canvas.width - 96, tipH = 166;
+        const tipX = 48, tipY = 500, tipW = this.canvas.width - 96, tipH = 192;
         ctx.fillStyle = 'rgba(7, 13, 23, 0.82)';
         cutRectPath(ctx, tipX, tipY, tipW, tipH, 12);
         ctx.fill();
@@ -2433,6 +2777,7 @@ export class GameManager {
             ['01  合成炮塔', '同类型同等级的塔拖到一起就能升级（最高 Lv5）'],
             ['02  升级得技能', '每升 1 级自动发 1 个技能，满级共 4 个'],
             ['03  守到第 10 波', '10 波后是 Boss，通关可强化并把塔带进下一关'],
+            ['04  双人合作', '同屏两人共守一个核心：多出怪口、怪潮翻倍、金币共享'],
         ];
         tips.forEach(([title, detail], i) => {
             const y = tipY + 54 + i * 32;
@@ -3642,27 +3987,44 @@ export class GameManager {
         ctx.fillStyle = '#FF0033';
         ctx.fillText(`❤️ ${this.resourceManager.getLives()}`, 100, 40);
         ctx.shadowBlur = 0;
-        // 速度显示
-        ctx.fillStyle = '#9D00FF';
-        ctx.font = '14px sans-serif';
-        ctx.fillText(`${this.gameSpeed}x`, 178, 40);
-        // 剩余敌人
-        ctx.fillStyle = '#8FA3BF';
-        ctx.fillText(`剩余: ${this.waveManager.getRemainingCount()}`, 218, 40);
-        // 强化机会计数（v1.6.2）：每关通关时一次，让玩家知道还差几波
-        {
-            const left = this.getEnhanceCountdown();
+        if (this.isCoopMode) {
+            // 双人：速度已经挪到顶栏按钮（(330,10)），这一行让给两位玩家的击杀贡献。
+            // 金币是共享的，所以"谁打了多少"是合作模式里唯一能体现个人参与感的数字。
+            ctx.fillStyle = '#8FA3BF';
+            ctx.font = '14px sans-serif';
+            ctx.fillText(`剩余: ${this.waveManager.getRemainingCount()}`, 178, 40);
             ctx.font = 'bold 12px sans-serif';
-            if (left === 0) {
-                ctx.fillStyle = '#fbbf24';
-                ctx.shadowColor = '#fbbf24';
-                ctx.shadowBlur = 8;
+            ctx.fillStyle = CYBER.cyan;
+            ctx.fillText(`P1 ${this.contributions[0].kills}`, 246, 40);
+            ctx.fillStyle = '#FF4FD8';
+            ctx.fillText(`P2 ${this.contributions[1].kills}`, 310, 40);
+            ctx.fillStyle = '#5A6B85';
+            ctx.font = '11px sans-serif';
+            ctx.fillText('击杀', 356, 40);
+        }
+        else {
+            // 速度显示
+            ctx.fillStyle = '#9D00FF';
+            ctx.font = '14px sans-serif';
+            ctx.fillText(`${this.gameSpeed}x`, 178, 40);
+            // 剩余敌人
+            ctx.fillStyle = '#8FA3BF';
+            ctx.fillText(`剩余: ${this.waveManager.getRemainingCount()}`, 218, 40);
+            // 强化机会计数（v1.6.2）：每关通关时一次，让玩家知道还差几波
+            {
+                const left = this.getEnhanceCountdown();
+                ctx.font = 'bold 12px sans-serif';
+                if (left === 0) {
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.shadowColor = '#fbbf24';
+                    ctx.shadowBlur = 8;
+                }
+                else {
+                    ctx.fillStyle = '#5A6B85';
+                }
+                ctx.fillText(left === 0 ? '⚡通关强化 就绪' : `⚡通关强化 再${left}波`, 306, 40);
+                ctx.shadowBlur = 0;
             }
-            else {
-                ctx.fillStyle = '#5A6B85';
-            }
-            ctx.fillText(left === 0 ? '⚡通关强化 就绪' : `⚡通关强化 再${left}波`, 306, 40);
-            ctx.shadowBlur = 0;
         }
         // 下一波摘要放在HUD第三行，并独立预留倒计时栏位。
         this.renderNextWavePreview();
@@ -3687,21 +4049,165 @@ export class GameManager {
         ctx.stroke();
         // 底部按钮（无「下一波」——波次自动推进，倒计时画在场景里）
         // 召唤不再有固定价：价格随品阶浮动（50~150），所以按钮只显示"召唤"
-        this.renderButton('summon', '召唤\n免费', '#9D00FF');
-        this.renderOverloadButton();
-        this.renderButton('speed', `${this.gameSpeed}x`, '#00F0FF');
+        if (this.isCoopMode) {
+            this.renderCoopBars();
+            // 加速键在顶栏（(330,10)），是全局状态不属于任何玩家
+            this.renderButton('speed', `${this.gameSpeed}x`, '#00F0FF');
+        }
+        else {
+            this.renderButton('summon', '召唤\n免费', '#9D00FF');
+            this.renderOverloadButton();
+            this.renderButton('speed', `${this.gameSpeed}x`, '#00F0FF');
+        }
         // 渲染合成区域
         this.renderMergeArea();
-        // 渲染卖钱区域
-        this.renderSellArea();
-        // 渲染拖拽中的防御塔
-        if (this.draggingTower) {
-            this.renderDraggingTower();
+        // 渲染卖钱区域（双人模式的卖出热区在操作条内部，由 renderCoopBars 负责画）
+        if (!this.isCoopMode)
+            this.renderSellArea();
+        // 渲染拖拽中的防御塔（双人模式可能两条拖拽同时进行，逐个画）
+        for (const st of this.dragStates.values()) {
+            this.renderDraggingTower(st);
         }
+    }
+    /**
+     * 按模式重排底部与顶栏按钮。
+     *
+     * 双人模式底部 162px 要放 6 格合成区 + 两条操作条，所以：
+     *   · 合成区整体上移 32px（700 → 668）
+     *   · 「召唤 / 特级」按钮由操作条取代，不再注册
+     *   · 加速键挪到顶栏（它是全局状态，不属于任何一个玩家）
+     */
+    layoutForMode() {
+        const mergeAreaY = this.isCoopMode ? COOP_MERGE_Y : GAME_CONSTANTS.CANVAS_HEIGHT - 100;
+        for (let i = 0; i < this.mergeAreaSlots.length; i++) {
+            this.mergeAreaSlots[i].x = 53 + i * 68;
+            this.mergeAreaSlots[i].y = mergeAreaY;
+        }
+        const bottomY = GAME_CONSTANTS.CANVAS_HEIGHT - 48;
+        if (this.isCoopMode) {
+            // ⚠️ 必须**删掉** summon/overload 的热区，而不是"不渲染"。
+            // 只不画的话，那两个 96×40 / 102×40 的隐形热区还留在 buttons 里，
+            // 位置正好压在 P2 操作条上 —— 玩家点 P2 的卡时会被它们抢走，
+            // 表现就是"点卡没反应，反而弹出单人三选一面板"。
+            this.buttons.delete('summon');
+            this.buttons.delete('overload');
+            // 加速键挤在「重开」左边（375 起），40 宽刚好不叠压
+            this.buttons.set('speed', { x: 330, y: 10, w: 40, h: 26 });
+        }
+        else {
+            this.buttons.set('summon', { x: 18, y: bottomY, w: 96, h: 40 });
+            this.buttons.set('overload', { x: 124, y: bottomY, w: 102, h: 40 });
+            this.buttons.set('speed', { x: 236, y: bottomY, w: 48, h: 40 });
+        }
+    }
+    /** 双人模式：画两条常驻操作条（P1 在上、P2 在下，靠颜色区分） */
+    renderCoopBars() {
+        const ctx = this.ctx;
+        const players = [
+            { p: 0, color: CYBER.cyan },
+            { p: 1, color: '#FF4FD8' }
+        ];
+        for (const { p, color } of players) {
+            const bar = p === 0 ? COOP_BARS.p1 : COOP_BARS.p2;
+            ctx.fillStyle = 'rgba(10, 14, 22, 0.97)';
+            cutRectPath(ctx, bar.x, bar.y, bar.w, bar.h, 10);
+            ctx.fill();
+            ctx.strokeStyle = color;
+            ctx.globalAlpha = 0.45;
+            ctx.lineWidth = 1.2;
+            cutRectPath(ctx, bar.x, bar.y, bar.w, bar.h, 10);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            // 左端身份色条：两条长得一样，没有这个玩家分不清哪条是自己的
+            ctx.fillStyle = color;
+            ctx.fillRect(bar.x + 2, bar.y + 7, 2.5, bar.h - 14);
+            this.refillCoopCards(p);
+            for (const r of this.coopSlotRects(p)) {
+                if (r.kind === 'card') {
+                    const opt = this.coopCards[p][r.index];
+                    if (!opt)
+                        continue;
+                    this.drawCoopCard(r, opt.type, opt.rarity, summonPrice(opt.rarity));
+                }
+                else if (r.kind === 'premium') {
+                    this.drawCoopPremium(r);
+                }
+                else {
+                    this.drawCoopSell(r, color, p);
+                }
+            }
+        }
+    }
+    /** 操作条里的一张普通牌：品阶色边框 + 塔图标 + 价格 */
+    drawCoopCard(r, type, rarity, price) {
+        const ctx = this.ctx;
+        const affordable = this.resourceManager.getGold() >= price;
+        ctx.save();
+        // 买不起 → 整张卡压暗，但**不隐藏**：玩家得看见"再攒 20 金就能买这个"
+        if (!affordable)
+            ctx.globalAlpha = 0.42;
+        ctx.fillStyle = 'rgba(18, 22, 32, 0.96)';
+        cutRectPath(ctx, r.x, r.y, r.w, r.h, 7);
+        ctx.fill();
+        ctx.strokeStyle = RARITY_CONFIGS[rarity].color;
+        ctx.lineWidth = 1.6;
+        cutRectPath(ctx, r.x, r.y, r.w, r.h, 7);
+        ctx.stroke();
+        this.spriteLoader.drawTower(ctx, r.x + 17, r.y + r.h / 2, type, 24, 'center');
+        ctx.fillStyle = affordable ? '#FFD700' : '#7A8394';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${price}`, r.x + r.w - 7, r.y + r.h / 2 + 1);
+        ctx.restore();
+    }
+    /** 操作条里的特级牌：50 金直接出一座（保留 10 抽保底） */
+    drawCoopPremium(r) {
+        const ctx = this.ctx;
+        const affordable = this.resourceManager.getGold() >= PREMIUM_SUMMON_COST;
+        ctx.save();
+        if (!affordable)
+            ctx.globalAlpha = 0.42;
+        ctx.fillStyle = 'rgba(28, 20, 10, 0.96)';
+        cutRectPath(ctx, r.x, r.y, r.w, r.h, 7);
+        ctx.fill();
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 1.6;
+        cutRectPath(ctx, r.x, r.y, r.w, r.h, 7);
+        ctx.stroke();
+        ctx.fillStyle = '#FFD700';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('特级', r.x + r.w / 2, r.y + r.h / 2 - 8);
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillText(`${PREMIUM_SUMMON_COST}`, r.x + r.w / 2, r.y + r.h / 2 + 9);
+        ctx.restore();
+    }
+    /** 操作条里的卖出落点 */
+    drawCoopSell(r, color, p) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.fillStyle = 'rgba(40, 14, 18, 0.96)';
+        cutRectPath(ctx, r.x, r.y, r.w, r.h, 7);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 107, 138, 0.65)';
+        ctx.lineWidth = 1.4;
+        cutRectPath(ctx, r.x, r.y, r.w, r.h, 7);
+        ctx.stroke();
+        // 文字里带玩家号：两条操作条长得一模一样，只靠颜色区分，
+        // 在"两个人第一次玩"的场景里根本不够 —— 玩家必须能一眼读出"这条是我的"
+        ctx.fillStyle = color;
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`P${p + 1} 卖出`, r.x + r.w / 2, r.y + r.h / 2);
+        ctx.restore();
     }
     renderMergeArea() {
         const ctx = this.ctx;
-        const mergeAreaY = GAME_CONSTANTS.CANVAS_HEIGHT - 100;
+        // 面板位置跟着格子走（双人模式合成区整体上移 32px，见 layoutForMode）
+        const mergeAreaY = this.mergeAreaSlots[0]?.y ?? (GAME_CONSTANTS.CANVAS_HEIGHT - 100);
         const panelTop = mergeAreaY - 44;
         const panelHeight = 82;
         const mergeGradient = ctx.createLinearGradient(8, panelTop, 8, panelTop + panelHeight);
@@ -3848,10 +4354,7 @@ export class GameManager {
      * 手指下面只有一个光标的塔战没有任何策略性，玩家既看不清也看不懂。
      * 这也是为什么下面 6 个合成格的塔也必须能拖出来并一直显示。
      */
-    renderDraggingTower() {
-        const drag = this.draggingTower;
-        if (!drag)
-            return;
+    renderDraggingTower(drag) {
         const ctx = this.ctx;
         const tower = this.towerAtSlot(drag.slotIndex);
         // 落点（用于最后画提示环）
@@ -3883,8 +4386,9 @@ export class GameManager {
             const refund = tower
                 ? Math.floor(tower.getConfig().cost * 0.5 * RARITY_CONFIGS[tower.getRarity()].sellMult)
                 : 0;
-            const area = this.getSellArea();
-            this.drawDropHint(area.x + area.w / 2, area.y + area.h / 2, '#fbbf24', `卖出 +${refund}金`);
+            // 提示画在指针处而不是固定区域中心：双人模式有两个卖出格，
+            // 画死在其中一个会让另一个看起来"没有反馈"
+            this.drawDropHint(drag.x, drag.y, '#fbbf24', `卖出 +${refund}金`);
         }
         else if (target.kind === 'merge' || target.kind === 'field') {
             const slot = target.kind === 'merge'
@@ -4574,14 +5078,21 @@ export class GameManager {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         // 标题（通关强化与普通强化两种文案，v1.6.2）
-        ctx.fillStyle = '#fbbf24';
+        // 双人模式（v1.10）标题直接写「P1/P2 选择强化」并用身份色：
+        // 面板是全屏的，不说清"现在轮到谁"，两个人会同时伸手去点同一张卡。
+        const coopTurnColor = this.coopUpgradeTurn === 0 ? CYBER.cyan : '#FF4FD8';
+        ctx.fillStyle = this.isCoopMode && this.isLevelClearUpgrade ? coopTurnColor : '#fbbf24';
         ctx.font = 'bold 24px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(this.isLevelClearUpgrade ? '通关强化' : '选择强化', this.canvas.width / 2, 300);
+        ctx.fillText(this.isCoopMode && this.isLevelClearUpgrade
+            ? `P${this.coopUpgradeTurn + 1} 选择强化`
+            : (this.isLevelClearUpgrade ? '通关强化' : '选择强化'), this.canvas.width / 2, 300);
         if (this.isLevelClearUpgrade) {
             ctx.fillStyle = '#00F0FF';
             ctx.font = '12px sans-serif';
-            ctx.fillText(`本关已通关 · ${this.levelClearRewardText || '奖励已发放'} · 选择后进入关卡结算`, this.canvas.width / 2, 322);
+            ctx.fillText(this.isCoopMode
+                ? `本关已通关 · ${this.levelClearRewardText || '奖励已发放'} · 两人各选一次（当前 P${this.coopUpgradeTurn + 1}）`
+                : `本关已通关 · ${this.levelClearRewardText || '奖励已发放'} · 选择后进入关卡结算`, this.canvas.width / 2, 322);
         }
         // 3个选项
         const optionWidth = 120;
@@ -4861,7 +5372,11 @@ export class GameManager {
         ctx.fillText('第 ' + lv.id + ' 关 · ' + lv.name, W / 2, 124);
         ctx.fillStyle = '#8FA3BF';
         ctx.font = '12px sans-serif';
-        ctx.fillText('击破 ' + this.levelKillCount + ' 台机械单位　·　通关金币 +' + lv.clearGold, W / 2, 148);
+        // 双人模式把总击杀拆成两列：金币是共享的，"谁打了多少"是唯一能体现
+        // 个人参与感的数字，混在一起报总数等于没报。
+        ctx.fillText(this.isCoopMode
+            ? `P1 击破 ${this.contributions[0].kills} · P2 击破 ${this.contributions[1].kills}　·　通关金币 +${lv.clearGold}`
+            : '击破 ' + this.levelKillCount + ' 台机械单位　·　通关金币 +' + lv.clearGold, W / 2, 148);
         const unlock = this.newlyUnlockedTowerType;
         if (unlock) {
             const cfg = TOWER_CONFIGS[unlock];

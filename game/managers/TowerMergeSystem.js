@@ -176,6 +176,9 @@ export class TowerMergeSystem {
         // 技能变体跟着**被升级的那座塔**（a）走，而不是让新塔重新轮换 ——
         // 否则"合成一次就换一条 build 线"，玩家刚看到的技能组合会莫名跳掉。
         tower.setSkillVariant(a.getSkillVariant());
+        // 归属同理跟着 a（结果所占槽位的塔）走：合成是"谁的塔被升级了"，
+        // 双人模式下贡献统计才不会因为一次合成就把战功记到另一个人头上。
+        tower.setOwner(a.getOwner());
         // 继承两侧学过的技能，但只保留 newLevel - 2 个 ——
         // 「技能数 = 等级 - 1」，最后一个名额留给升级时**自动发放**的本档技能
         // （由 GameManager.autoGrantSkill 按变体取）。

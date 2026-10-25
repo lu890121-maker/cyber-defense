@@ -79,6 +79,61 @@ export const TUTORIAL_PAGES = [
         ],
     },
 ];
+/**
+ * 双人合作模式教程（4 页）。
+ *
+ * 单独一套而不是往单人教程里塞两页，原因：
+ *  - 单人 6 页已经压到 30 秒的量，再加双人内容会让新人一次性吃 10 页；
+ *  - 双人玩家其实**已经会玩塔防**了（他是拉着朋友一起玩，不是第一次接触），
+ *    真正需要讲清楚的只有「分工 / 金币共享 / 怪翻倍 / 强化各选一次」这四件事。
+ * 所以双人教程刻意做成 4 页，只讲与单人**不一样**的地方。
+ */
+export const COOP_TUTORIAL_PAGES = [
+    {
+        tag: '01 / 分工',
+        title: '两个人，一个核心',
+        lead: '同屏双人：一颗核心、一张地图，两个出怪口。漏哪一路，掉的都是同一份耐久。',
+        diagram: 'coop',
+        bullets: [
+            { head: '各有一条操作条', body: '屏幕下方上下两条：青色是 P1、粉色是 P2。谁的操作条谁点。' },
+            { head: '可以同时拖塔', body: '两根手指同时按住屏幕，各拖各的塔，不会互相抢。' },
+            { head: '核心是共享的', body: '没有「你的核心 / 我的核心」，任何一路漏怪都扣同一个数字。' },
+        ],
+    },
+    {
+        tag: '02 / 金币',
+        title: '金币是共享的',
+        lead: '不管谁打死的怪，赏金都进同一个金币池 —— 两个人都能花。',
+        diagram: 'coopgold',
+        bullets: [
+            { head: '不用分账', body: '打死就进公共池，没有「你的钱 / 我的钱」，谁缺钱谁先花。' },
+            { head: '别抢着买', body: '两个人同时点卡会一起扣钱。开局先说好谁先铺前排。' },
+            { head: '击杀分开记', body: '顶栏 P1 / P2 各记各的击破数，只算荣誉，不影响分钱。' },
+        ],
+    },
+    {
+        tag: '03 / 压力',
+        title: '双入口 · 怪潮翻倍',
+        lead: '双人模式固定至少两个出怪口，每波小怪数量是单人的两倍。',
+        diagram: 'coopwave',
+        bullets: [
+            { head: '两路一起出兵', body: '多入口的波次会两边同时出怪，别把塔全堆在自己那一路。' },
+            { head: 'Boss 不翻倍', body: 'Boss 只有一只、血量也不翻倍，双人打反而比单人更快。' },
+            { head: '开局双倍金币', body: '初始金币是单人的两倍，够两个人各铺两座塔起步。' },
+        ],
+    },
+    {
+        tag: '04 / 强化',
+        title: '每人各选一次强化',
+        lead: '每关通关后 P1 先选一次强化，选完自动轮到 P2 再选一次。',
+        diagram: 'coopupgrade',
+        bullets: [
+            { head: '两次都全局生效', body: '两次强化都作用于场上所有塔，不会只给某一个人。' },
+            { head: '轮流选，别抢', body: '面板会标出当前轮到谁，选完自动换人，顺序固定。' },
+            { head: '为什么要两次', body: '怪翻倍了，成长也得翻倍，否则双人只会比单人更难。' },
+        ],
+    },
+];
 export function getTutorialLayout(_W, H) {
     const btnY = H - 96;
     return {
@@ -349,11 +404,248 @@ function drawDiagram(ctx, kind, x, y, w, h, t) {
         ctx.textAlign = 'center';
         ctx.fillText('每波结算 +60 金', cx, y + h - 21);
     }
+    // ── 双人模式三张示意图 ──
+    // 这几张刻意画成"缩小版真实 UI"而不是抽象符号：双人模式的难点不在概念，
+    // 而在"屏幕上突然多出一条操作条、地图上多出一条路"，画成 UI 才能对上号。
+    if (kind === 'coop') {
+        // 上半：双入口 → 合流 → 单核心；下半：两条操作条
+        const mapH = h - 56;
+        const laneY = y + 44;
+        const drawLane = (sx) => {
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.20)';
+            ctx.lineWidth = 16;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(sx, y + 14);
+            ctx.lineTo(sx, laneY);
+            ctx.lineTo(cx, laneY);
+            ctx.lineTo(cx, y + mapH - 16);
+            ctx.stroke();
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.45)';
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.moveTo(sx, y + 14);
+            ctx.lineTo(sx, laneY);
+            ctx.lineTo(cx, laneY);
+            ctx.lineTo(cx, y + mapH - 16);
+            ctx.stroke();
+        };
+        drawLane(x + 58);
+        drawLane(x + w - 58);
+        // 两个入口各来一只怪，说明"两边同时出"
+        for (const sx of [x + 58, x + w - 58]) {
+            ctx.fillStyle = CYBER.red;
+            ctx.beginPath();
+            ctx.arc(sx, y + 22, 3.4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        // 共享核心（唯一一个，故意画在正中）
+        const pulse = 0.6 + Math.sin(t * 3) * 0.2;
+        ctx.fillStyle = `rgba(0, 240, 255, ${0.18 * pulse})`;
+        ctx.beginPath();
+        ctx.arc(cx, y + mapH - 14, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = CYBER.cyan;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(cx, y + mapH - 14, 8.5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = CYBER.cyan;
+        ctx.beginPath();
+        ctx.arc(cx, y + mapH - 14, 3.6, 0, Math.PI * 2);
+        ctx.fill();
+        // 两条操作条（P1 上 / P2 下），这是双人模式最需要先认出来的东西
+        const bars = [
+            ['P1', CYBER.cyan, y + mapH + 4],
+            ['P2', '#FF4FD8', y + mapH + 26],
+        ];
+        for (const [label, color, by] of bars) {
+            ctx.fillStyle = 'rgba(12, 18, 30, 0.95)';
+            cutRectPath(ctx, x + 16, by, w - 32, 18, 6);
+            ctx.fill();
+            ctx.strokeStyle = color;
+            ctx.globalAlpha = 0.55;
+            ctx.lineWidth = 1;
+            cutRectPath(ctx, x + 16, by, w - 32, 18, 6);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = color;
+            ctx.font = 'bold 9px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, x + 22, by + 9);
+            // 三张卡 + 一个卖出格的示意
+            for (let i = 0; i < 3; i++) {
+                ctx.fillStyle = 'rgba(90, 107, 133, 0.5)';
+                ctx.fillRect(x + 42 + i * 26, by + 4, 22, 10);
+            }
+            ctx.fillStyle = 'rgba(255, 107, 138, 0.45)';
+            ctx.fillRect(x + w - 60, by + 4, 34, 10);
+        }
+        ctx.fillStyle = CYBER.textLow;
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('共享核心', cx + 58, y + mapH - 12);
+    }
+    if (kind === 'coopgold') {
+        // 两座塔打怪，赏金都汇进中间同一个池子
+        towerGlyph(ctx, x + 64, cy - 16, CYBER.cyan, 2, 0.72);
+        towerGlyph(ctx, x + w - 64, cy - 16, '#FF4FD8', 2, 0.72);
+        ctx.fillStyle = CYBER.cyan;
+        ctx.font = 'bold 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('P1', x + 64, cy + 6);
+        ctx.fillStyle = '#FF4FD8';
+        ctx.fillText('P2', x + w - 64, cy + 6);
+        // 中间的金币池
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.14)';
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.75)';
+        ctx.lineWidth = 1.4;
+        cutRectPath(ctx, cx - 74, cy + 26, 148, 30, 8);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = CYBER.gold;
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText('共享金币池 +25', cx, cy + 41);
+        // 两条汇聚箭头
+        for (const [sx, ex] of [[x + 88, cx - 34], [x + w - 88, cx + 34]]) {
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.55)';
+            ctx.lineWidth = 1.6;
+            ctx.setLineDash([4, 3]);
+            ctx.beginPath();
+            ctx.moveTo(sx, cy + 4);
+            ctx.quadraticCurveTo((sx + ex) / 2, cy + 30, ex, cy + 30);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = CYBER.gold;
+            ctx.beginPath();
+            ctx.moveTo(ex, cy + 30);
+            ctx.lineTo(ex + (ex < cx ? -5 : 5), cy + 26);
+            ctx.lineTo(ex + (ex < cx ? -5 : 5), cy + 34);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.fillStyle = CYBER.textLow;
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('谁打死的都算 · 不分账', cx, y + 18);
+    }
+    if (kind === 'coopwave') {
+        // 两条路各一排波次块，末尾共用一只 Boss（不翻倍）
+        const lanes = [
+            ['左路', CYBER.cyan, cy - 30],
+            ['右路', '#FF4FD8', cy + 6],
+        ];
+        const segs = 8;
+        const segW = (w - 120) / segs;
+        for (const [label, color, ly] of lanes) {
+            ctx.fillStyle = CYBER.textLow;
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, x + 20, ly + 11);
+            for (let i = 0; i < segs; i++) {
+                const px = x + 58 + segW * i;
+                const lit = i <= (Math.floor(t * 2) % segs);
+                ctx.fillStyle = color;
+                ctx.globalAlpha = lit ? 0.62 : 0.14;
+                ctx.fillRect(px + 1, ly, segW - 3, 22);
+            }
+            ctx.globalAlpha = 1;
+        }
+        // 共用 Boss：只画一只，跨两行
+        const bossX = x + 58 + segW * segs + 8;
+        ctx.fillStyle = 'rgba(255, 0, 51, 0.8)';
+        ctx.fillRect(bossX, cy - 30, 44, 58);
+        ctx.fillStyle = '#FFE8EC';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('BOSS', bossX + 22, cy - 6);
+        ctx.font = '8px sans-serif';
+        ctx.fillText('只一只', bossX + 22, cy + 8);
+        // ×2 徽标
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.16)';
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.7)';
+        ctx.lineWidth = 1.2;
+        cutRectPath(ctx, x + 20, y + h - 26, 66, 22, 7);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = CYBER.gold;
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('小怪 ×2', x + 53, y + h - 15);
+        ctx.fillStyle = CYBER.textLow;
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('两个出怪口同时出兵', x + 96, y + h - 15);
+    }
+    if (kind === 'coopupgrade') {
+        // P1 选 → P2 选，两次都作用到全场（不是各管各的塔）
+        const cardW = 30, cardH = 42, gap = 6;
+        const groupW = cardW * 3 + gap * 2;
+        const groupY = cy - 32;
+        const drawGroup = (gx, color, label, picked) => {
+            for (let i = 0; i < 3; i++) {
+                const px = gx + i * (cardW + gap);
+                const isPicked = i === picked;
+                ctx.fillStyle = isPicked ? 'rgba(30, 40, 58, 0.98)' : 'rgba(12, 18, 30, 0.92)';
+                cutRectPath(ctx, px, groupY, cardW, cardH, 6);
+                ctx.fill();
+                ctx.strokeStyle = color;
+                ctx.globalAlpha = isPicked ? 1 : 0.32;
+                ctx.lineWidth = isPicked ? 1.8 : 1;
+                cutRectPath(ctx, px, groupY, cardW, cardH, 6);
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+                // 卡面：一条横杠代表图标，两条短线代表文案
+                ctx.fillStyle = isPicked ? color : 'rgba(90, 107, 133, 0.5)';
+                ctx.fillRect(px + 9, groupY + 9, 12, 12);
+                ctx.fillStyle = 'rgba(90, 107, 133, 0.45)';
+                ctx.fillRect(px + 6, groupY + 27, 18, 3);
+                ctx.fillRect(px + 6, groupY + 33, 12, 3);
+            }
+            ctx.fillStyle = color;
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, gx + groupW / 2, groupY - 12);
+        };
+        drawGroup(x + 26, CYBER.cyan, 'P1 先选', 0);
+        drawGroup(x + w - 26 - groupW, '#FF4FD8', 'P2 后选', 1);
+        // 中间箭头：顺序固定，别抢
+        arrow(ctx, x + 26 + groupW + 10, cy - 11, x + w - 26 - groupW - 10, CYBER.textLow);
+        // 底部：两次都汇进同一个全局状态
+        ctx.fillStyle = 'rgba(0, 240, 255, 0.12)';
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.55)';
+        ctx.lineWidth = 1.3;
+        cutRectPath(ctx, cx - 104, cy + 30, 208, 28, 8);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = CYBER.cyan;
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('两次都作用于全场所有塔', cx, cy + 44);
+        // 两条虚线从池子指向两组卡：说明"不是各管各的"
+        for (const gx of [x + 26 + groupW / 2, x + w - 26 - groupW / 2]) {
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.30)';
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(gx, groupY + cardH + 4);
+            ctx.lineTo(gx, cy + 30);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+    }
     ctx.restore();
 }
 /** 渲染整页教程。调用方负责先画背景（菜单或战场）。 */
-export function renderTutorial(ctx, W, H, pageIndex, t) {
-    const page = TUTORIAL_PAGES[Math.max(0, Math.min(TUTORIAL_PAGES.length - 1, pageIndex))];
+export function renderTutorial(ctx, W, H, pageIndex, t, 
+/** 页集合：单人 TUTORIAL_PAGES / 双人 COOP_TUTORIAL_PAGES。默认单人，保持旧调用兼容 */
+pages = TUTORIAL_PAGES) {
+    const page = pages[Math.max(0, Math.min(pages.length - 1, pageIndex))];
     const layout = getTutorialLayout(W, H);
     // 遮罩
     ctx.fillStyle = 'rgba(3, 6, 12, 0.94)';
@@ -423,7 +715,7 @@ export function renderTutorial(ctx, W, H, pageIndex, t) {
         by = lineY + 24;
     }
     // 进度点
-    const dots = TUTORIAL_PAGES.length;
+    const dots = pages.length;
     const dotGap = 16;
     const dotsW = (dots - 1) * dotGap;
     for (let i = 0; i < dots; i++) {
@@ -436,7 +728,7 @@ export function renderTutorial(ctx, W, H, pageIndex, t) {
     }
     // 上/下一页按钮
     const isFirst = pageIndex === 0;
-    const isLast = pageIndex === TUTORIAL_PAGES.length - 1;
+    const isLast = pageIndex === pages.length - 1;
     const drawBtn = (r, label, color, dim) => {
         ctx.save();
         ctx.globalAlpha = dim ? 0.35 : 1;
@@ -472,11 +764,12 @@ export function renderTutorial(ctx, W, H, pageIndex, t) {
     ctx.lineTo(layout.close.x + 14, layout.close.y + 26);
     ctx.stroke();
     ctx.restore();
-    // 底部提示
+    // 底部提示。原文写的是"点右上角「?」"，但战场里并没有这个按钮 ——
+    // 实际入口只有菜单、召唤面板底部、结算界面三处，照实写。
     ctx.fillStyle = CYBER.textLow;
     ctx.font = '10.5px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('游戏内随时可以点右上角「?」重新查看本教程', W / 2, H - 30);
+    ctx.fillText('随时可以从主菜单或结算界面重新打开教程', W / 2, H - 30);
 }
 //# sourceMappingURL=TutorialScreen.js.map

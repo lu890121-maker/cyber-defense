@@ -446,6 +446,24 @@ export declare let ACTIVE_FOG_ZONES: Array<{
 export declare function getLevelCount(): number;
 export declare function getActiveLevel(): LevelConfig;
 /** 切换活动关卡：重绑定地图与波次，并清空塔位占位状态 */
+/**
+ * 双人合作模式的怪潮倍率。
+ *
+ * 两个人手速翻倍，怪也必须跟着翻 —— 否则「合作」等于把难度直接砍半，
+ * 玩家会觉得联机是个无脑模式。翻倍后总压力与单人持平，但需要真的分工。
+ */
+export declare const COOP_TROOP_MULTIPLIER = 2;
+/** 双人模式下每波至少几个出怪口（用户硬性要求：2 个以上） */
+export declare const COOP_MIN_ROUTES = 2;
+/** 当前是否处于双人合作模式（live binding，setActiveLevel 会读它） */
+export declare let COOP_MODE: boolean;
+/**
+ * 切换双人合作模式。
+ *
+ * ⚠️ 必须在 `setActiveLevel()` **之前**调用 —— 关卡激活时才会按模式
+ * 选地图、重算塔位、缩放怪潮。切完之后要重新 `setActiveLevel(当前关)`。
+ */
+export declare function setCoopMode(on: boolean): void;
 export declare function setActiveLevel(index: number): LevelConfig;
 /** 关内波号 → 全局波号（决定敌人属性倍率） */
 export declare function getGlobalWave(levelIndex: number, waveInLevel: number): number;

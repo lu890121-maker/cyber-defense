@@ -18,8 +18,14 @@ export declare class GameManager {
     private tutorialPage;
     /** 教程界面的独立时钟（暂停状态下也要驱动扫描线/呼吸动画） */
     private tutorialElapsed;
-    /** 从哪进的教程，退出时回到哪（菜单 / 战场 / 召唤面板） */
+    /** 从哪进的教程，退出时回到哪（菜单 / 战场 / 召唤面板 / 开场序幕） */
     private tutorialReturn;
+    /**
+     * 当前展示的是哪一套教程页。
+     * 单人 6 页（TUTORIAL_PAGES）、双人 4 页（COOP_TUTORIAL_PAGES）——
+     * 双人玩家已经会玩塔防了，只需要补"和单人不一样"的那几点。
+     */
+    private tutorialPages;
     /** 开场序幕时间，点击开始后自动播放，点击可跳过 */
     private openingElapsed;
     private gameTime;
@@ -100,10 +106,28 @@ export declare class GameManager {
     private vfx;
     /** 注入给所有防御塔的表现出口（Tower 只发事件，不知道 GameManager） */
     private vfxSink;
-    private draggingTower;
-    private dragStartX;
-    private dragStartY;
-    private hasDragged;
+    private dragStates;
+    /** 是否双人合作（同屏 2 人）。开局前由菜单决定，中途不变 */
+    private isCoopMode;
+    /**
+     * 每位玩家的常驻卡槽（双人模式专用）。
+     *
+     * 单人模式走「点召唤 → 全屏三选一」；双人模式**不能弹模态面板** ——
+     * 一个人开着面板，另一个人的战场就被挡住了。所以改成两条常驻操作条，
+     * 每人 3 张牌 + 1 张特级牌，点卡直接扣费进合成区。
+     */
+    private coopCards;
+    /** 双人贡献统计 */
+    private contributions;
+    /**
+     * 双人通关强化轮到谁（0 = P1 / 1 = P2）。
+     *
+     * 单人每关通关给 1 次强化；双人给 2 次（P1 先选、P2 再选），
+     * 因为怪潮也是 2 倍 —— 只给 1 次强化等于把难度翻倍却不给对应成长。
+     * 两次都写进**同一个**全局强化状态（UpgradeSystem 只有一份 GlobalUpgradeState），
+     * 所以不会出现"P1 的塔和 P2 的塔数值不一样"这种割裂。
+     */
+    private coopUpgradeTurn;
     private showTowerInfo;
     private towerInfoTower;
     private premiumSummonCount;
@@ -118,6 +142,14 @@ export declare class GameManager {
     private mergeAreaSlots;
     private buttons;
     private touchHandled;
+    /**
+     * 触摸结束后延迟清除 `touchHandled` 的定时器。
+     *
+     * 不能用"谁先到谁消费"的写法：微信适配层和浏览器都会在 touchend 之后
+     * 补发 mouseup/click，一个布尔量只够消费一次 —— 双人同屏时第二根手指
+     * 抬起，补发的 click 就会漏进 handleClick（松手白买一张卡）。
+     */
+    private touchHandledTimer;
     private audioStarted;
     private lastCountdownTick;
     constructor(canvas: HTMLCanvasElement);
@@ -138,6 +170,14 @@ export declare class GameManager {
      */
     private startAudio;
     private getCanvasCoords;
+    /**
+     * 双人模式下这个点属于哪位玩家。
+     *
+     * 判据只看纵坐标：两条操作条是上下排列的（P1 在上、P2 在最底），
+     * 玩家站在自己那条上点卡，就记在自己名下。
+     * 战场和合成区不属于任何人 —— 谁都能碰，这是合作模式的核心。
+     */
+    private playerAtPoint;
     private handlePointerDown;
     private handlePointerMove;
     /**
@@ -166,6 +206,14 @@ export declare class GameManager {
      * 改这里必须同步 `verify_drag.mjs` 里"卖出"用例的注释坐标。
      */
     private getSellArea;
+    /**
+     * 所有卖出热区。
+     *
+     * 双人模式下两条操作条各带一个卖出格，拖到任意一个都算卖 ——
+     * 判定必须遍历全部，只认 `getSellArea()` 那一个会让 P2 的卖出格变成死区。
+     */
+    private getSellAreas;
+    private isInSellArea;
     private handleClick;
     private isInButton;
     private handleButtonClick;
@@ -222,6 +270,10 @@ export declare class GameManager {
      * 没有这一步，玩家买重复卡只会把 6 个格子塞满，还得手动拖一次才算合成 ——
      * 而"买到重复卡 = 白白浪费一次召唤"本身就是最劝退的体验。
      */
+    /**
+     * 往合成区放一座新塔。
+     * @param owner 双人模式下是谁买的（决定贡献归属；单人模式恒为 0）
+     */
     private placeTowerInMergeArea;
     /**
      * 自动合成检查：扫描合成区，如果有两个同类型+同等级的塔，自动合成升级。
@@ -245,6 +297,32 @@ export declare class GameManager {
      * 若上一次没选就退出了，会**复用同一批卡**。否则"退出再进"等于免费换一批，
      * 20 金的换牌费就形同虚设了。
      */
+    /**
+     * 切换合作模式并重排界面。
+     *
+     * ⚠️ 必须在 `startLevel()` 之前调用 —— 关卡激活时才按模式选地图、
+     * 重算塔位、缩放怪潮。切完再进 opening，才不会出现"界面是双人的、
+     * 地图还是单人的"这种半截状态。
+     *
+     * 双人进度**不进存档**：合作要两个人在场，一个人打开游戏时自动续上
+     * 双人进度只会让人莫名其妙。
+     */
+    private applyCoopMode;
+    /** 一条操作条内 5 个热区（世界坐标）。渲染与点击共用同一份计算，避免画的和点的错位 */
+    private coopSlotRects;
+    /** 抽一张卡（不登记保底 —— 保底在真正买走时才结算） */
+    private rollCoopCard;
+    /** 把某位玩家的卡槽补满 3 张 */
+    private refillCoopCards;
+    /** 双人：买走一张普通牌（扣费 → 进合成区 → 原地补一张新牌） */
+    private buyCoopCard;
+    /** 双人：买一张特级牌（50 金直接出一座，保留 10 抽保底） */
+    private buyCoopPremium;
+    /**
+     * 双人模式点击处理。
+     * @returns 是否命中了操作条（命中就吞掉这次点击，不再往下走）
+     */
+    private handleCoopClick;
     private summonTower;
     private handleSummonSelect;
     /** 关卡结算面板：点击「进入下一关」推进 */
@@ -257,6 +335,9 @@ export declare class GameManager {
      * 通关强化 → 清挂起标志并进入关卡结算（handleLevelCleared）；
      * 普通强化 → 回 playing + exitUpgradePhase。
      * 两个入口（随机 / 点选卡片）都必须走这里，否则通关后会卡在 upgrade_select。
+     *
+     * 双人模式（v1.10）：通关强化要**连选两次** —— P1 选完重开一批给 P2 选。
+     * 两次都写进同一个全局强化状态，所以不会出现两边塔数值不同。
      */
     private finishUpgradeSelection;
     /** 随机强化按钮位置（render 与 click 共用） */
@@ -300,6 +381,12 @@ export declare class GameManager {
     start(): void;
     /** 首次运行自动弹教程（localStorage 标记，只弹一次） */
     private maybeFirstRunTutorial;
+    /**
+     * 双人教程是否已看过（独立 key）。
+     * 单独一个 key 而不是复用单人的：单人教程看完的老玩家第一次点双人，
+     * 恰恰是最需要看"双人和单人哪里不一样"的人。
+     */
+    private hasSeenCoopTutorial;
     private markTutorialSeen;
     private saveGame;
     private loadGame;
@@ -406,6 +493,23 @@ export declare class GameManager {
     private renderEnemies;
     private renderEffects;
     private renderUI;
+    /**
+     * 按模式重排底部与顶栏按钮。
+     *
+     * 双人模式底部 162px 要放 6 格合成区 + 两条操作条，所以：
+     *   · 合成区整体上移 32px（700 → 668）
+     *   · 「召唤 / 特级」按钮由操作条取代，不再注册
+     *   · 加速键挪到顶栏（它是全局状态，不属于任何一个玩家）
+     */
+    private layoutForMode;
+    /** 双人模式：画两条常驻操作条（P1 在上、P2 在下，靠颜色区分） */
+    private renderCoopBars;
+    /** 操作条里的一张普通牌：品阶色边框 + 塔图标 + 价格 */
+    private drawCoopCard;
+    /** 操作条里的特级牌：50 金直接出一座（保留 10 抽保底） */
+    private drawCoopPremium;
+    /** 操作条里的卖出落点 */
+    private drawCoopSell;
     private renderMergeArea;
     private renderSellArea;
     /**
