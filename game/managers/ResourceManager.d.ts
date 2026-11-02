@@ -20,10 +20,5 @@ export declare class ResourceManager {
     setGoldBonusPerWave(bonus: number): void;
     getGoldBonusPerWave(): number;
     isGameOver(): boolean;
-    /**
-     * 重置资源到开局状态。
-     * @param goldMultiplier 初始金币倍率。双人合作传 2 —— 怪潮翻倍了，
-     *        钱不跟着翻的话，两个人只能守着两条路看怪漏过去（手速够但买不起塔）。
-     */
-    reset(goldMultiplier?: number): void;
+    reset(): void;
 }
