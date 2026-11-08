@@ -722,7 +722,8 @@ export class GameManager {
             if (this.isInButton(x, y, MENU_BUTTONS.start)) {
                 // 解锁音频上下文（浏览器要求用户交互后才能播放音频）
                 this.soundManager.unlock();
-                this.startFromSave();
+                // 进入关卡选择界面，而不是直接开始游戏
+                this.gameState = 'level_select';
                 return;
             }
             return;
