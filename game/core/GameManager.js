@@ -31,9 +31,13 @@ const MENU_BUTTONS = {
     tutorial: { x: 230, y: 400, w: 160, h: 62 },
 };
 /** 关卡地图：3×3 共 9 张卡片，渲染与点击判定共用 */
-const LEVEL_CARD = { w: 120, h: 96, startX: 25, startY: 190, stepX: 135, stepY: 110 };
+const LEVEL_CARD = { w: 120, h: 80, startX: 25, startY: 160, stepX: 135, stepY: 90 };
 /** 关卡地图底部的「返回」按钮 */
-const LEVEL_BACK_BTN = { x: 150, y: 700, w: 150, h: 48 };
+const LEVEL_BACK_BTN = { x: 150, y: 720, w: 150, h: 48 };
+/** 指挥官资产条位置 */
+const COMMANDER_ASSETS_BAR = { x: 20, y: 100, w: 410, h: 50 };
+/** 拥有的塔展示区 */
+const TOWER_DISPLAY_AREA = { x: 20, y: 450, w: 410, h: 240 };
 function levelCardRect(i) {
     return {
         x: LEVEL_CARD.startX + (i % 3) * LEVEL_CARD.stepX,
@@ -2601,13 +2605,14 @@ export class GameManager {
     }
     /**
      * 关卡地图：3×3 网格展示 9 关，已解锁可点，未解锁显示锁定。
-     * 每张卡片显示关卡名、副标题、解锁状态；底部有返回按钮。
+     * 顶部显示指挥官资产（金币、生命），底部展示拥有的塔。
      */
     renderLevelSelect() {
         const ctx = this.ctx;
         const W = this.canvas.width, H = this.canvas.height;
         const t = this.gameTime;
         const unlocked = this.readUnlockedLevel();
+        const save = readCommanderSave();
         // ── 背景：深色 + 扫描线 ──
         ctx.fillStyle = '#030710';
         ctx.fillRect(0, 0, W, H);
@@ -2623,14 +2628,44 @@ export class GameManager {
         ctx.font = 'bold 28px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        neonText(ctx, '选择关卡', W / 2, 80, CYBER.cyan, { blur: 14, font: 'bold 28px sans-serif' });
+        neonText(ctx, '指挥官基地', W / 2, 40, CYBER.cyan, { blur: 14, font: 'bold 28px sans-serif' });
         ctx.restore();
-        // 副标题
-        ctx.fillStyle = CYBER.textMid;
-        ctx.font = '13px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`已解锁 ${unlocked + 1} / ${getLevelCount()} 关`, W / 2, 115);
+        // ── 指挥官资产条 ──
+        if (save) {
+            const bar = COMMANDER_ASSETS_BAR;
+            ctx.save();
+            // 背景
+            ctx.fillStyle = 'rgba(10, 18, 32, 0.85)';
+            cutRectPath(ctx, bar.x, bar.y, bar.w, bar.h, 12);
+            ctx.fill();
+            // 描边
+            ctx.strokeStyle = CYBER.cyan;
+            ctx.lineWidth = 2;
+            cutRectPath(ctx, bar.x, bar.y, bar.w, bar.h, 12);
+            ctx.stroke();
+            // 金币图标和数值
+            ctx.fillStyle = CYBER.gold;
+            ctx.font = 'bold 16px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('💰', bar.x + 15, bar.y + bar.h / 2);
+            ctx.fillStyle = CYBER.textHi;
+            ctx.font = 'bold 18px sans-serif';
+            ctx.fillText(`${save.gold}`, bar.x + 40, bar.y + bar.h / 2);
+            // 生命图标和数值
+            ctx.fillStyle = '#FF4466';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.fillText('❤', bar.x + bar.w / 2 + 15, bar.y + bar.h / 2);
+            ctx.fillStyle = CYBER.textHi;
+            ctx.font = 'bold 18px sans-serif';
+            ctx.fillText(`${save.lives}`, bar.x + bar.w / 2 + 40, bar.y + bar.h / 2);
+            // 已解锁关卡数
+            ctx.fillStyle = CYBER.purple;
+            ctx.font = '13px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(`已解锁 ${unlocked + 1}/${getLevelCount()} 关`, bar.x + bar.w - 15, bar.y + bar.h / 2);
+            ctx.restore();
+        }
         // ── 3×3 关卡卡片 ──
         for (let i = 0; i < getLevelCount(); i++) {
             const rect = levelCardRect(i);
@@ -2671,33 +2706,33 @@ export class GameManager {
             ctx.restore();
             // 关卡编号（左上角）
             ctx.save();
-            ctx.font = 'bold 14px sans-serif';
+            ctx.font = 'bold 13px sans-serif';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
             ctx.fillStyle = isUnlocked ? lv.accent : 'rgba(150, 150, 150, 0.5)';
-            ctx.fillText(`第 ${i + 1} 关`, rect.x + 10, rect.y + 10);
+            ctx.fillText(`第 ${i + 1} 关`, rect.x + 8, rect.y + 8);
             ctx.restore();
             // 关卡名称（居中）
             ctx.save();
-            ctx.font = 'bold 16px sans-serif';
+            ctx.font = 'bold 15px sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillStyle = isUnlocked ? CYBER.textHi : 'rgba(150, 150, 150, 0.4)';
-            ctx.fillText(lv.name, rect.x + rect.w / 2, rect.y + rect.h / 2 - 8);
+            ctx.fillText(lv.name, rect.x + rect.w / 2, rect.y + rect.h / 2 - 6);
             ctx.restore();
             // 副标题（名称下方）
             ctx.save();
-            ctx.font = '11px sans-serif';
+            ctx.font = '10px sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillStyle = isUnlocked ? CYBER.textMid : 'rgba(120, 120, 120, 0.3)';
-            ctx.fillText(lv.subtitle, rect.x + rect.w / 2, rect.y + rect.h / 2 + 12, rect.w - 20);
+            ctx.fillText(lv.subtitle, rect.x + rect.w / 2, rect.y + rect.h / 2 + 10, rect.w - 16);
             ctx.restore();
             // 未解锁：画锁定图标（用矢量，不用 emoji）
             if (!isUnlocked) {
-                const lockX = rect.x + rect.w - 20;
-                const lockY = rect.y + 12;
-                const lockW = 14, lockH = 12;
+                const lockX = rect.x + rect.w - 18;
+                const lockY = rect.y + 10;
+                const lockW = 12, lockH = 10;
                 ctx.save();
                 ctx.strokeStyle = 'rgba(150, 150, 150, 0.5)';
                 ctx.lineWidth = 1.5;
@@ -2712,6 +2747,90 @@ export class GameManager {
                 ctx.restore();
             }
         }
+        // ── 拥有的塔展示区 ──
+        if (save && save.towers.length > 0) {
+            const area = TOWER_DISPLAY_AREA;
+            ctx.save();
+            // 标题
+            ctx.fillStyle = CYBER.textHi;
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText('拥有的防御塔', area.x, area.y);
+            // 按类型分组统计
+            const towerStats = new Map();
+            for (const towerSnap of save.towers) {
+                const stats = towerStats.get(towerSnap.type) || { count: 0, maxLevel: 0, rarities: new Set() };
+                stats.count++;
+                stats.maxLevel = Math.max(stats.maxLevel, towerSnap.level);
+                stats.rarities.add(towerSnap.rarity);
+                towerStats.set(towerSnap.type, stats);
+            }
+            // 绘制塔卡片
+            const towerTypes = Array.from(towerStats.keys());
+            const cardW = 60, cardH = 70, gap = 8;
+            const cols = Math.floor((area.w - gap) / (cardW + gap));
+            const startX = area.x + (area.w - (cols * (cardW + gap) - gap)) / 2;
+            for (let idx = 0; idx < towerTypes.length; idx++) {
+                const type = towerTypes[idx];
+                const stats = towerStats.get(type);
+                const config = TOWER_CONFIGS[type];
+                const col = idx % cols;
+                const row = Math.floor(idx / cols);
+                const x = startX + col * (cardW + gap);
+                const y = area.y + 25 + row * (cardH + gap);
+                // 卡片背景
+                ctx.fillStyle = 'rgba(10, 18, 32, 0.7)';
+                cutRectPath(ctx, x, y, cardW, cardH, 8);
+                ctx.fill();
+                // 描边（按最高稀有度）
+                const rarityColors = {
+                    'N': '#8A94A6',
+                    'R': '#00F0FF',
+                    'SR': '#9D00FF',
+                    'SSR': '#FFD700'
+                };
+                const maxRarity = Array.from(stats.rarities).sort((a, b) => {
+                    const order = ['N', 'R', 'SR', 'SSR'];
+                    return order.indexOf(b) - order.indexOf(a);
+                })[0];
+                ctx.strokeStyle = rarityColors[maxRarity] || '#8A94A6';
+                ctx.lineWidth = 2;
+                cutRectPath(ctx, x, y, cardW, cardH, 8);
+                ctx.stroke();
+                // 塔名称（缩写）
+                ctx.fillStyle = CYBER.textHi;
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                const shortName = config.name.length > 3 ? config.name.substring(0, 3) : config.name;
+                ctx.fillText(shortName, x + cardW / 2, y + 5);
+                // 数量
+                ctx.fillStyle = CYBER.textMid;
+                ctx.font = '10px sans-serif';
+                ctx.fillText(`×${stats.count}`, x + cardW / 2, y + 22);
+                // 最高等级
+                ctx.fillStyle = CYBER.gold;
+                ctx.font = 'bold 12px sans-serif';
+                ctx.fillText(`Lv${stats.maxLevel}`, x + cardW / 2, y + 38);
+                // 稀有度标记
+                ctx.fillStyle = rarityColors[maxRarity];
+                ctx.font = 'bold 10px sans-serif';
+                ctx.fillText(maxRarity, x + cardW / 2, y + 54);
+            }
+            ctx.restore();
+        }
+        else {
+            // 没有塔时显示提示
+            const area = TOWER_DISPLAY_AREA;
+            ctx.save();
+            ctx.fillStyle = CYBER.textLow;
+            ctx.font = '13px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillText('暂无防御塔，通关后获得', area.x + area.w / 2, area.y + 40);
+            ctx.restore();
+        }
         // ── 底部返回按钮 ──
         const breathe = 0.55 + Math.sin(t * 2.4) * 0.25;
         ctx.save();
@@ -2724,12 +2843,6 @@ export class GameManager {
         ctx.stroke();
         neonText(ctx, '返回', LEVEL_BACK_BTN.x + LEVEL_BACK_BTN.w / 2, LEVEL_BACK_BTN.y + LEVEL_BACK_BTN.h / 2, CYBER.purple, { blur: 8, font: 'bold 18px sans-serif' });
         ctx.restore();
-        // ── 底部提示 ──
-        ctx.fillStyle = CYBER.textLow;
-        ctx.font = '11px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('通关一关解锁下一关，失败后从存档重建', W / 2, LEVEL_BACK_BTN.y + LEVEL_BACK_BTN.h + 20);
         // 右上角静音开关
         this.renderMuteButton();
     }

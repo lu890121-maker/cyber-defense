@@ -377,7 +377,7 @@ export declare class GameManager {
     private renderMenu;
     /**
      * 关卡地图：3×3 网格展示 9 关，已解锁可点，未解锁显示锁定。
-     * 每张卡片显示关卡名、副标题、解锁状态；底部有返回按钮。
+     * 顶部显示指挥官资产（金币、生命），底部展示拥有的塔。
      */
     private renderLevelSelect;
     /** 赛博防线启动序幕：扫描网格、核心点亮、敌方入侵警报，最后自动进入第一波。 */
