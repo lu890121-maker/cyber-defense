@@ -2507,310 +2507,265 @@ export class SpriteLoader {
                 break;
         }
     }
-    /** 基础 Boss 外观：机械统领/要塞核心/机械神谕 */
+    /** Q版基础 Boss 外观：圆润可爱的大头 Boss */
     drawBossBase(ctx, pal, accent, pulse) {
         const t = this.time;
-        // 外发光底盘
-        ctx.save();
-        ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 16 * pulse;
-        ctx.fillStyle = pal.shell;
+        // Q版圆润大身体（占整体 60%）
+        const bodyGrad = ctx.createRadialGradient(-3, -3, 0, 0, 0, 16);
+        bodyGrad.addColorStop(0, pal.core);
+        bodyGrad.addColorStop(0.6, pal.shell);
+        bodyGrad.addColorStop(1, '#0B0D12');
+        ctx.fillStyle = bodyGrad;
         ctx.beginPath();
-        ctx.arc(0, 0, 13, 0, Math.PI * 2);
+        ctx.arc(0, 0, 15, 0, Math.PI * 2);
         ctx.fill();
-        ctx.restore();
-        // 背部散热鳍
+        // Q版小装饰鳍（圆润）
         ctx.fillStyle = MECH_DARK;
-        for (let i = -2; i <= 2; i++) {
-            ctx.save();
-            ctx.rotate(i * 0.34);
-            ctx.fillRect(-1.6, -18, 3.2, 7);
-            ctx.restore();
+        for (let i = -1; i <= 1; i++) {
+            ctx.beginPath();
+            ctx.ellipse(i * 6, -12, 2, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
         }
-        // 双肩炮
-        for (const sx of [-1, 1]) {
-            ctx.fillStyle = MECH_MID;
-            ctx.fillRect(sx * 12 - 4.5, -13, 9, 8);
-            ctx.strokeStyle = MECH_EDGE;
-            ctx.lineWidth = 1;
-            ctx.strokeRect(sx * 12 - 4.5, -13, 9, 8);
-            ctx.fillStyle = '#151920';
-            ctx.fillRect(sx * 12 - 1.6, -19, 3.2, 7);
-            ctx.save();
-            ctx.shadowColor = accent;
-            ctx.shadowBlur = 7;
-            ctx.fillStyle = accent;
-            ctx.fillRect(sx * 12 - 2.6, -18.4, 5.2, 1.6);
-            ctx.restore();
-        }
-        // 主体
-        const g = ctx.createLinearGradient(0, -14, 0, 14);
-        g.addColorStop(0, pal.core);
-        g.addColorStop(0.45, pal.shell);
-        g.addColorStop(1, '#0B0D12');
-        ctx.fillStyle = g;
+        // Q版可爱大眼睛
+        const look = Math.sin(t * 1.6) * 1.5;
+        this.drawCuteEye(ctx, -5, -2, 5, pal.eye, look * 0.2, 0);
+        this.drawCuteEye(ctx, 5, -2, 5, pal.eye, look * 0.2, 0);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 6, 4, true);
+        // Q版腮红
+        ctx.fillStyle = 'rgba(255, 150, 150, 0.3)';
         ctx.beginPath();
-        ctx.moveTo(-11, -9);
-        ctx.lineTo(-6, -14);
-        ctx.lineTo(6, -14);
-        ctx.lineTo(11, -9);
-        ctx.lineTo(9, 12);
-        ctx.lineTo(-9, 12);
-        ctx.closePath();
+        ctx.arc(-10, 3, 3, 0, Math.PI * 2);
+        ctx.arc(10, 3, 3, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = pal.glow;
-        ctx.lineWidth = 1.4;
-        ctx.stroke();
-        // 中央单眼核心
+        // 悬浮警示环（Q版：柔和的虚线圆环）
         ctx.save();
-        ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 14 * pulse;
-        const eg = ctx.createRadialGradient(-1, -3, 0, 0, -2, 8);
-        eg.addColorStop(0, '#FFFFFF');
-        eg.addColorStop(0.4, pal.eye);
-        eg.addColorStop(1, pal.glow);
-        ctx.fillStyle = eg;
-        ctx.beginPath();
-        ctx.arc(0, -2, 6.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-        // 瞳孔
-        const look = Math.sin(t * 1.6) * 2;
-        ctx.fillStyle = '#08090D';
-        ctx.beginPath();
-        ctx.ellipse(look, -2, 1.6, 3.4, 0, 0, Math.PI * 2);
-        ctx.fill();
-        // 悬浮警示环
-        ctx.save();
-        ctx.strokeStyle = this.rgbaStr(this.hexRgb(pal.glow), 0.55);
+        ctx.strokeStyle = this.rgbaStr(this.hexRgb(pal.glow), 0.4);
         ctx.lineWidth = 2;
-        ctx.setLineDash([6, 5]);
-        ctx.lineDashOffset = -t * 18;
-        ctx.beginPath();
-        ctx.ellipse(0, 13, 12, 4, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
-    }
-    /** 机械统领：指挥官造型，带有战术指挥感 */
-    drawBossCommander(ctx, pal, accent, pulse) {
-        const t = this.time;
-        // 战术披风（三角形）
-        ctx.save();
-        ctx.fillStyle = pal.shell;
-        ctx.globalAlpha = 0.6;
-        ctx.beginPath();
-        ctx.moveTo(-15, -5);
-        ctx.lineTo(-20, 15);
-        ctx.lineTo(0, 10);
-        ctx.closePath();
-        ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(15, -5);
-        ctx.lineTo(20, 15);
-        ctx.lineTo(0, 10);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-        // 主体装甲
-        ctx.save();
-        ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 14 * pulse;
-        ctx.fillStyle = pal.core;
-        ctx.beginPath();
-        ctx.moveTo(-12, -10);
-        ctx.lineTo(-8, -16);
-        ctx.lineTo(8, -16);
-        ctx.lineTo(12, -10);
-        ctx.lineTo(10, 8);
-        ctx.lineTo(-10, 8);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = pal.glow;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        ctx.restore();
-        // 指挥天线
-        ctx.save();
-        ctx.strokeStyle = pal.glow;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(0, -16);
-        ctx.lineTo(0, -22);
-        ctx.stroke();
-        ctx.fillStyle = pal.eye;
-        ctx.beginPath();
-        ctx.arc(0, -23, 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-        // 双眼（战术目镜）
-        ctx.save();
-        ctx.shadowColor = pal.eye;
-        ctx.shadowBlur = 8 * pulse;
-        ctx.fillStyle = pal.eye;
-        ctx.fillRect(-6, -8, 4, 3);
-        ctx.fillRect(2, -8, 4, 3);
-        ctx.restore();
-        // 悬浮环
-        ctx.save();
-        ctx.strokeStyle = this.rgbaStr(this.hexRgb(pal.glow), 0.5);
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 3]);
+        ctx.setLineDash([4, 4]);
         ctx.lineDashOffset = -t * 15;
         ctx.beginPath();
-        ctx.ellipse(0, 10, 14, 4, 0, 0, Math.PI * 2);
+        ctx.arc(0, 0, 18, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
         ctx.restore();
     }
-    /** 要塞核心：能量球体，防御感 */
+    /** Q版机械统领：圆润可爱的指挥官 Boss */
+    drawBossCommander(ctx, pal, accent, pulse) {
+        const t = this.time;
+        // Q版圆润大身体（占整体 60%）
+        const bodyGrad = ctx.createRadialGradient(-3, -3, 0, 0, 0, 16);
+        bodyGrad.addColorStop(0, pal.core);
+        bodyGrad.addColorStop(0.6, pal.shell);
+        bodyGrad.addColorStop(1, '#0B0D12');
+        ctx.fillStyle = bodyGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 15, 0, Math.PI * 2);
+        ctx.fill();
+        // Q版战术小披风（圆润三角）
+        ctx.save();
+        ctx.fillStyle = pal.shell;
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        ctx.ellipse(-12, 8, 6, 8, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(12, 8, 6, 8, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // Q版指挥小天线（圆润）
+        ctx.save();
+        ctx.strokeStyle = pal.glow;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, -14);
+        ctx.lineTo(0, -18);
+        ctx.stroke();
+        ctx.fillStyle = pal.eye;
+        ctx.beginPath();
+        ctx.arc(0, -19, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // Q版可爱大眼睛
+        const look = Math.sin(t * 1.6) * 1.5;
+        this.drawCuteEye(ctx, -5, -2, 5, pal.eye, look * 0.2, 0);
+        this.drawCuteEye(ctx, 5, -2, 5, pal.eye, look * 0.2, 0);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 6, 4, true);
+        // Q版腮红
+        ctx.fillStyle = 'rgba(255, 150, 150, 0.3)';
+        ctx.beginPath();
+        ctx.arc(-10, 3, 3, 0, Math.PI * 2);
+        ctx.arc(10, 3, 3, 0, Math.PI * 2);
+        ctx.fill();
+        // 悬浮警示环（Q版：柔和的虚线圆环）
+        ctx.save();
+        ctx.strokeStyle = this.rgbaStr(this.hexRgb(pal.glow), 0.4);
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.lineDashOffset = -t * 15;
+        ctx.beginPath();
+        ctx.arc(0, 0, 18, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+    }
+    /** Q版要塞核心：圆润可爱的能量球 Boss */
     drawBossWarden(ctx, pal, accent, pulse) {
         const t = this.time;
-        // 外层能量护盾（半透明）
+        // Q版外层能量护盾（柔和半透明）
         ctx.save();
-        ctx.globalAlpha = 0.3;
+        ctx.globalAlpha = 0.25;
         ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 20 * pulse;
+        ctx.shadowBlur = 18 * pulse;
         ctx.fillStyle = pal.glow;
         ctx.beginPath();
         ctx.arc(0, 0, 18, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-        // 核心球体
-        ctx.save();
-        ctx.shadowColor = pal.core;
-        ctx.shadowBlur = 16 * pulse;
-        const gradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, 12);
+        // Q版圆润核心球体（占整体 55%）
+        const gradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, 13);
         gradient.addColorStop(0, '#FFFFFF');
         gradient.addColorStop(0.3, pal.core);
         gradient.addColorStop(0.7, pal.shell);
         gradient.addColorStop(1, '#000000');
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.arc(0, 0, 12, 0, Math.PI * 2);
+        ctx.arc(0, 0, 13, 0, Math.PI * 2);
         ctx.fill();
-        ctx.restore();
-        // 旋转能量环
+        // Q版旋转能量环（柔和弧线）
         ctx.save();
         ctx.strokeStyle = pal.glow;
         ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.7;
+        ctx.globalAlpha = 0.6;
         for (let i = 0; i < 3; i++) {
             ctx.save();
             ctx.rotate(t * 2 + i * Math.PI * 2 / 3);
             ctx.beginPath();
-            ctx.arc(0, 0, 14, 0, Math.PI * 0.6);
+            ctx.arc(0, 0, 15, 0, Math.PI * 0.5);
             ctx.stroke();
             ctx.restore();
         }
         ctx.restore();
-        // 中心能量眼
-        ctx.save();
-        ctx.shadowColor = pal.eye;
-        ctx.shadowBlur = 10 * pulse;
-        ctx.fillStyle = pal.eye;
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -4, -2, 4, pal.eye, 0, 0.2);
+        this.drawCuteEye(ctx, 4, -2, 4, pal.eye, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 5, 3, true);
+        // Q版腮红
+        ctx.fillStyle = 'rgba(255, 150, 150, 0.3)';
         ctx.beginPath();
-        ctx.arc(0, 0, 4, 0, Math.PI * 2);
+        ctx.arc(-9, 3, 3, 0, Math.PI * 2);
+        ctx.arc(9, 3, 3, 0, Math.PI * 2);
         ctx.fill();
-        ctx.restore();
     }
-    /** 机械神谕：神秘先知造型，带有预言感 */
+    /** Q版机械神谕：圆润可爱的神秘先知 Boss */
     drawBossNightmare(ctx, pal, accent, pulse) {
         const t = this.time;
-        // 神秘光环
+        // Q版神秘光环（柔和圆环）
         ctx.save();
-        ctx.globalAlpha = 0.4;
+        ctx.globalAlpha = 0.35;
         ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 25 * pulse;
+        ctx.shadowBlur = 20 * pulse;
         ctx.strokeStyle = pal.glow;
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(0, 0, 20, 0, Math.PI * 2);
+        ctx.arc(0, 0, 19, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
-        // 主体（倒三角造型）
-        ctx.save();
-        ctx.shadowColor = pal.core;
-        ctx.shadowBlur = 12 * pulse;
-        const gradient = ctx.createLinearGradient(0, -15, 0, 15);
+        // Q版圆润身体（占整体 55%）
+        const gradient = ctx.createRadialGradient(-3, -3, 0, 0, 0, 14);
         gradient.addColorStop(0, pal.core);
         gradient.addColorStop(0.5, pal.shell);
         gradient.addColorStop(1, '#000000');
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.moveTo(0, -18);
-        ctx.lineTo(-14, 5);
-        ctx.lineTo(-8, 12);
-        ctx.lineTo(8, 12);
-        ctx.lineTo(14, 5);
-        ctx.closePath();
+        ctx.arc(0, 0, 14, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = pal.glow;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        ctx.restore();
-        // 第三只眼（预言之眼）
+        // Q版第三只眼（圆润菱形）
         ctx.save();
         ctx.shadowColor = pal.eye;
-        ctx.shadowBlur = 15 * pulse;
+        ctx.shadowBlur = 12 * pulse;
         ctx.fillStyle = pal.eye;
         ctx.beginPath();
-        ctx.moveTo(0, -10);
-        ctx.lineTo(-3, -6);
-        ctx.lineTo(0, -4);
-        ctx.lineTo(3, -6);
-        ctx.closePath();
+        ctx.arc(0, -8, 3, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-        // 双眼
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -5, 0, 4, pal.eye, 0, 0.2);
+        this.drawCuteEye(ctx, 5, 0, 4, pal.eye, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 7, 3, true);
+        // Q版神秘符文环绕（圆润小圆点）
         ctx.save();
-        ctx.shadowColor = pal.eye;
-        ctx.shadowBlur = 8 * pulse;
-        ctx.fillStyle = pal.eye;
-        ctx.beginPath();
-        ctx.arc(-5, 2, 2.5, 0, Math.PI * 2);
-        ctx.arc(5, 2, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-        // 神秘符文环绕
-        ctx.save();
-        ctx.strokeStyle = pal.glow;
-        ctx.lineWidth = 1;
-        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = pal.glow;
+        ctx.globalAlpha = 0.5;
         for (let i = 0; i < 6; i++) {
             const angle = t * 1.5 + i * Math.PI / 3;
             const x = Math.cos(angle) * 16;
             const y = Math.sin(angle) * 16;
             ctx.beginPath();
-            ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+            ctx.arc(x, y, 2, 0, Math.PI * 2);
             ctx.fill();
         }
         ctx.restore();
     }
-    /** 风暴使者：旋翼结构，速度感 */
+    /** Q版风暴使者：圆润可爱的旋翼 Boss */
     drawBossStorm(ctx, pal, accent, pulse) {
         const t = this.time;
-        // 旋翼底座
+        // Q版圆润底座（占整体 50%）
         ctx.save();
         ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 12 * pulse;
+        ctx.shadowBlur = 10 * pulse;
         ctx.fillStyle = pal.shell;
         ctx.beginPath();
-        ctx.arc(0, 0, 11, 0, Math.PI * 2);
+        ctx.arc(0, 0, 12, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-        // 四片旋翼
+        // Q版圆润旋翼（4片，椭圆形状）
         for (let i = 0; i < 4; i++) {
             ctx.save();
             ctx.rotate(t * 8 + i * Math.PI / 2);
             ctx.fillStyle = MECH_MID;
-            ctx.fillRect(-2, -18, 4, 16);
+            ctx.beginPath();
+            ctx.ellipse(0, -14, 3, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
             ctx.strokeStyle = pal.glow;
             ctx.lineWidth = 1;
-            ctx.strokeRect(-2, -18, 4, 16);
+            ctx.stroke();
             ctx.restore();
         }
-        // 中央核心
+        // Q版中央核心（圆润）
+        ctx.save();
+        ctx.shadowColor = pal.glow;
+        ctx.shadowBlur = 8 * pulse;
+        ctx.fillStyle = pal.core;
+        ctx.beginPath();
+        ctx.arc(0, 0, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -3, -1, 3, pal.eye, 0, 0.2);
+        this.drawCuteEye(ctx, 3, -1, 3, pal.eye, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 4, 2.5, true);
+    }
+    /** Q版幻影猎手：圆润可爱的隐形 Boss */
+    drawBossPhantom(ctx, pal, accent, pulse) {
+        const t = this.time;
+        const flicker = 0.7 + Math.sin(t * 6) * 0.3;
+        // Q版圆润身体（占整体 55%，柔和闪烁）
+        ctx.save();
+        ctx.globalAlpha = flicker;
+        ctx.shadowColor = pal.glow;
+        ctx.shadowBlur = 12 * pulse;
+        ctx.fillStyle = pal.shell;
+        ctx.beginPath();
+        ctx.arc(0, 0, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // Q版内部能量核心（圆润）
         ctx.save();
         ctx.shadowColor = pal.glow;
         ctx.shadowBlur = 10 * pulse;
@@ -2819,102 +2774,70 @@ export class SpriteLoader {
         ctx.arc(0, 0, 6, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-        // 能量眼
-        ctx.fillStyle = pal.eye;
-        ctx.beginPath();
-        ctx.arc(0, 0, 3, 0, Math.PI * 2);
-        ctx.fill();
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -4, -2, 3.5, pal.eye, 0, 0.2);
+        this.drawCuteEye(ctx, 4, -2, 3.5, pal.eye, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 5, 2.5, true);
     }
-    /** 幻影猎手：棱形机身，隐形感 */
-    drawBossPhantom(ctx, pal, accent, pulse) {
-        const t = this.time;
-        const flicker = 0.7 + Math.sin(t * 6) * 0.3;
-        // 棱形机身
-        ctx.save();
-        ctx.globalAlpha = flicker;
-        ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 14 * pulse;
-        ctx.fillStyle = pal.shell;
-        ctx.beginPath();
-        ctx.moveTo(0, -16);
-        ctx.lineTo(12, 0);
-        ctx.lineTo(0, 16);
-        ctx.lineTo(-12, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = pal.glow;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        ctx.restore();
-        // 内部能量核心
-        ctx.save();
-        ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 12 * pulse;
-        ctx.fillStyle = pal.core;
-        ctx.beginPath();
-        ctx.arc(0, 0, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-        // 隐形眼
-        ctx.fillStyle = pal.eye;
-        ctx.beginPath();
-        ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    /** 泰坦巨像：超大型，厚重装甲 */
+    /** Q版泰坦巨像：圆润可爱的超大型 Boss */
     drawBossTitan(ctx, pal, accent, pulse) {
         const t = this.time;
-        // 重型底座
-        ctx.save();
-        ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 18 * pulse;
-        ctx.fillStyle = pal.shell;
-        ctx.beginPath();
-        ctx.arc(0, 2, 16, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-        // 厚重装甲板
-        ctx.fillStyle = MECH_DARK;
-        ctx.fillRect(-14, -8, 28, 20);
-        ctx.strokeStyle = MECH_EDGE;
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(-14, -8, 28, 20);
-        // 双肩巨炮
-        for (const sx of [-1, 1]) {
-            ctx.fillStyle = MECH_MID;
-            ctx.fillRect(sx * 16 - 5, -12, 10, 10);
-            ctx.strokeStyle = pal.glow;
-            ctx.lineWidth = 1;
-            ctx.strokeRect(sx * 16 - 5, -12, 10, 10);
-        }
-        // 中央核心
+        // Q版重型圆润底座（占整体 60%）
         ctx.save();
         ctx.shadowColor = pal.glow;
         ctx.shadowBlur = 16 * pulse;
+        ctx.fillStyle = pal.shell;
+        ctx.beginPath();
+        ctx.arc(0, 2, 17, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // Q版厚重装甲板（圆润矩形）
+        ctx.fillStyle = MECH_DARK;
+        ctx.beginPath();
+        ctx.roundRect(-14, -8, 28, 20, 6);
+        ctx.fill();
+        ctx.strokeStyle = MECH_EDGE;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // Q版双肩巨炮（圆润）
+        for (const sx of [-1, 1]) {
+            ctx.fillStyle = MECH_MID;
+            ctx.beginPath();
+            ctx.roundRect(sx * 16 - 5, -12, 10, 10, 3);
+            ctx.fill();
+            ctx.strokeStyle = pal.glow;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+        // Q版中央核心（圆润）
+        ctx.save();
+        ctx.shadowColor = pal.glow;
+        ctx.shadowBlur = 14 * pulse;
         ctx.fillStyle = pal.core;
         ctx.beginPath();
         ctx.arc(0, 2, 8, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-        // 能量眼
-        ctx.fillStyle = pal.eye;
-        ctx.beginPath();
-        ctx.arc(0, 2, 4, 0, Math.PI * 2);
-        ctx.fill();
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -5, 0, 4, pal.eye, 0, 0.2);
+        this.drawCuteEye(ctx, 5, 0, 4, pal.eye, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 8, 3, true);
     }
-    /** 剧毒领主：毒液罐，生化感 */
+    /** Q版剧毒领主：圆润可爱的毒液 Boss */
     drawBossVenom(ctx, pal, accent, pulse) {
         const t = this.time;
-        // 生化容器底座
+        // Q版生化容器底座（圆润）
         ctx.save();
         ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 14 * pulse;
+        ctx.shadowBlur = 12 * pulse;
         ctx.fillStyle = pal.shell;
         ctx.beginPath();
-        ctx.arc(0, 0, 13, 0, Math.PI * 2);
+        ctx.arc(0, 0, 14, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-        // 毒液罐
+        // Q版毒液罐（圆润椭圆）
         ctx.fillStyle = MECH_DARK;
         ctx.beginPath();
         ctx.ellipse(-8, -4, 5, 8, 0, 0, Math.PI * 2);
@@ -2922,7 +2845,7 @@ export class SpriteLoader {
         ctx.beginPath();
         ctx.ellipse(8, -4, 5, 8, 0, 0, Math.PI * 2);
         ctx.fill();
-        // 毒液流动效果
+        // Q版毒液流动效果（圆润）
         const flow = (t * 2) % 1;
         ctx.save();
         ctx.globalAlpha = 0.6;
@@ -2934,165 +2857,160 @@ export class SpriteLoader {
         ctx.ellipse(8, -4 + flow * 6, 3, 2, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-        // 中央核心
+        // Q版中央核心（圆润）
         ctx.save();
         ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 12 * pulse;
-        ctx.fillStyle = pal.core;
-        ctx.beginPath();
-        ctx.arc(0, 0, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-        // 能量眼
-        ctx.fillStyle = pal.eye;
-        ctx.beginPath();
-        ctx.arc(0, 0, 3, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    /** 炼狱魔王：火焰喷射，狂暴感 */
-    drawBossInferno(ctx, pal, accent, pulse) {
-        const t = this.time;
-        // 火焰底座
-        ctx.save();
-        ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 20 * pulse;
-        ctx.fillStyle = pal.shell;
-        ctx.beginPath();
-        ctx.arc(0, 0, 14, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-        // 火焰喷射效果
-        for (let i = 0; i < 6; i++) {
-            const angle = (t * 3 + i * Math.PI / 3) % (Math.PI * 2);
-            const flameLen = 8 + Math.sin(t * 8 + i) * 3;
-            ctx.save();
-            ctx.rotate(angle);
-            ctx.fillStyle = pal.core;
-            ctx.globalAlpha = 0.7;
-            ctx.beginPath();
-            ctx.moveTo(0, -14);
-            ctx.lineTo(-2, -14 - flameLen);
-            ctx.lineTo(2, -14 - flameLen);
-            ctx.closePath();
-            ctx.fill();
-            ctx.restore();
-        }
-        // 狂暴核心
-        ctx.save();
-        ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 18 * pulse;
+        ctx.shadowBlur = 10 * pulse;
         ctx.fillStyle = pal.core;
         ctx.beginPath();
         ctx.arc(0, 0, 7, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-        // 能量眼
-        ctx.fillStyle = pal.eye;
-        ctx.beginPath();
-        ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
-        ctx.fill();
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -4, -2, 3.5, pal.eye, 0, 0.2);
+        this.drawCuteEye(ctx, 4, -2, 3.5, pal.eye, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 5, 3, true);
     }
-    /** 寒冰女皇：冰晶结构，优雅感 */
-    drawBossFrost(ctx, pal, accent, pulse) {
+    /** Q版炼狱魔王：圆润可爱的火焰 Boss */
+    drawBossInferno(ctx, pal, accent, pulse) {
         const t = this.time;
-        // 冰晶底座
+        // Q版火焰底座（圆润）
+        ctx.save();
+        ctx.shadowColor = pal.glow;
+        ctx.shadowBlur = 18 * pulse;
+        ctx.fillStyle = pal.shell;
+        ctx.beginPath();
+        ctx.arc(0, 0, 15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // Q版火焰喷射效果（圆润椭圆）
+        for (let i = 0; i < 6; i++) {
+            const angle = (t * 3 + i * Math.PI / 3) % (Math.PI * 2);
+            const flameLen = 6 + Math.sin(t * 8 + i) * 2;
+            ctx.save();
+            ctx.rotate(angle);
+            ctx.fillStyle = pal.core;
+            ctx.globalAlpha = 0.7;
+            ctx.beginPath();
+            ctx.ellipse(0, -16, 2.5, flameLen, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+        // Q版狂暴核心（圆润）
         ctx.save();
         ctx.shadowColor = pal.glow;
         ctx.shadowBlur = 16 * pulse;
-        ctx.fillStyle = pal.shell;
+        ctx.fillStyle = pal.core;
         ctx.beginPath();
-        ctx.arc(0, 0, 12, 0, Math.PI * 2);
+        ctx.arc(0, 0, 8, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-        // 六片冰晶
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -4, -2, 4, pal.eye, 0, 0.2);
+        this.drawCuteEye(ctx, 4, -2, 4, pal.eye, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 5, 3, true);
+    }
+    /** Q版寒冰女皇：圆润可爱的冰晶 Boss */
+    drawBossFrost(ctx, pal, accent, pulse) {
+        const t = this.time;
+        // Q版冰晶底座（圆润）
+        ctx.save();
+        ctx.shadowColor = pal.glow;
+        ctx.shadowBlur = 14 * pulse;
+        ctx.fillStyle = pal.shell;
+        ctx.beginPath();
+        ctx.arc(0, 0, 13, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // Q版六片冰晶（圆润椭圆）
         for (let i = 0; i < 6; i++) {
             ctx.save();
             ctx.rotate(i * Math.PI / 3);
             ctx.fillStyle = pal.core;
             ctx.globalAlpha = 0.8;
             ctx.beginPath();
-            ctx.moveTo(0, -12);
-            ctx.lineTo(-3, -18);
-            ctx.lineTo(0, -20);
-            ctx.lineTo(3, -18);
-            ctx.closePath();
+            ctx.ellipse(0, -16, 3, 5, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
         }
-        // 冰晶核心
+        // Q版冰晶核心（圆润）
         ctx.save();
         ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 14 * pulse;
+        ctx.shadowBlur = 12 * pulse;
         ctx.fillStyle = pal.core;
         ctx.beginPath();
-        ctx.arc(0, 0, 6, 0, Math.PI * 2);
+        ctx.arc(0, 0, 7, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-        // 能量眼
-        ctx.fillStyle = pal.eye;
-        ctx.beginPath();
-        ctx.arc(0, 0, 3, 0, Math.PI * 2);
-        ctx.fill();
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -4, -2, 3.5, pal.eye, 0, 0.2);
+        this.drawCuteEye(ctx, 4, -2, 3.5, pal.eye, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 5, 3, true);
     }
-    /** 终极欧米伽：最终形态，全装甲 */
+    /** Q版终极欧米伽：圆润可爱的最终 Boss */
     drawBossOmega(ctx, pal, accent, pulse) {
         const t = this.time;
-        // 超大型底座
+        // Q版超大型圆润底座（占整体 65%）
         ctx.save();
         ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 22 * pulse;
+        ctx.shadowBlur = 20 * pulse;
         ctx.fillStyle = pal.shell;
         ctx.beginPath();
-        ctx.arc(0, 0, 18, 0, Math.PI * 2);
+        ctx.arc(0, 0, 19, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-        // 全装甲外壳
+        // Q版全装甲外壳（圆润六边形）
         ctx.fillStyle = MECH_DARK;
         ctx.beginPath();
-        ctx.moveTo(-16, -12);
-        ctx.lineTo(-18, 0);
-        ctx.lineTo(-16, 12);
-        ctx.lineTo(16, 12);
-        ctx.lineTo(18, 0);
-        ctx.lineTo(16, -12);
-        ctx.closePath();
+        ctx.roundRect(-16, -12, 32, 24, 8);
         ctx.fill();
         ctx.strokeStyle = pal.glow;
         ctx.lineWidth = 2;
         ctx.stroke();
-        // 四门副炮
+        // Q版四门副炮（圆润小方块）
         for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
             ctx.fillStyle = MECH_MID;
-            ctx.fillRect(sx * 14 - 3, sy * 10 - 3, 6, 6);
+            ctx.beginPath();
+            ctx.roundRect(sx * 14 - 3, sy * 10 - 3, 6, 6, 2);
+            ctx.fill();
             ctx.strokeStyle = pal.glow;
             ctx.lineWidth = 1;
-            ctx.strokeRect(sx * 14 - 3, sy * 10 - 3, 6, 6);
+            ctx.stroke();
         }
-        // 终极核心
+        // Q版终极核心（圆润）
         ctx.save();
         ctx.shadowColor = pal.glow;
-        ctx.shadowBlur = 20 * pulse;
-        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 10);
+        ctx.shadowBlur = 18 * pulse;
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 11);
         g.addColorStop(0, '#FFFFFF');
         g.addColorStop(0.3, pal.core);
         g.addColorStop(1, pal.glow);
         ctx.fillStyle = g;
         ctx.beginPath();
-        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+        ctx.arc(0, 0, 11, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-        // 终极能量眼
-        ctx.fillStyle = pal.eye;
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -5, -2, 4.5, pal.eye, 0, 0.2);
+        this.drawCuteEye(ctx, 5, -2, 4.5, pal.eye, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 6, 4, true);
+        // Q版腮红
+        ctx.fillStyle = 'rgba(255, 150, 150, 0.3)';
         ctx.beginPath();
-        ctx.arc(0, 0, 5, 0, Math.PI * 2);
+        ctx.arc(-11, 3, 3.5, 0, Math.PI * 2);
+        ctx.arc(11, 3, 3.5, 0, Math.PI * 2);
         ctx.fill();
-        // 旋转能量环
+        // Q版旋转能量环（柔和弧线）
         ctx.save();
         ctx.strokeStyle = pal.glow;
         ctx.lineWidth = 1.5;
         ctx.rotate(t * 2);
         ctx.beginPath();
-        ctx.arc(0, 0, 14, 0, Math.PI);
+        ctx.arc(0, 0, 15, 0, Math.PI);
         ctx.stroke();
         ctx.restore();
     }

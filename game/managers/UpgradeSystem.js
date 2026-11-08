@@ -12,6 +12,18 @@ export class UpgradeSystem {
     getAcquiredUpgrades() {
         return this.acquiredUpgrades;
     }
+    /**
+     * 全局升级状态读写。UpgradeSystem 本身不另存一份 —— 它一直通过
+     * TowerMergeSystem 的 state 生效（见 executeUpgradeEffect）。这里补两个委托，
+     * 让「恢复指挥官存档」时能显式把两边同步到同一份 state：
+     * forcePlace() 会用 TowerMergeSystem 持有的 state 重算新塔乘区，必须同步。
+     */
+    getGlobalUpgradeState() {
+        return this.towerMergeSystem.getGlobalUpgradeState();
+    }
+    setGlobalUpgradeState(state) {
+        this.towerMergeSystem.setGlobalUpgradeState(state);
+    }
     // 生成3个随机强化选项
     generateOptions(unlockedTypes) {
         const available = this.getAvailableTypes(unlockedTypes);

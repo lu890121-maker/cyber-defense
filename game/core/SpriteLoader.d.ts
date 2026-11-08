@@ -326,27 +326,27 @@ export declare class SpriteLoader {
      * - 终极欧米伽（金）：最终形态，全装甲
      */
     private drawBossEnemy;
-    /** 基础 Boss 外观：机械统领/要塞核心/机械神谕 */
+    /** Q版基础 Boss 外观：圆润可爱的大头 Boss */
     private drawBossBase;
-    /** 机械统领：指挥官造型，带有战术指挥感 */
+    /** Q版机械统领：圆润可爱的指挥官 Boss */
     private drawBossCommander;
-    /** 要塞核心：能量球体，防御感 */
+    /** Q版要塞核心：圆润可爱的能量球 Boss */
     private drawBossWarden;
-    /** 机械神谕：神秘先知造型，带有预言感 */
+    /** Q版机械神谕：圆润可爱的神秘先知 Boss */
     private drawBossNightmare;
-    /** 风暴使者：旋翼结构，速度感 */
+    /** Q版风暴使者：圆润可爱的旋翼 Boss */
     private drawBossStorm;
-    /** 幻影猎手：棱形机身，隐形感 */
+    /** Q版幻影猎手：圆润可爱的隐形 Boss */
     private drawBossPhantom;
-    /** 泰坦巨像：超大型，厚重装甲 */
+    /** Q版泰坦巨像：圆润可爱的超大型 Boss */
     private drawBossTitan;
-    /** 剧毒领主：毒液罐，生化感 */
+    /** Q版剧毒领主：圆润可爱的毒液 Boss */
     private drawBossVenom;
-    /** 炼狱魔王：火焰喷射，狂暴感 */
+    /** Q版炼狱魔王：圆润可爱的火焰 Boss */
     private drawBossInferno;
-    /** 寒冰女皇：冰晶结构，优雅感 */
+    /** Q版寒冰女皇：圆润可爱的冰晶 Boss */
     private drawBossFrost;
-    /** 终极欧米伽：最终形态，全装甲 */
+    /** Q版终极欧米伽：圆润可爱的最终 Boss */
     private drawBossOmega;
     getTowerSprite(type: TowerType): HTMLImageElement | null;
     getEnemySprite(type: EnemyType): HTMLImageElement | null;

@@ -17,11 +17,31 @@ import { SoundManager } from './SoundManager.js';
 import { TechnicalArtRenderer } from './TechnicalArtRenderer.js';
 import { CYBER, cutRectPath, neonText } from '../config/CyberTheme.js';
 import { renderTutorial, getTutorialLayout, TUTORIAL_PAGES } from './TutorialScreen.js';
-/** 主菜单两个按钮的位置：渲染与点击判定共用，避免画的和点的错位 */
+import { readCommanderSave, writeCommanderSave, createDefaultCommanderSave, cloneGlobalState, snapshotTower, rebuildTower } from './CommanderSave.js';
+/**
+ * 主菜单三个按钮的位置：渲染与点击判定共用，避免画的和点的错位。
+ *
+ * start / tutorial 刻意保留历史坐标 —— verify_tutorial.mjs 用画布坐标
+ * (140,431) 点「开始」、(310,431) 点「游戏教程」，坐标一改就会点空。
+ * 新增的「关卡地图」放第三行，避开这两个既有热区。
+ */
 const MENU_BUTTONS = {
     start: { x: 60, y: 400, w: 160, h: 62 },
+    levelSelect: { x: 145, y: 470, w: 160, h: 48 },
     tutorial: { x: 230, y: 400, w: 160, h: 62 },
 };
+/** 关卡地图：3×3 共 9 张卡片，渲染与点击判定共用 */
+const LEVEL_CARD = { w: 120, h: 96, startX: 25, startY: 190, stepX: 135, stepY: 110 };
+/** 关卡地图底部的「返回」按钮 */
+const LEVEL_BACK_BTN = { x: 150, y: 700, w: 150, h: 48 };
+function levelCardRect(i) {
+    return {
+        x: LEVEL_CARD.startX + (i % 3) * LEVEL_CARD.stepX,
+        y: LEVEL_CARD.startY + Math.floor(i / 3) * LEVEL_CARD.stepY,
+        w: LEVEL_CARD.w,
+        h: LEVEL_CARD.h
+    };
+}
 /** 召唤面板底部的「玩法教程」入口 —— 战斗中想看教程，不必等这局结束 */
 const SUMMON_TUTORIAL_BTN = { x: 105, y: 650, w: 240, h: 40 };
 /** 结算面板（失败/胜利）的「玩法教程」入口 */
@@ -683,17 +703,45 @@ export class GameManager {
             return;
         }
         if (this.gameState === 'menu') {
-            // 教程按钮优先：主菜单里任何点击都等于"开始游戏"，必须先拦住它
+            // 收紧为「只命中 3 个按钮才响应」：其它点击一律忽略。
+            // 旧逻辑「除教程按钮外任意点击 = 开局」会让误触直接跳过关卡地图 / 教程。
             if (this.isInButton(x, y, MENU_BUTTONS.tutorial)) {
                 this.soundManager.playButtonClick();
                 this.openTutorial('menu');
                 return;
             }
-            // 解锁音频上下文（浏览器要求用户交互后才能播放音频）
-            this.soundManager.unlock();
-            this.soundManager.playMenuStart();
-            this.openingElapsed = 0;
-            this.gameState = 'opening';
+            if (this.isInButton(x, y, MENU_BUTTONS.levelSelect)) {
+                this.soundManager.playButtonClick();
+                this.gameState = 'level_select';
+                return;
+            }
+            if (this.isInButton(x, y, MENU_BUTTONS.start)) {
+                // 解锁音频上下文（浏览器要求用户交互后才能播放音频）
+                this.soundManager.unlock();
+                this.startFromSave();
+                return;
+            }
+            return;
+        }
+        if (this.gameState === 'level_select') {
+            if (this.isInButton(x, y, LEVEL_BACK_BTN)) {
+                this.soundManager.playButtonClick();
+                this.gameState = 'menu';
+                return;
+            }
+            const unlocked = this.readUnlockedLevel();
+            for (let i = 0; i < getLevelCount(); i++) {
+                if (!this.isInButton(x, y, levelCardRect(i)))
+                    continue;
+                if (i > unlocked) {
+                    // 未解锁卡片：忽略，给一声拒绝音明确反馈（而不是"点了没反应"）
+                    this.soundManager.playButtonClick();
+                    return;
+                }
+                this.soundManager.playButtonClick();
+                this.startLevelFromCommander(i);
+                return;
+            }
             return;
         }
         if (this.gameState === 'opening') {
@@ -1279,23 +1327,137 @@ export class GameManager {
         return { x: W / 2 - 112, y: 548, w: 224, h: 46 };
     }
     startGame() {
-        this.pendingCarryTowers = [];
-        this.startLevel(0);
+        // 从 opening 序幕点进来：有档按存档索引继续，无档从第 1 关开工。
+        // 不再硬编码 startLevel(0)，也不再清空 pendingCarryTowers（读档路径不该
+        // 覆盖同会话顺畅通关用的活对象路径）。
+        if (readCommanderSave()) {
+            this.startFromSave();
+        }
+        else {
+            this.startLevelFromCommander(0);
+        }
+    }
+    /** 关卡地图解锁判定：存档是唯一真相，不另存容易失同步的内存镜像 */
+    readUnlockedLevel() {
+        const save = readCommanderSave();
+        return save ? save.maxUnlockedLevel : 0;
+    }
+    /** 菜单「继续闯关」：有档从存档记录的关卡开工，无档走首次体验（开场序幕） */
+    startFromSave() {
+        const save = readCommanderSave();
+        if (!save) {
+            // 首次体验：保留原有的开场序幕流程，opening 里任意点击 → startGame()
+            this.soundManager.playMenuStart();
+            this.openingElapsed = 0;
+            this.gameState = 'opening';
+            return;
+        }
+        const idx = Math.max(0, Math.min(save.currentLevelIndex, save.maxUnlockedLevel));
+        this.startLevelFromCommander(idx);
+    }
+    /**
+     * 把「此刻内存里的指挥官资产」收集成一份存档（不写盘）。
+     * 塔的口径与 handleLevelCleared() 一致：场上 Map 的所有塔 + 合成区非空格。
+     */
+    captureCommanderState(currentLevelIndex, maxUnlockedLevel) {
+        const towers = [
+            ...this.towerMergeSystem.getAllTowers(),
+            ...this.mergeAreaSlots.flatMap(slot => slot.tower ? [slot.tower] : [])
+        ];
+        return {
+            version: 2,
+            maxUnlockedLevel,
+            currentLevelIndex,
+            gold: this.resourceManager.getGold(),
+            lives: this.resourceManager.getLives(),
+            towers: towers.map(snapshotTower),
+            globalUpgradeState: cloneGlobalState(this.towerMergeSystem.getGlobalUpgradeState()),
+            timestamp: Date.now()
+        };
+    }
+    /**
+     * 从指挥官存档重建并进入指定关卡 —— 「失败回滚 / 刷新回滚」的落地点。
+     *
+     * 存档语义：磁盘上永远是「当前关卡开始时的指挥官状态」+ 已解锁进度。
+     * 关卡内赚的钱、买的塔、掉的血只在内存、不写盘，所以：
+     *   · 失败不写盘 → 重开走这里，从存档重建 = 自然回到闯关前状态；
+     *   · 玩家中途刷新页面也回到闯关前状态（刻意设计，防刷钱）。
+     */
+    startLevelFromCommander(index) {
+        const save = readCommanderSave() ?? createDefaultCommanderSave();
+        const maxLevel = getLevelCount() - 1;
+        // 不允许通过关卡地图 / 坏档进入未解锁关卡
+        const idx = Math.max(0, Math.min(index, Math.min(save.maxUnlockedLevel, maxLevel)));
+        // ① 先绑定目标关卡地图。setActiveLevel() 会重绑 TOWER_SLOTS 这个
+        //    ESM live binding（并清空占位），必须在 forcePlace 之前做，否则塔
+        //    会落到上一张地图的槽位数组上：各关塔位数不同就会丢塔。
+        setActiveLevel(idx);
+        // ② 清空现有塔与合成区（reset 同时把 TOWER_SLOTS 的 occupied 复位）
+        this.towerMergeSystem.reset();
+        for (const slot of this.mergeAreaSlots)
+            slot.tower = null;
+        this.pendingCarryTowers = null;
+        // ③ 恢复资源
+        this.resourceManager.setGold(save.gold);
+        this.resourceManager.setLives(save.lives);
+        // ④ 恢复全局升级状态：UpgradeSystem 与 TowerMergeSystem 两边同步 ——
+        //    forcePlace() 用的是后者持有的那份 state 来重算新塔乘区。
+        const gs = save.globalUpgradeState;
+        this.towerMergeSystem.setGlobalUpgradeState(gs);
+        this.upgradeSystem.setGlobalUpgradeState(gs);
+        // ⑤ 逐座重建塔
+        for (const d of save.towers) {
+            const t = rebuildTower(d, gs);
+            if (!t)
+                continue; // 坏档里的非法项：跳过而不是让整个进关流程崩掉
+            if (d.slotIndex >= 0) {
+                const placed = this.towerMergeSystem.forcePlace(t, d.slotIndex);
+                if (!placed) {
+                    // 跨关地图塔位数不同导致槽位越界：退到合成区空位，别把塔弄丢
+                    const free = this.mergeAreaSlots.find(s => !s.tower);
+                    if (free)
+                        free.tower = t;
+                }
+            }
+            else {
+                const mergeIndex = -d.slotIndex - 1;
+                const slot = this.mergeAreaSlots[mergeIndex];
+                if (slot)
+                    slot.tower = t;
+            }
+        }
+        // ⑥ 新塔需要表现出口（setVfxSink 幂等）
+        this.injectVfxSink();
+        // ⑦ 写 checkpoint：此时资产 = 闯关前状态，currentLevelIndex = idx
+        writeCommanderSave(this.captureCommanderState(idx, Math.max(save.maxUnlockedLevel, idx)));
+        // ⑧ 进关。startLevel() 内部会再调一次 setActiveLevel（重复但语义等价），
+        //    并把 TOWER_SLOTS 换成新数组、occupied 全复位 —— 按已重建的塔补回来，
+        //    保证「塔位占用」账本与 towerMergeSystem 的 Map 一致。
+        this.startLevel(idx, { restoreFromSave: true });
+        for (const slotIndex of this.towerMergeSystem.getTowers().keys()) {
+            const slot = TOWER_SLOTS[slotIndex];
+            if (slot)
+                slot.occupied = true;
+        }
     }
     /**
      * 进入指定关卡。这是关卡系统的中枢：
      *   1. setActiveLevel() 重绑定 PATH_POINTS / TOWER_SLOTS / WAVE_CONFIGS
      *   2. 应用关卡环境词缀（目前只有攻速惩罚是全局的，死亡分裂在击杀处处理）
-     *   3. 把上一关的防御塔搬迁到新地图的塔位上，由玩家选择最多六座带走
+     *   3. 把上一关的防御塔搬迁到新地图的塔位上（从存档恢复时跳过，塔已就位）
      *   4. 重置波次管理器，开始第一波
      */
-    startLevel(index) {
+    startLevel(index, opts) {
         const lv = setActiveLevel(index);
         this.currentLevelIndex = index;
         // 关卡环境词缀：电磁干扰会拉长全场防御塔的攻击间隔
         Tower.envIntervalMult = lv.modifier?.towerIntervalMult ?? 1.0;
-        // 按玩家上关选择搬迁炮塔
-        this.relocateTowersForLevel(this.pendingCarryTowers ?? []);
+        // 从指挥官存档恢复时，塔已由 startLevelFromCommander() 按 slotIndex
+        // 重建并落位，绝不能再走 relocate（否则刚恢复的塔会被清空 / 重排）。
+        // 同一次会话内顺畅通关仍走原来的活对象搬迁路径。
+        if (!opts?.restoreFromSave) {
+            this.relocateTowersForLevel(this.pendingCarryTowers ?? []);
+        }
         this.pendingCarryTowers = null;
         // 波次管理器复位，重新开始本关第 1 波
         this.waveManager.reset();
@@ -1391,18 +1553,28 @@ export class GameManager {
         this.soundManager.setTension(0);
         this.soundManager.playVictory();
         // 直接进入下一关
-        if (this.currentLevelIndex + 1 >= getLevelCount()) {
+        const clearedIndex = this.currentLevelIndex;
+        if (clearedIndex + 1 >= getLevelCount()) {
+            // 末关：不清档，写一次最终档（全解锁 + 通关后资产），保证全解锁持久
             this.gameState = 'victory';
             this.waveManager.enterVictory();
-            // 通关后清除存档
-            this.clearSaveData();
+            this.writeFinalVictorySave();
         }
         else {
-            // 进入下一关前保存进度
-            this.currentLevelIndex++;
-            this.saveGame();
-            this.startLevel(this.currentLevelIndex);
+            // 把「过关后的资产」写盘，作为下一关的 checkpoint。
+            // maxUnlockedLevel = min(末关, max(旧值, 被通关关卡索引 + 1))
+            const next = clearedIndex + 1;
+            const unlocked = Math.min(getLevelCount() - 1, Math.max(this.readUnlockedLevel(), clearedIndex + 1));
+            this.currentLevelIndex = next;
+            writeCommanderSave(this.captureCommanderState(next, unlocked));
+            // 同一次会话内顺畅通关仍走活对象搬迁路径（pendingCarryTowers 已在上面收集），
+            // 与「读档 / 失败重开」的序列化重建路径互不覆盖。
+            this.startLevel(next);
         }
+    }
+    /** 通关末关：写一次最终档 —— 全解锁 + 通关后资产，绝不清档 */
+    writeFinalVictorySave() {
+        writeCommanderSave(this.captureCommanderState(this.currentLevelIndex, getLevelCount() - 1));
     }
     advanceToNextLevel() {
         if (this.currentLevelIndex + 1 >= getLevelCount()) {
@@ -1443,7 +1615,9 @@ export class GameManager {
         this.pendingCarryTowers = [];
         this.carryPage = 0;
         this.levelKillCount = 0;
-        this.gameState = 'menu';
+        // 胜利后「再来一局」不再清空存档：回到关卡地图，保留全解锁进度，
+        // 玩家可以从 9 关里任选已解锁的关卡重打。
+        this.gameState = 'level_select';
         this.gameTime = 0;
         this.gameSpeed = 1;
         this.paused = false;
@@ -1470,23 +1644,16 @@ export class GameManager {
         this.waveTimeLimit = WAVE_FORCE_ADVANCE_SECONDS;
         this.soundManager.setBgm('menu');
         this.soundManager.setTension(0.15);
-        // 清除存档
-        this.clearSaveData();
+        // 不清档：保留全解锁进度与指挥官资产，玩家从关卡地图重打任意关
     }
-    /** 重新开始当前关卡（保留存档进度） */
+    /** 重新开始当前关卡：从存档重建 = 回滚到闯关前状态 */
     restartCurrentLevel() {
-        // 重置资源
-        this.resourceManager.reset();
-        // 重置波次管理器
+        // 失败时磁盘上仍是「本关开始时的指挥官状态」（关卡内收益/损失从不写盘），
+        // 所以这里绝不再做 resourceManager.reset() / 清塔 / upgradeSystem.reset()：
+        // 直接读档重建即可回到闯关前的金钱、生命、塔与全局强化。
+        // 下面只清掉纯表现层 / UI 的一次性状态，避免上一局的特效、拖拽残影带进新一局。
         this.waveManager.reset();
-        // 重置塔合并系统
-        this.towerMergeSystem.reset();
-        // 重置升级系统
-        this.upgradeSystem.reset();
-        // 清空合成区
-        for (const slot of this.mergeAreaSlots)
-            slot.tower = null;
-        // 清空携带塔
+        // 清空携带塔选择状态
         this.pendingCarryTowers = [];
         this.carryCandidates = [];
         this.carrySelection.clear();
@@ -1515,8 +1682,8 @@ export class GameManager {
         // 波次计时归零
         this.waveElapsed = 0;
         this.waveTimedOut = false;
-        // 重新开始当前关卡
-        this.startLevel(this.currentLevelIndex);
+        // 关键：从存档重建，而不是就地 startLevel() 重开（那样只会带着失败后的残局）
+        this.startLevelFromCommander(this.currentLevelIndex);
         // 播放音效
         this.soundManager.playButtonClick();
     }
@@ -1530,9 +1697,14 @@ export class GameManager {
         // 小白玩家的诉求是"迅速了解玩法"，等他自己发现按钮太慢；
         // 看完一次就写本地标记，以后只保留菜单里的「游戏教程」入口。
         this.maybeFirstRunTutorial();
-        // 尝试加载存档
-        if (this.loadGame()) {
-            console.log('Loaded save data, starting from level', this.currentLevelIndex);
+        // 尝试加载指挥官存档：只读档写内存，不改 gameState、不 setActiveLevel。
+        // 启动仍停在菜单（或首次自动教程），进哪一关由玩家从菜单 / 关卡地图选择。
+        const save = readCommanderSave();
+        if (save) {
+            this.currentLevelIndex = save.currentLevelIndex;
+            this.resourceManager.setGold(save.gold);
+            this.resourceManager.setLives(save.lives);
+            console.log('Loaded commander save: level', this.currentLevelIndex, 'unlocked up to', save.maxUnlockedLevel);
         }
     }
     /** 首次运行自动弹教程（localStorage 标记，只弹一次） */
@@ -1555,57 +1727,18 @@ export class GameManager {
         catch (e) { /* 忽略：写不了只是下次还会再弹 */ }
     }
     // ── 存档系统 ──
-    saveGame() {
-        const saveData = {
-            currentLevelIndex: this.currentLevelIndex,
-            gold: this.resourceManager.getGold(),
-            lives: this.resourceManager.getLives(),
-            timestamp: Date.now()
-        };
-        try {
-            localStorage.setItem('cyber-defense.save', JSON.stringify(saveData));
-        }
-        catch (e) {
-            console.warn('Failed to save game:', e);
-        }
-    }
-    loadGame() {
-        try {
-            const saveStr = localStorage.getItem('cyber-defense.save');
-            if (!saveStr)
-                return false;
-            const saveData = JSON.parse(saveStr);
-            // 验证存档数据有效性
-            if (typeof saveData.currentLevelIndex !== 'number' ||
-                saveData.currentLevelIndex < 0 ||
-                saveData.currentLevelIndex >= getLevelCount()) {
-                return false;
-            }
-            // 恢复关卡进度
-            this.currentLevelIndex = saveData.currentLevelIndex;
-            this.resourceManager.setGold(saveData.gold || 200);
-            this.resourceManager.setLives(saveData.lives || 20);
-            return true;
-        }
-        catch (e) {
-            console.warn('Failed to load game:', e);
-            return false;
-        }
-    }
-    clearSaveData() {
-        try {
-            localStorage.removeItem('cyber-defense.save');
-        }
-        catch (e) {
-            console.warn('Failed to clear save data:', e);
-        }
-    }
+    // 序列化 / 反序列化 / 校验全部收敛在 core/CommanderSave.ts（唯一的
+    // JSON.stringify 落点）。这里不再保留第二份存档逻辑：
+    //   · 读档   → readCommanderSave()（start() 只读内存、不改 gameState）
+    //   · 写档   → writeCommanderSave(this.captureCommanderState(...))
+    //   · checkpoint / 过关解锁 / 最终档的时机全部在 GameManager 里决定。
     // 解锁音频（移动端需要用户交互后才能播放）
     unlockAudio() {
         this.soundManager.unlock();
     }
     update(deltaTime) {
         if (this.paused || this.gameState === 'menu' || this.gameState === 'opening' ||
+            this.gameState === 'level_select' ||
             this.gameState === 'game_over' || this.gameState === 'victory' ||
             this.gameState === 'upgrade_select' || this.gameState === 'summon_select' ||
             this.gameState === 'level_clear' || this.gameState === 'tutorial') {
@@ -1857,6 +1990,9 @@ export class GameManager {
                 this.soundManager.setTension(0);
                 this.soundManager.setBgm(null);
                 this.soundManager.playVictory();
+                // 末关真通关：不清档，写一次最终档（全解锁 + 通关后资产），
+                // 保证 9 关全解锁在刷新后仍然持久。
+                this.writeFinalVictorySave();
             }
             else {
                 this.upgradeOptions = this.upgradeSystem.generateOptions(this.summonPool);
@@ -2257,6 +2393,12 @@ export class GameManager {
             this.renderMenu();
             return;
         }
+        // 关卡地图是全屏界面：和 menu 一样画在背景之上、战场之下，
+        // 不进 renderGame()，也不塞到 renderUI() 之后（遵守渲染顺序铁律）。
+        if (this.gameState === 'level_select') {
+            this.renderLevelSelect();
+            return;
+        }
         if (this.gameState === 'opening') {
             this.renderOpening();
             return;
@@ -2415,6 +2557,7 @@ export class GameManager {
         };
         drawMenuButton(MENU_BUTTONS.start, '开始游戏', CYBER.cyan, true);
         drawMenuButton(MENU_BUTTONS.tutorial, '游戏教程', CYBER.purple, false);
+        drawMenuButton(MENU_BUTTONS.levelSelect, '关卡地图', CYBER.gold, false);
         // ── 玩法速览：把新手需要做的三件事放在主按钮下方，避免压缩标题区 ──
         const tipX = 48, tipY = 480, tipW = this.canvas.width - 96, tipH = 166;
         ctx.fillStyle = 'rgba(7, 13, 23, 0.82)';
@@ -2453,6 +2596,140 @@ export class GameManager {
         ctx.textAlign = 'center';
         ctx.fillText('9 关战役  ·  10 种炮塔  ·  4 种品阶  ·  120 种塔技', cx, this.canvas.height - 96);
         ctx.fillText('第一次玩会自动弹出教程；之后点上面「游戏教程」随时再看', cx, this.canvas.height - 78);
+        // 右上角静音开关
+        this.renderMuteButton();
+    }
+    /**
+     * 关卡地图：3×3 网格展示 9 关，已解锁可点，未解锁显示锁定。
+     * 每张卡片显示关卡名、副标题、解锁状态；底部有返回按钮。
+     */
+    renderLevelSelect() {
+        const ctx = this.ctx;
+        const W = this.canvas.width, H = this.canvas.height;
+        const t = this.gameTime;
+        const unlocked = this.readUnlockedLevel();
+        // ── 背景：深色 + 扫描线 ──
+        ctx.fillStyle = '#030710';
+        ctx.fillRect(0, 0, W, H);
+        // 扫描线效果
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const scanY = (t * 120) % H;
+        ctx.fillStyle = `rgba(0, 240, 255, 0.08)`;
+        ctx.fillRect(0, scanY, W, 2);
+        ctx.restore();
+        // ── 标题 ──
+        ctx.save();
+        ctx.font = 'bold 28px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        neonText(ctx, '选择关卡', W / 2, 80, CYBER.cyan, { blur: 14, font: 'bold 28px sans-serif' });
+        ctx.restore();
+        // 副标题
+        ctx.fillStyle = CYBER.textMid;
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`已解锁 ${unlocked + 1} / ${getLevelCount()} 关`, W / 2, 115);
+        // ── 3×3 关卡卡片 ──
+        for (let i = 0; i < getLevelCount(); i++) {
+            const rect = levelCardRect(i);
+            const lv = LEVELS[i];
+            const isUnlocked = i <= unlocked;
+            const isCurrent = i === this.currentLevelIndex;
+            ctx.save();
+            // 卡片背景
+            if (isUnlocked) {
+                // 已解锁：半透明深色 + 主题色描边
+                ctx.fillStyle = 'rgba(10, 18, 32, 0.85)';
+                cutRectPath(ctx, rect.x, rect.y, rect.w, rect.h, 12);
+                ctx.fill();
+                // 当前关卡高亮
+                if (isCurrent) {
+                    ctx.strokeStyle = CYBER.gold;
+                    ctx.lineWidth = 3;
+                    ctx.shadowColor = CYBER.gold;
+                    ctx.shadowBlur = 12;
+                }
+                else {
+                    ctx.strokeStyle = lv.accent;
+                    ctx.lineWidth = 2;
+                }
+                cutRectPath(ctx, rect.x, rect.y, rect.w, rect.h, 12);
+                ctx.stroke();
+            }
+            else {
+                // 未解锁：更暗 + 灰色描边
+                ctx.fillStyle = 'rgba(8, 12, 20, 0.6)';
+                cutRectPath(ctx, rect.x, rect.y, rect.w, rect.h, 12);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(100, 100, 100, 0.4)';
+                ctx.lineWidth = 1.5;
+                cutRectPath(ctx, rect.x, rect.y, rect.w, rect.h, 12);
+                ctx.stroke();
+            }
+            ctx.restore();
+            // 关卡编号（左上角）
+            ctx.save();
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = isUnlocked ? lv.accent : 'rgba(150, 150, 150, 0.5)';
+            ctx.fillText(`第 ${i + 1} 关`, rect.x + 10, rect.y + 10);
+            ctx.restore();
+            // 关卡名称（居中）
+            ctx.save();
+            ctx.font = 'bold 16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = isUnlocked ? CYBER.textHi : 'rgba(150, 150, 150, 0.4)';
+            ctx.fillText(lv.name, rect.x + rect.w / 2, rect.y + rect.h / 2 - 8);
+            ctx.restore();
+            // 副标题（名称下方）
+            ctx.save();
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = isUnlocked ? CYBER.textMid : 'rgba(120, 120, 120, 0.3)';
+            ctx.fillText(lv.subtitle, rect.x + rect.w / 2, rect.y + rect.h / 2 + 12, rect.w - 20);
+            ctx.restore();
+            // 未解锁：画锁定图标（用矢量，不用 emoji）
+            if (!isUnlocked) {
+                const lockX = rect.x + rect.w - 20;
+                const lockY = rect.y + 12;
+                const lockW = 14, lockH = 12;
+                ctx.save();
+                ctx.strokeStyle = 'rgba(150, 150, 150, 0.5)';
+                ctx.lineWidth = 1.5;
+                ctx.fillStyle = 'rgba(150, 150, 150, 0.3)';
+                // 锁体
+                ctx.fillRect(lockX, lockY, lockW, lockH);
+                ctx.strokeRect(lockX, lockY, lockW, lockH);
+                // 锁环
+                ctx.beginPath();
+                ctx.arc(lockX + lockW / 2, lockY, lockW / 2 - 1, Math.PI, 0, false);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+        // ── 底部返回按钮 ──
+        const breathe = 0.55 + Math.sin(t * 2.4) * 0.25;
+        ctx.save();
+        ctx.fillStyle = 'rgba(157, 0, 255, 0.08)';
+        cutRectPath(ctx, LEVEL_BACK_BTN.x, LEVEL_BACK_BTN.y, LEVEL_BACK_BTN.w, LEVEL_BACK_BTN.h, 12);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(157, 0, 255, ${breathe.toFixed(3)})`;
+        ctx.lineWidth = 2;
+        cutRectPath(ctx, LEVEL_BACK_BTN.x, LEVEL_BACK_BTN.y, LEVEL_BACK_BTN.w, LEVEL_BACK_BTN.h, 12);
+        ctx.stroke();
+        neonText(ctx, '返回', LEVEL_BACK_BTN.x + LEVEL_BACK_BTN.w / 2, LEVEL_BACK_BTN.y + LEVEL_BACK_BTN.h / 2, CYBER.purple, { blur: 8, font: 'bold 18px sans-serif' });
+        ctx.restore();
+        // ── 底部提示 ──
+        ctx.fillStyle = CYBER.textLow;
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('通关一关解锁下一关，失败后从存档重建', W / 2, LEVEL_BACK_BTN.y + LEVEL_BACK_BTN.h + 20);
         // 右上角静音开关
         this.renderMuteButton();
     }

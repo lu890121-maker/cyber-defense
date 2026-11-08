@@ -262,11 +262,29 @@ export declare class GameManager {
     /** 随机强化按钮位置（render 与 click 共用） */
     private upgradeRandomButtonRect;
     private startGame;
+    /** 关卡地图解锁判定：存档是唯一真相，不另存容易失同步的内存镜像 */
+    private readUnlockedLevel;
+    /** 菜单「继续闯关」：有档从存档记录的关卡开工，无档走首次体验（开场序幕） */
+    private startFromSave;
+    /**
+     * 把「此刻内存里的指挥官资产」收集成一份存档（不写盘）。
+     * 塔的口径与 handleLevelCleared() 一致：场上 Map 的所有塔 + 合成区非空格。
+     */
+    private captureCommanderState;
+    /**
+     * 从指挥官存档重建并进入指定关卡 —— 「失败回滚 / 刷新回滚」的落地点。
+     *
+     * 存档语义：磁盘上永远是「当前关卡开始时的指挥官状态」+ 已解锁进度。
+     * 关卡内赚的钱、买的塔、掉的血只在内存、不写盘，所以：
+     *   · 失败不写盘 → 重开走这里，从存档重建 = 自然回到闯关前状态；
+     *   · 玩家中途刷新页面也回到闯关前状态（刻意设计，防刷钱）。
+     */
+    private startLevelFromCommander;
     /**
      * 进入指定关卡。这是关卡系统的中枢：
      *   1. setActiveLevel() 重绑定 PATH_POINTS / TOWER_SLOTS / WAVE_CONFIGS
      *   2. 应用关卡环境词缀（目前只有攻速惩罚是全局的，死亡分裂在击杀处处理）
-     *   3. 把上一关的防御塔搬迁到新地图的塔位上，由玩家选择最多六座带走
+     *   3. 把上一关的防御塔搬迁到新地图的塔位上（从存档恢复时跳过，塔已就位）
      *   4. 重置波次管理器，开始第一波
      */
     private startLevel;
@@ -293,17 +311,16 @@ export declare class GameManager {
      */
     private relocateTowersForLevel;
     private handleLevelCleared;
+    /** 通关末关：写一次最终档 —— 全解锁 + 通关后资产，绝不清档 */
+    private writeFinalVictorySave;
     private advanceToNextLevel;
     private restartGame;
-    /** 重新开始当前关卡（保留存档进度） */
+    /** 重新开始当前关卡：从存档重建 = 回滚到闯关前状态 */
     private restartCurrentLevel;
     start(): void;
     /** 首次运行自动弹教程（localStorage 标记，只弹一次） */
     private maybeFirstRunTutorial;
     private markTutorialSeen;
-    private saveGame;
-    private loadGame;
-    private clearSaveData;
     unlockAudio(): void;
     private gameLoop;
     private update;
@@ -358,6 +375,11 @@ export declare class GameManager {
      * 主菜单：赛博标题 + 霓虹装饰框 + 切角开始按钮。
      */
     private renderMenu;
+    /**
+     * 关卡地图：3×3 网格展示 9 关，已解锁可点，未解锁显示锁定。
+     * 每张卡片显示关卡名、副标题、解锁状态；底部有返回按钮。
+     */
+    private renderLevelSelect;
     /** 赛博防线启动序幕：扫描网格、核心点亮、敌方入侵警报，最后自动进入第一波。 */
     private renderOpening;
     private renderGame;
