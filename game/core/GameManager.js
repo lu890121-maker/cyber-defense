@@ -27,7 +27,6 @@ import { readCommanderSave, writeCommanderSave, createDefaultCommanderSave, clon
  */
 const MENU_BUTTONS = {
     start: { x: 60, y: 400, w: 160, h: 62 },
-    levelSelect: { x: 145, y: 470, w: 160, h: 48 },
     tutorial: { x: 230, y: 400, w: 160, h: 62 },
 };
 /** 关卡地图：3×3 共 9 张卡片，渲染与点击判定共用 */
@@ -707,16 +706,10 @@ export class GameManager {
             return;
         }
         if (this.gameState === 'menu') {
-            // 收紧为「只命中 3 个按钮才响应」：其它点击一律忽略。
-            // 旧逻辑「除教程按钮外任意点击 = 开局」会让误触直接跳过关卡地图 / 教程。
+            // 收紧为「只命中 2 个按钮才响应」：其它点击一律忽略。
             if (this.isInButton(x, y, MENU_BUTTONS.tutorial)) {
                 this.soundManager.playButtonClick();
                 this.openTutorial('menu');
-                return;
-            }
-            if (this.isInButton(x, y, MENU_BUTTONS.levelSelect)) {
-                this.soundManager.playButtonClick();
-                this.gameState = 'level_select';
                 return;
             }
             if (this.isInButton(x, y, MENU_BUTTONS.start)) {
@@ -2562,7 +2555,6 @@ export class GameManager {
         };
         drawMenuButton(MENU_BUTTONS.start, '开始游戏', CYBER.cyan, true);
         drawMenuButton(MENU_BUTTONS.tutorial, '游戏教程', CYBER.purple, false);
-        drawMenuButton(MENU_BUTTONS.levelSelect, '关卡地图', CYBER.gold, false);
         // ── 玩法速览：把新手需要做的三件事放在主按钮下方，避免压缩标题区 ──
         const tipX = 48, tipY = 480, tipW = this.canvas.width - 96, tipH = 166;
         ctx.fillStyle = 'rgba(7, 13, 23, 0.82)';
