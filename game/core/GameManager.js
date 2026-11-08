@@ -51,13 +51,6 @@ const SUMMON_TUTORIAL_BTN = { x: 105, y: 650, w: 240, h: 40 };
 const RESULT_TUTORIAL_BTN = { x: 150, y: 562, w: 150, h: 44 };
 /** 每次通关可带入下一关的炮塔数量。999表示无限制，所有塔都能带入。 */
 const CARRY_TOWER_LIMIT = 999;
-/**
- * iPhone 安全区域偏移（灵动岛/刘海 + Home Indicator）。
- * 由 wx-adapter.js 在启动时写入 globalThis.__safeTop/__safeBottom，
- * 浏览器环境默认为 0。所有 UI 元素基于此偏移调整位置。
- */
-const SAFE_TOP = globalThis.__safeTop || 0;
-const SAFE_BOTTOM = globalThis.__safeBottom || 0;
 export class GameManager {
     constructor(canvas) {
         this.gameState = 'menu';
@@ -296,8 +289,7 @@ export class GameManager {
         ctx.fillRect(x, y, w, 1);
     }
     setupButtons() {
-        // 安全区域适配：底部按钮上移 SAFE_BOTTOM，顶部按钮下移 SAFE_TOP
-        const bottomY = GAME_CONSTANTS.CANVAS_HEIGHT - 48 - SAFE_BOTTOM;
+        const bottomY = GAME_CONSTANTS.CANVAS_HEIGHT - 48;
         // 底部三键：召唤 / 过载 / 加速（+ 右侧卖出区，见 getSellArea()）。
         // 「下一波」按钮已移除 —— 波次清空后固定 10 秒自动推进（见 update()），
         // 玩家不需要（也不应该）手动催波，节奏由系统统一控制。
@@ -312,11 +304,11 @@ export class GameManager {
         this.buttons.set('overload', { x: 124, y: bottomY, w: 102, h: 40 });
         this.buttons.set('speed', { x: 236, y: bottomY, w: 48, h: 40 });
         // 重新开始按钮（声音开关左边）- 显示"重开"文字
-        this.buttons.set('restart', { x: 375, y: 10 + SAFE_TOP, w: 36, h: 26 });
+        this.buttons.set('restart', { x: 375, y: 10, w: 36, h: 26 });
         // 静音开关（右上角）
-        this.buttons.set('mute', { x: 415, y: 10 + SAFE_TOP, w: 26, h: 26 });
+        this.buttons.set('mute', { x: 415, y: 10, w: 26, h: 26 });
         // 六个合成格均匀铺满底栏，留出塔名显示空间。
-        const mergeAreaY = GAME_CONSTANTS.CANVAS_HEIGHT - 100 - SAFE_BOTTOM;
+        const mergeAreaY = GAME_CONSTANTS.CANVAS_HEIGHT - 100;
         const mergeAreaStartX = 53;
         const mergeAreaSpacing = 68;
         for (let i = 0; i < this.mergeAreaSlots.length; i++) {
@@ -689,7 +681,7 @@ export class GameManager {
      * 改这里必须同步 `verify_drag.mjs` 里"卖出"用例的注释坐标。
      */
     getSellArea() {
-        return { x: 294, y: 752 - SAFE_BOTTOM, w: 138, h: 40 };
+        return { x: 294, y: 752, w: 138, h: 40 };
     }
     handleClick(e) {
         const rect = this.canvas.getBoundingClientRect();
@@ -3957,17 +3949,17 @@ export class GameManager {
     renderUI() {
         const ctx = this.ctx;
         // Q版：顶部UI（更柔和的深蓝紫渐变背景）
-        const topGradient = ctx.createLinearGradient(0, 0, 0, 96 + SAFE_TOP);
+        const topGradient = ctx.createLinearGradient(0, 0, 0, 96);
         topGradient.addColorStop(0, 'rgba(18, 16, 42, 0.95)');
         topGradient.addColorStop(1, 'rgba(18, 16, 42, 0.88)');
         ctx.fillStyle = topGradient;
-        ctx.fillRect(0, 0, this.canvas.width, 96 + SAFE_TOP);
+        ctx.fillRect(0, 0, this.canvas.width, 96);
         // Q版：顶部边框（更柔和的青色）
         ctx.strokeStyle = 'rgba(51, 255, 255, 0.35)';
         ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.moveTo(0, 96 + SAFE_TOP);
-        ctx.lineTo(this.canvas.width, 96 + SAFE_TOP);
+        ctx.moveTo(0, 96);
+        ctx.lineTo(this.canvas.width, 96);
         ctx.stroke();
         // 关卡 + 关内波次信息
         const curWave = Math.max(1, this.waveManager.getCurrentWave());
@@ -3976,13 +3968,13 @@ export class GameManager {
         ctx.font = 'bold 16px sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        ctx.fillText(`第 ${curWave}/${TOTAL_WAVES} 波`, 20, 15 + SAFE_TOP);
+        ctx.fillText(`第 ${curWave}/${TOTAL_WAVES} 波`, 20, 15);
         // 关卡标识：主题色方块 + 第N关·关名
         ctx.fillStyle = lv.accent;
-        ctx.fillRect(112, 19 + SAFE_TOP, 3, 14);
+        ctx.fillRect(112, 19, 3, 14);
         ctx.fillStyle = lv.accent;
         ctx.font = 'bold 12px sans-serif';
-        ctx.fillText(`${lv.id}.${lv.name}`, 121, 19 + SAFE_TOP);
+        ctx.fillText(`${lv.id}.${lv.name}`, 121, 19);
         // 波次时间：普通波画倒计时（20s 强制推进）；Boss 波**没有时限**，
         // 改画「清场解锁」—— 用户诉求「最后一关必须场上一个怪没有的时候才能解锁下一关」。
         // 必须常驻可见：否则"打着打着突然进下一波"在玩家眼里就是 bug，
@@ -4001,8 +3993,8 @@ export class GameManager {
                 // （已用离屏掩码 + 颜色探针实测：同页 66 个 emoji 全是彩色字形，只有它是残字）。
                 // 加 FE0F 变体选择符（'⚔️'）虽能走彩色 emoji，但会把卡通多色图标塞进霓虹单色 HUD，
                 // 和左边的单色 '⏱' 语言不一致。矢量画法与项目「零 PNG 依赖、全程序化」的美术铁律同源。
-                this.drawCrossedSwords(226, 22 + SAFE_TOP, 16, '#FFD700');
-                ctx.fillText('清场解锁', 239, 16 + SAFE_TOP);
+                this.drawCrossedSwords(226, 22, 16, '#FFD700');
+                ctx.fillText('清场解锁', 239, 16);
                 ctx.shadowBlur = 0;
             }
             else {
@@ -4013,33 +4005,33 @@ export class GameManager {
                     ctx.shadowColor = '#FF334F';
                     ctx.shadowBlur = 10;
                 }
-                ctx.fillText(`⏱ ${Math.ceil(left)}s`, 218, 16 + SAFE_TOP);
+                ctx.fillText(`⏱ ${Math.ceil(left)}s`, 218, 16);
                 ctx.shadowBlur = 0;
             }
         }
         // 本波词缀常驻显示 —— 旧设计里变异是战斗中才发现的黑箱，
         // 现在玩家随时能看到当前生效的规则。
-        this.renderModifierChip(296, 13 + SAFE_TOP, 92);
+        this.renderModifierChip(296, 13, 92);
         // 金币（带图标光晕）
         ctx.shadowColor = '#fbbf24';
         ctx.shadowBlur = 8;
         ctx.fillStyle = '#fbbf24';
         ctx.font = 'bold 16px sans-serif';
-        ctx.fillText(`💰 ${this.resourceManager.getGold()}`, 20, 40 + SAFE_TOP);
+        ctx.fillText(`💰 ${this.resourceManager.getGold()}`, 20, 40);
         ctx.shadowBlur = 0;
         // 生命值（带图标光晕）
         ctx.shadowColor = '#FF0033';
         ctx.shadowBlur = 8;
         ctx.fillStyle = '#FF0033';
-        ctx.fillText(`❤️ ${this.resourceManager.getLives()}`, 100, 40 + SAFE_TOP);
+        ctx.fillText(`❤️ ${this.resourceManager.getLives()}`, 100, 40);
         ctx.shadowBlur = 0;
         // 速度显示
         ctx.fillStyle = '#9D00FF';
         ctx.font = '14px sans-serif';
-        ctx.fillText(`${this.gameSpeed}x`, 178, 40 + SAFE_TOP);
+        ctx.fillText(`${this.gameSpeed}x`, 178, 40);
         // 剩余敌人
         ctx.fillStyle = '#8FA3BF';
-        ctx.fillText(`剩余: ${this.waveManager.getRemainingCount()}`, 218, 40 + SAFE_TOP);
+        ctx.fillText(`剩余: ${this.waveManager.getRemainingCount()}`, 218, 40);
         // 强化机会计数（v1.6.2）：每关通关时一次，让玩家知道还差几波
         {
             const left = this.getEnhanceCountdown();
@@ -4659,7 +4651,7 @@ export class GameManager {
         const blink = Math.floor(this.gameTime * 4) % 2 === 0 ? 1 : 0.72;
         ctx.save();
         ctx.globalAlpha = alpha * blink;
-        ctx.translate(W / 2, H / 2 - 40 + SAFE_TOP);
+        ctx.translate(W / 2, H / 2 - 40);
         ctx.scale(scale, scale);
         // 半透明暗底条，保证红字在任何背景上都读得清
         const bw = 320, bh = 96;
