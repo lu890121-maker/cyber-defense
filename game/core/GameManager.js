@@ -4208,19 +4208,19 @@ export class GameManager {
         cutRectPath(ctx, sellArea.x, sellArea.y, sellArea.w, sellArea.h, CYBER.panelRadius);
         ctx.stroke();
         ctx.restore();
-        // 图标 + 文案
+        // 文案 + 图标（用户要求：文字在上、图标在下）
         // 只写「卖钱」玩家未必知道要把塔拖过来 —— 卖钱区是个**拖拽落点**，
         // 所以把动作本身写进文案（「拖至此处卖钱」）。11px × 6 字 = 66px，
         // 内宽 86-8=78，放得下；再大就会顶到切角边框。
         const cx = sellArea.x + sellArea.w / 2;
-        ctx.fillStyle = '#FF0033';
-        ctx.font = 'bold 13px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('💰', cx, sellArea.y + 14);
         ctx.fillStyle = '#FFB3C1';
         ctx.font = 'bold 11px sans-serif';
-        ctx.fillText('拖至此处卖钱', cx, sellArea.y + 32);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('拖至此处卖钱', cx, sellArea.y + 12);
+        ctx.fillStyle = '#FF0033';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText('💰', cx, sellArea.y + 27);
     }
     /**
      * 落点提示环：拖动时把"松手后会发生什么"画在目标格子上。
