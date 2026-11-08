@@ -488,7 +488,7 @@ export declare class GameManager {
      */
     private renderBossWarning;
     /**
-     * 赛博按钮：暗底 + 霓虹描边 + 切角 + 内侧高光。
+     * Q版按钮：暗底 + 霓虹描边 + 圆角 + 柔和阴影 + 内侧高光。
      * color 决定霓虹色（召唤=紫 / 速度=青 / 过载=橙/红/灰）。
      */
     private renderButton;

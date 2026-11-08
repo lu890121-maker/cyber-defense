@@ -1,26 +1,26 @@
 /**
- * 环境渲染器：分层赛博防线场景
+ * 环境渲染器：Q版赛博朋克分层场景
  *
- * 《赛博防线：机械入侵》的地面。原版是「分层医院场景」（地砖 + 病床 + 输液架），
- * 现在换成赛博工业场景，但分层架构不变：
+ * Q版改造方向：
+ *   - 更柔和的深蓝紫渐变背景（不是纯黑）
+ *   - 更圆润可爱的建筑物（圆角机柜、圆润茧舱）
+ *   - 增强立体感（柔和阴影、高光、渐变）
+ *   - 发光植物等可爱环境元素
+ *   - 减少工业粗粝感，增加风格化
  *
- *   L0 地面基色     —— 关卡主题色系的地面渐变（俯视）
- *   L1 赛博网格     —— 40px 网格 + 每 5 格亮线 + 交点光点（PRD 硬性规范）
- *   L2 地面贴花     —— 警戒带、数据流箭头、泄漏液、烧灼痕、数据碎片
- *   L3 边缘陈设     —— 服务器机柜 / 机械茧舱 / 反应堆柱（贴屏幕边缘，不压路径）
+ * 分层架构不变：
+ *   L0 地面基色     —— 关卡主题色系的地面渐变
+ *   L1 赛博网格     —— 40px 网格 + 每 5 格亮线 + 交点光点
+ *   L2 地面贴花     —— 发光花纹、数据流、能量池
+ *   L3 边缘陈设     —— 圆润机柜 / 可爱茧舱 / 风格化反应堆
  *   ── 以上烘焙进离屏 canvas，按关卡缓存，每帧只 blit ──
- *   L4 动态光效     —— 顶灯光池闪烁、光锥、尘埃、电火花（每帧绘制）
- *
- * 三关主题（对齐 LEVELS.accent）：
- *   外环防线   青 #00F0FF  数据中心外围：机柜阵列、全息导视、电缆桥架
- *   机械巢穴   紫 #9D00FF  地下机库：机械茧舱、悬垂电缆、机械臂残骸
- *   核心反应堆 红 #FF0033  主控中枢：反应堆柱、冷却管、监控屏
+ *   L4 动态光效     —— 顶灯光池、氛围粒子（每帧绘制）
  */
 import { GAME_CONSTANTS, LEVELS } from '../config/GameConfig.js';
 import { CYBER, paintCyberGrid, rgba, hexRgb } from '../config/CyberTheme.js';
 const W = GAME_CONSTANTS.CANVAS_WIDTH;
 const H = GAME_CONSTANTS.CANVAS_HEIGHT;
-// ── 确定性随机：同一关卡每次生成完全一致，便于截图比对与缓存 ──
+// ── 确定性随机：同一关卡每次生成完全一致 ──
 function makeRng(seed) {
     let s = seed >>> 0 || 1;
     return () => {
@@ -33,46 +33,49 @@ function makeRng(seed) {
     };
 }
 const PALETTES = {
-    // 外环防线：冷青，数据中心外围 —— 机柜阵列 + 全息导视 + 电缆桥架
+    // 外环防线：冷青 —— Q版：更柔和的蓝紫色调
     outer: {
         key: 'outer',
-        floorTop: '#0C1219', floorMid: '#101822', floorBot: '#090E15',
+        floorTop: '#141833', floorMid: '#1A2040', floorBot: '#10152E',
         grid: CYBER.grid, gridMajor: CYBER.gridMajor, gridNode: CYBER.gridNode,
-        wallTop: '#131C27', wallBot: '#080C12',
-        prop: '#1B2531', propDark: '#0D141C',
-        rim: rgba(CYBER.cyan, 0.45),
+        wallTop: '#1E2650', wallBot: '#0E1230',
+        prop: '#2A3560', propDark: '#161D40',
+        propHighlight: '#3D4D80',
+        rim: rgba(CYBER.cyan, 0.50),
         neon: CYBER.cyan,
-        lamp: '#7FF6FF', pool: 'rgba(0, 240, 255,',
-        haze: rgba(CYBER.cyan, 0.035),
-        spill: '#1A2A33',
+        lamp: '#99FFFF', pool: 'rgba(51, 255, 255,',
+        haze: rgba(CYBER.cyan, 0.04),
+        spill: '#1E3045',
         motes: 'dust'
     },
-    // 机械巢穴：暗紫，地下机库 —— 机械茧舱 + 悬垂电缆 + 机械臂残骸
+    // 机械巢穴：暗紫 —— Q版：更鲜艳的紫色调
     nest: {
         key: 'nest',
-        floorTop: '#120E1E', floorMid: '#171029', floorBot: '#0C0916',
-        grid: rgba(CYBER.purple, 0.055), gridMajor: rgba(CYBER.purple, 0.14), gridNode: rgba(CYBER.purple, 0.32),
-        wallTop: '#1D1435', wallBot: '#0D0918',
-        prop: '#241A42', propDark: '#120C24',
-        rim: rgba(CYBER.purple, 0.5),
+        floorTop: '#1E1540', floorMid: '#241A4D', floorBot: '#150F35',
+        grid: rgba(CYBER.purple, 0.05), gridMajor: rgba(CYBER.purple, 0.13), gridNode: rgba(CYBER.purple, 0.30),
+        wallTop: '#2D1F5A', wallBot: '#140D38',
+        prop: '#3A2870', propDark: '#1E1448',
+        propHighlight: '#5040A0',
+        rim: rgba(CYBER.purple, 0.55),
         neon: CYBER.purple,
-        lamp: '#C79BFF', pool: 'rgba(157, 0, 255,',
+        lamp: '#DD99FF', pool: 'rgba(204, 102, 255,',
         haze: rgba(CYBER.purple, 0.05),
-        spill: '#241338',
+        spill: '#2D1850',
         motes: 'spark'
     },
-    // 核心反应堆：暗红，主控中枢 —— 反应堆柱 + 冷却管 + 监控屏
+    // 核心反应堆：暗红 —— Q版：更明亮的红粉色调
     reactor: {
         key: 'reactor',
-        floorTop: '#1A0C10', floorMid: '#221015', floorBot: '#12070A',
-        grid: rgba(CYBER.red, 0.065), gridMajor: rgba(CYBER.red, 0.16), gridNode: rgba(CYBER.red, 0.34),
-        wallTop: '#2A1119', wallBot: '#14080C',
-        prop: '#33161E', propDark: '#1A0A0F',
-        rim: rgba(CYBER.red, 0.5),
+        floorTop: '#2A1020', floorMid: '#331528', floorBot: '#1E0A15',
+        grid: rgba(CYBER.red, 0.06), gridMajor: rgba(CYBER.red, 0.15), gridNode: rgba(CYBER.red, 0.32),
+        wallTop: '#3D1830', wallBot: '#1A0C18',
+        prop: '#4D2040', propDark: '#281020',
+        propHighlight: '#6A3058',
+        rim: rgba(CYBER.red, 0.55),
         neon: CYBER.red,
-        lamp: '#FF8095', pool: 'rgba(255, 0, 51,',
+        lamp: '#FF99AA', pool: 'rgba(255, 68, 102,',
         haze: rgba(CYBER.red, 0.05),
-        spill: '#2E0D14',
+        spill: '#3A1020',
         motes: 'ember'
     }
 };
@@ -85,11 +88,11 @@ export function paletteFor(levelKey) {
     const accent = LEVELS[lv - 1].accent;
     const [r, g, b] = hexRgb(accent);
     return { ...base, key: `${base.key}-${lv}`, neon: accent,
-        rim: `rgba(${r}, ${g}, ${b}, 0.48)`, pool: `rgba(${r}, ${g}, ${b},`,
-        haze: `rgba(${r}, ${g}, ${b}, 0.045)`, grid: `rgba(${r}, ${g}, ${b}, 0.055)`,
-        gridMajor: `rgba(${r}, ${g}, ${b}, 0.14)`, gridNode: `rgba(${r}, ${g}, ${b}, 0.3)` };
+        rim: `rgba(${r}, ${g}, ${b}, 0.50)`, pool: `rgba(${r}, ${g}, ${b},`,
+        haze: `rgba(${r}, ${g}, ${b}, 0.045)`, grid: `rgba(${r}, ${g}, ${b}, 0.05)`,
+        gridMajor: `rgba(${r}, ${g}, ${b}, 0.13)`, gridNode: `rgba(${r}, ${g}, ${b}, 0.28)` };
 }
-/** 关卡 id → 主题 key（1 外环防线 / 2 机械巢穴 / 3 核心反应堆） */
+/** 关卡 id → 主题 key */
 export function levelKeyOf(id) {
     if (id === 2)
         return 'nest';
@@ -101,7 +104,7 @@ export function levelKeyOf(id) {
 export class EnvironmentRenderer {
     constructor(canvas) {
         this.time = 0;
-        /** 烘焙缓存：key = 关卡 key */
+        /** 烘焙缓存 */
         this.floorLayer = null;
         this.propLayer = null;
         this.builtKey = '';
@@ -123,7 +126,6 @@ export class EnvironmentRenderer {
                 this.respawnMote(m, pal);
         }
     }
-    /** 关卡切换时重置缓存（GameManager 在 startLevel 里调） */
     invalidate() {
         this.builtKey = '';
         this.builtAccent = '';
@@ -131,7 +133,7 @@ export class EnvironmentRenderer {
         this.propLayer = null;
     }
     // ══════════════════════════════════════════════════════════
-    // 主入口：背景（地面 + 陈设 + 顶棚）
+    // 主入口：背景
     // ══════════════════════════════════════════════════════════
     renderBackdrop(levelKey, accent) {
         if (this.builtKey !== levelKey || this.builtAccent !== accent) {
@@ -142,47 +144,41 @@ export class EnvironmentRenderer {
         ctx.drawImage(this.propLayer, 0, 0);
     }
     /**
-     * 前景层：顶灯、光锥、氛围粒子。
-     * 在世界层（塔/怪/特效）之后、后处理之前调用 —— 光池压在单位上才有"顶灯照下来"的感觉，
-     * 但透明度必须很低，否则会糊住血条和伤害数字。
+     * 前景层：顶灯、光锥、氛围粒子
+     * Q版：更柔和的光效，粒子更圆润可爱
      */
     renderOverlay() {
         const ctx = this.ctx;
         const pal = paletteFor(this.builtKey);
-        // 顶灯光池（带闪烁）
+        // 顶灯光池（Q版：更柔和的闪烁）
         for (const l of this.lamps) {
-            const flick = l.flicker > 0 ? (0.75 + Math.sin(this.time * 22 + l.phase) * 0.25 * l.flicker) : 1;
+            const flick = l.flicker > 0 ? (0.82 + Math.sin(this.time * 18 + l.phase) * 0.18 * l.flicker) : 1;
             const g = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
-            g.addColorStop(0, `${pal.pool}${(0.13 * flick).toFixed(3)})`);
-            g.addColorStop(0.45, `${pal.pool}${(0.06 * flick).toFixed(3)})`);
+            g.addColorStop(0, `${pal.pool}${(0.11 * flick).toFixed(3)})`);
+            g.addColorStop(0.45, `${pal.pool}${(0.05 * flick).toFixed(3)})`);
             g.addColorStop(1, `${pal.pool}0)`);
             ctx.fillStyle = g;
             ctx.beginPath();
             ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2);
             ctx.fill();
         }
-        // 氛围粒子
+        // 氛围粒子（Q版：更圆润的粒子）
         for (const m of this.motes) {
             const t = m.life / m.max;
-            let a = 0.35 * Math.sin(Math.PI * Math.min(1, t * 1.4));
+            let a = 0.30 * Math.sin(Math.PI * Math.min(1, t * 1.4));
             if (pal.motes === 'ember')
-                a *= 1.6;
+                a *= 1.4;
             if (a <= 0.01)
                 continue;
-            ctx.globalAlpha = Math.min(0.55, a);
+            ctx.globalAlpha = Math.min(0.45, a);
             ctx.fillStyle = pal.lamp;
-            if (pal.motes === 'spark') {
-                // 电火花：短竖线
-                ctx.fillRect(m.x, m.y, m.size * 0.5, m.size * 2.0);
-            }
-            else {
-                ctx.beginPath();
-                ctx.arc(m.x, m.y, m.size, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            // Q版：所有粒子都画成圆形
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, m.size * 1.2, 0, Math.PI * 2);
+            ctx.fill();
         }
         ctx.globalAlpha = 1;
-        // 核心反应堆：反应堆柱的垂直光锥
+        // 核心反应堆：柔和的垂直光锥
         if (pal.key === 'reactor') {
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
@@ -190,16 +186,16 @@ export class EnvironmentRenderer {
                 const l = this.lamps[i * 2] || this.lamps[0];
                 if (!l)
                     break;
-                const breathe = 0.055 + Math.sin(this.time * 1.6 + i * 2) * 0.018;
+                const breathe = 0.045 + Math.sin(this.time * 1.4 + i * 2) * 0.015;
                 const g = ctx.createLinearGradient(l.x, l.y, l.x, l.y + 240);
                 g.addColorStop(0, `${pal.pool}${breathe.toFixed(3)})`);
                 g.addColorStop(1, `${pal.pool}0)`);
                 ctx.fillStyle = g;
                 ctx.beginPath();
-                ctx.moveTo(l.x - 26, l.y);
-                ctx.lineTo(l.x + 26, l.y);
-                ctx.lineTo(l.x + 92, l.y + 240);
-                ctx.lineTo(l.x - 92, l.y + 240);
+                ctx.moveTo(l.x - 22, l.y);
+                ctx.lineTo(l.x + 22, l.y);
+                ctx.lineTo(l.x + 80, l.y + 240);
+                ctx.lineTo(l.x - 80, l.y + 240);
                 ctx.closePath();
                 ctx.fill();
             }
@@ -230,147 +226,160 @@ export class EnvironmentRenderer {
         c.height = H;
         return c;
     }
-    // ── L0/L1/L2：地面 ───────────────────────────────────────
+    // ── L0/L1/L2：地面（Q版：更柔和） ─────────────────────────
     paintFloor(g, pal) {
-        // L0 基色
+        // L0 基色（Q版：更柔和的渐变）
         const base = g.createLinearGradient(0, 0, 0, H);
         base.addColorStop(0, pal.floorTop);
         base.addColorStop(0.42, pal.floorMid);
         base.addColorStop(1, pal.floorBot);
         g.fillStyle = base;
         g.fillRect(0, 0, W, H);
-        // L1 赛博网格（PRD：40px，每 5 格一条亮线 + 交点光点）
+        // L1 赛博网格
         paintCyberGrid(g, W, H, {
             size: CYBER.gridSize,
             major: 5,
             minorColor: pal.grid,
             majorColor: pal.gridMajor,
             nodeColor: pal.gridNode,
-            nodeRadius: 1.3
+            nodeRadius: 1.8
         });
-        // 顶棚结构带（屏幕最上沿留一条"机库顶"，暗示这是有顶的室内）
+        // 顶棚结构带（Q版：更柔和的过渡）
         const wall = g.createLinearGradient(0, 0, 0, 74);
         wall.addColorStop(0, pal.wallTop);
         wall.addColorStop(1, 'rgba(0,0,0,0)');
         g.fillStyle = wall;
         g.fillRect(0, 0, W, 74);
         g.fillStyle = pal.rim;
-        g.globalAlpha = 0.2;
+        g.globalAlpha = 0.15;
         g.fillRect(0, 66, W, 2);
         g.globalAlpha = 1;
-        // 烧灼痕 / 油污：几十处不规则暗斑
-        for (let i = 0; i < 40; i++) {
+        // Q版：柔和的发光斑块代替烧灼痕
+        for (let i = 0; i < 30; i++) {
             const x = this.rng() * W, y = this.rng() * H;
-            const r = 8 + this.rng() * 34;
-            const a = 0.035 + this.rng() * 0.06;
+            const r = 12 + this.rng() * 28;
+            const a = 0.025 + this.rng() * 0.04;
             const s = g.createRadialGradient(x, y, 0, x, y, r);
-            s.addColorStop(0, `rgba(0,0,0,${a.toFixed(3)})`);
+            s.addColorStop(0, rgba(pal.neon, a));
+            s.addColorStop(0.6, rgba(pal.neon, a * 0.4));
             s.addColorStop(1, 'rgba(0,0,0,0)');
             g.fillStyle = s;
             g.beginPath();
             g.arc(x, y, r, 0, Math.PI * 2);
             g.fill();
         }
-        // 数据裂纹：发光细线（比原版的纯黑裂缝更"通电"）
-        for (let i = 0; i < 6; i++) {
+        // Q版：发光裂纹（更柔和的曲线）
+        for (let i = 0; i < 5; i++) {
             let x = this.rng() * W, y = this.rng() * H;
             let a = this.rng() * Math.PI * 2;
             g.save();
             g.globalCompositeOperation = 'lighter';
-            g.strokeStyle = rgba(pal.neon, 0.16);
-            g.lineWidth = 1;
+            g.strokeStyle = rgba(pal.neon, 0.12);
+            g.lineWidth = 1.5;
+            g.lineCap = 'round';
             g.beginPath();
             g.moveTo(x, y);
-            const seg = 4 + Math.floor(this.rng() * 5);
+            const seg = 3 + Math.floor(this.rng() * 4);
             for (let j = 0; j < seg; j++) {
-                a += (this.rng() - 0.5) * 1.1;
-                x += Math.cos(a) * (10 + this.rng() * 22);
-                y += Math.sin(a) * (10 + this.rng() * 22);
-                g.lineTo(x, y);
+                a += (this.rng() - 0.5) * 0.9;
+                const nx = x + Math.cos(a) * (12 + this.rng() * 18);
+                const ny = y + Math.sin(a) * (12 + this.rng() * 18);
+                g.quadraticCurveTo((x + nx) / 2 + (this.rng() - 0.5) * 8, (y + ny) / 2 + (this.rng() - 0.5) * 8, nx, ny);
+                x = nx;
+                y = ny;
             }
             g.stroke();
             g.restore();
         }
-        // L2 检修井盖（每关 2 个）
+        // L2 发光井盖（Q版：更圆润）
         for (let i = 0; i < 2; i++) {
             const dx = 70 + this.rng() * (W - 140);
             const dy = 180 + this.rng() * (H - 420);
             this.paintHatch(g, pal, dx, dy);
         }
-        // L2 通道警戒带（贴两侧走）
+        // Q版：柔和的通道边界光带（代替警戒带）
         g.save();
-        g.globalAlpha = 0.18;
-        g.strokeStyle = CYBER.gold;
-        g.lineWidth = 4;
-        g.setLineDash([16, 12]);
+        g.globalAlpha = 0.12;
+        g.strokeStyle = pal.neon;
+        g.lineWidth = 3;
+        g.lineCap = 'round';
+        g.setLineDash([20, 16]);
         g.beginPath();
-        g.moveTo(8, 120);
-        g.lineTo(8, H - 120);
+        g.moveTo(10, 120);
+        g.lineTo(10, H - 120);
         g.stroke();
         g.beginPath();
-        g.moveTo(W - 8, 120);
-        g.lineTo(W - 8, H - 120);
+        g.moveTo(W - 10, 120);
+        g.lineTo(W - 10, H - 120);
         g.stroke();
         g.setLineDash([]);
         g.restore();
-        // L2 数据流箭头（指向核心方向）
+        // L2 数据流箭头
         g.save();
-        g.globalAlpha = 0.22;
+        g.globalAlpha = 0.18;
         g.fillStyle = pal.lamp;
         for (let i = 0; i < 4; i++) {
             const ax = W / 2 + (i % 2 === 0 ? -1 : 1) * 150;
             const ay = 170 + i * 150;
-            this.paintArrow(g, ax, ay, Math.PI / 2, 16);
+            this.paintArrow(g, ax, ay, Math.PI / 2, 14);
         }
         g.restore();
-        // L2 泄漏液（机油 + 能量液发光边）—— 反应堆更多更艳
-        const spillCount = pal.key === 'reactor' ? 14 : pal.key === 'nest' ? 9 : 6;
-        for (let i = 0; i < spillCount; i++) {
+        // Q版：能量池（代替泄漏液，更可爱）
+        const poolCount = pal.key === 'reactor' ? 10 : pal.key === 'nest' ? 7 : 5;
+        for (let i = 0; i < poolCount; i++) {
             const bx = 30 + this.rng() * (W - 60);
             const by = 90 + this.rng() * (H - 200);
-            this.paintSpill(g, pal, bx, by, 10 + this.rng() * 26, pal.key === 'reactor' ? 0.3 : 0.2);
+            this.paintEnergyPool(g, pal, bx, by, 8 + this.rng() * 20);
         }
-        // L2 数据碎片（发光薄片，替代散落病历纸）
-        for (let i = 0; i < 9; i++) {
+        // Q版：发光数据碎片（更圆润）
+        for (let i = 0; i < 7; i++) {
             const px = 20 + this.rng() * (W - 40);
             const py = 90 + this.rng() * (H - 180);
-            const pw = 12 + this.rng() * 12, ph = 8 + this.rng() * 10;
+            const pw = 10 + this.rng() * 10, ph = 8 + this.rng() * 8;
             g.save();
             g.translate(px, py);
-            g.rotate((this.rng() - 0.5) * 1.4);
-            g.fillStyle = rgba(pal.neon, 0.14);
-            g.fillRect(-pw / 2, -ph / 2, pw, ph);
-            g.fillStyle = rgba(pal.neon, 0.30);
-            g.fillRect(-pw / 2, -ph / 2, pw, 1.5);
+            g.rotate((this.rng() - 0.5) * 1.0);
+            // 圆角碎片
+            this.rr(g, -pw / 2, -ph / 2, pw, ph, 3);
+            g.fillStyle = rgba(pal.neon, 0.12);
+            g.fill();
+            // 顶部高光线
+            this.rr(g, -pw / 2, -ph / 2, pw, 2, 1);
+            g.fillStyle = rgba(pal.neon, 0.25);
+            g.fill();
             g.restore();
         }
     }
-    /** 检修井盖（六边形，替代原排水口） */
+    /** Q版：圆润的发光井盖 */
     paintHatch(g, pal, x, y) {
         g.save();
         g.translate(x, y);
-        g.fillStyle = 'rgba(0,0,0,0.5)';
+        // 柔和阴影
+        g.fillStyle = 'rgba(0,0,0,0.35)';
         g.beginPath();
-        for (let i = 0; i < 6; i++) {
-            const a = Math.PI / 6 + (i / 6) * Math.PI * 2;
-            const px = Math.cos(a) * 15, py = Math.sin(a) * 15;
-            if (i === 0)
-                g.moveTo(px, py);
-            else
-                g.lineTo(px, py);
-        }
-        g.closePath();
+        g.arc(0, 2, 16, 0, Math.PI * 2);
         g.fill();
+        // 主体
+        g.fillStyle = pal.propDark;
+        g.beginPath();
+        g.arc(0, 0, 15, 0, Math.PI * 2);
+        g.fill();
+        // 发光边缘
         g.strokeStyle = pal.rim;
-        g.globalAlpha = 0.45;
-        g.lineWidth = 1.2;
+        g.globalAlpha = 0.5;
+        g.lineWidth = 1.5;
+        g.beginPath();
+        g.arc(0, 0, 15, 0, Math.PI * 2);
         g.stroke();
-        g.globalAlpha = 0.6;
-        g.strokeStyle = 'rgba(0,0,0,0.75)';
-        for (let i = -1; i <= 1; i++) {
+        // 内部发光纹路
+        g.globalAlpha = 0.3;
+        g.strokeStyle = rgba(pal.neon, 0.4);
+        g.lineWidth = 1;
+        for (let i = 0; i < 3; i++) {
+            const a = (i / 3) * Math.PI * 2;
             g.beginPath();
-            g.moveTo(i * 5 - 3, -9);
-            g.lineTo(i * 5 + 3, 9);
+            g.moveTo(Math.cos(a) * 4, Math.sin(a) * 4);
+            g.lineTo(Math.cos(a) * 11, Math.sin(a) * 11);
             g.stroke();
         }
         g.restore();
@@ -379,53 +388,62 @@ export class EnvironmentRenderer {
         g.save();
         g.translate(x, y);
         g.rotate(angle);
+        // Q版：更圆润的箭头
         g.beginPath();
         g.moveTo(0, -s);
-        g.lineTo(s * 0.85, s * 0.35);
-        g.lineTo(0, s * 0.1);
-        g.lineTo(-s * 0.85, s * 0.35);
+        g.quadraticCurveTo(s * 0.5, -s * 0.3, s * 0.7, s * 0.2);
+        g.lineTo(0, 0);
+        g.lineTo(-s * 0.7, s * 0.2);
+        g.quadraticCurveTo(-s * 0.5, -s * 0.3, 0, -s);
         g.closePath();
         g.fill();
         g.restore();
     }
-    /** 泄漏液：深色机油底 + 主题色反光边 */
-    paintSpill(g, pal, x, y, r, alpha) {
+    /** Q版：能量池（代替泄漏液，更可爱的发光效果） */
+    paintEnergyPool(g, pal, x, y, r) {
         g.save();
-        g.globalAlpha = alpha;
-        const s = g.createRadialGradient(x, y, 0, x, y, r);
-        s.addColorStop(0, pal.spill);
-        s.addColorStop(0.6, rgba(pal.spill, 0.6));
-        s.addColorStop(1, rgba(pal.spill, 0));
-        g.fillStyle = s;
+        // 柔和外发光
+        g.globalCompositeOperation = 'lighter';
+        const outerGlow = g.createRadialGradient(x, y, 0, x, y, r * 1.5);
+        outerGlow.addColorStop(0, rgba(pal.neon, 0.08));
+        outerGlow.addColorStop(0.6, rgba(pal.neon, 0.03));
+        outerGlow.addColorStop(1, rgba(pal.neon, 0));
+        g.fillStyle = outerGlow;
+        g.beginPath();
+        g.arc(x, y, r * 1.5, 0, Math.PI * 2);
+        g.fill();
+        // 主体池
+        const pool = g.createRadialGradient(x - r * 0.2, y - r * 0.2, 0, x, y, r);
+        pool.addColorStop(0, rgba(pal.neon, 0.25));
+        pool.addColorStop(0.5, rgba(pal.neon, 0.12));
+        pool.addColorStop(1, rgba(pal.neon, 0));
+        g.fillStyle = pool;
         g.beginPath();
         g.arc(x, y, r, 0, Math.PI * 2);
         g.fill();
-        // 溅射小点
-        for (let i = 0; i < 5; i++) {
+        // 高光点
+        g.fillStyle = rgba(pal.lamp, 0.3);
+        g.beginPath();
+        g.arc(x - r * 0.3, y - r * 0.3, r * 0.2, 0, Math.PI * 2);
+        g.fill();
+        // 溅射小圆点
+        for (let i = 0; i < 4; i++) {
             const a = this.rng() * Math.PI * 2;
-            const d = r * (0.7 + this.rng() * 0.8);
-            g.fillStyle = rgba(pal.spill, 0.5);
+            const d = r * (0.8 + this.rng() * 0.6);
+            const dotR = 1.5 + this.rng() * 2;
+            g.fillStyle = rgba(pal.neon, 0.2);
             g.beginPath();
-            g.arc(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.7, 1 + this.rng() * 2.4, 0, Math.PI * 2);
+            g.arc(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.7, dotR, 0, Math.PI * 2);
             g.fill();
         }
-        // 能量液的反光边（让泄漏"发光"）
-        g.globalCompositeOperation = 'lighter';
-        g.globalAlpha = alpha * 0.5;
-        g.strokeStyle = rgba(pal.neon, 0.5);
-        g.lineWidth = 1;
-        g.beginPath();
-        g.arc(x, y, r * 0.72, 0, Math.PI * 2);
-        g.stroke();
         g.restore();
     }
-    // ── L3：边缘陈设 ─────────────────────────────────────────
+    // ── L3：边缘陈设（Q版：更圆润可爱） ────────────────────────
     paintProps(g, pal, accent) {
-        // 只在屏幕左右窄边与上下留白里摆陈设，绝不压到中间的战斗区/路径
         const leftX = 26;
         const rightX = W - 26;
         if (pal.key === 'outer') {
-            // 数据中心外围：服务器机柜阵列 + 全息导视牌
+            // Q版：圆润的服务器机柜
             for (let i = 0; i < 4; i++)
                 this.paintRack(g, pal, leftX, 150 + i * 96);
             for (let i = 0; i < 4; i++)
@@ -434,7 +452,7 @@ export class EnvironmentRenderer {
             this.paintHoloSign(g, pal, accent, leftX + 4, H - 150);
         }
         else if (pal.key === 'nest') {
-            // 地下机库：机械茧舱 + 悬垂电缆 + 机械臂残骸
+            // Q版：可爱的机械茧舱
             for (let i = 0; i < 3; i++)
                 this.paintPod(g, pal, leftX, 150 + i * 150);
             for (let i = 0; i < 3; i++)
@@ -442,287 +460,370 @@ export class EnvironmentRenderer {
             this.paintMechArm(g, pal, W - 30, 100);
         }
         else {
-            // 主控中枢：反应堆柱 + 冷却管 + 监控屏
+            // Q版：风格化的反应堆柱
             for (let i = 0; i < 3; i++)
                 this.paintReactorColumn(g, pal, leftX, 170 + i * 160);
             for (let i = 0; i < 2; i++)
                 this.paintCoolantPipe(g, pal, rightX, 210 + i * 170);
             this.paintMonitor(g, pal, rightX - 2, 96);
         }
-        // 屏幕上下沿的暗压边（世界边界感，避免"悬空平铺"）
+        // Q版：更柔和的上下压边
         const topFade = g.createLinearGradient(0, 0, 0, 40);
-        topFade.addColorStop(0, 'rgba(0,0,0,0.6)');
-        topFade.addColorStop(1, 'rgba(0,0,0,0)');
+        topFade.addColorStop(0, 'rgba(10, 8, 24, 0.5)');
+        topFade.addColorStop(1, 'rgba(10, 8, 24, 0)');
         g.fillStyle = topFade;
         g.fillRect(0, 0, W, 40);
         const botFade = g.createLinearGradient(0, H - 60, 0, H);
-        botFade.addColorStop(0, 'rgba(0,0,0,0)');
-        botFade.addColorStop(1, 'rgba(0,0,0,0.65)');
+        botFade.addColorStop(0, 'rgba(10, 8, 24, 0)');
+        botFade.addColorStop(1, 'rgba(10, 8, 24, 0.5)');
         g.fillStyle = botFade;
         g.fillRect(0, H - 60, W, 60);
     }
-    /** 服务器机柜（俯视：柜体 + 散热格栅 + 状态灯） */
+    /** Q版：圆润的服务器机柜（带高光和阴影） */
     paintRack(g, pal, x, y) {
         g.save();
         g.translate(x, y);
-        g.fillStyle = 'rgba(0,0,0,0.45)';
-        this.rr(g, -13, -26 + 3, 26, 52, 4);
+        // 柔和阴影
+        g.fillStyle = 'rgba(0,0,0,0.35)';
+        this.rr(g, -13, -26 + 4, 26, 52, 8);
         g.fill();
-        g.fillStyle = pal.propDark;
-        this.rr(g, -13, -26, 26, 52, 4);
+        // 主体（更圆润）
+        const bodyGrad = g.createLinearGradient(-13, -26, 13, 26);
+        bodyGrad.addColorStop(0, pal.propHighlight);
+        bodyGrad.addColorStop(0.5, pal.propDark);
+        bodyGrad.addColorStop(1, pal.propDark);
+        g.fillStyle = bodyGrad;
+        this.rr(g, -13, -26, 26, 52, 8);
         g.fill();
-        // 散热格栅
+        // 散热格栅（圆润）
         g.fillStyle = pal.prop;
         for (let i = 0; i < 5; i++) {
-            this.rr(g, -9, -21 + i * 9, 18, 5, 1.5);
+            this.rr(g, -9, -21 + i * 9, 18, 5, 2.5);
             g.fill();
         }
-        // 状态灯
+        // 状态灯（更亮的圆点）
         g.fillStyle = pal.neon;
-        g.globalAlpha = 0.85;
-        g.fillRect(-9, 18, 3, 3);
-        g.fillRect(-4, 18, 3, 3);
+        g.globalAlpha = 0.9;
+        g.beginPath();
+        g.arc(-7, 20, 2, 0, Math.PI * 2);
+        g.fill();
+        g.beginPath();
+        g.arc(-2, 20, 2, 0, Math.PI * 2);
+        g.fill();
         g.globalAlpha = 1;
+        // 霓虹描边
         g.strokeStyle = pal.rim;
-        g.globalAlpha = 0.4;
-        g.lineWidth = 1;
-        this.rr(g, -13, -26, 26, 52, 4);
+        g.globalAlpha = 0.45;
+        g.lineWidth = 1.2;
+        this.rr(g, -13, -26, 26, 52, 8);
         g.stroke();
         g.globalAlpha = 1;
         g.restore();
     }
-    /** 机械茧舱（俯视：舱体 + 培养窗 + 顶部接口） */
+    /** Q版：可爱的机械茧舱（更圆润，带高光） */
     paintPod(g, pal, x, y) {
         g.save();
         g.translate(x, y);
-        g.fillStyle = 'rgba(0,0,0,0.5)';
-        this.rr(g, -16, -44 + 4, 32, 88, 14);
+        // 阴影
+        g.fillStyle = 'rgba(0,0,0,0.4)';
+        this.rr(g, -16, -44 + 5, 32, 88, 16);
         g.fill();
-        g.fillStyle = pal.propDark;
-        this.rr(g, -16, -44, 32, 88, 14);
+        // 主体（更圆润）
+        const bodyGrad = g.createLinearGradient(-16, -44, 16, 44);
+        bodyGrad.addColorStop(0, pal.propHighlight);
+        bodyGrad.addColorStop(0.3, pal.propDark);
+        bodyGrad.addColorStop(1, pal.propDark);
+        g.fillStyle = bodyGrad;
+        this.rr(g, -16, -44, 32, 88, 16);
         g.fill();
-        // 培养窗（发光）
+        // 培养窗（柔和发光）
         g.save();
         g.globalCompositeOperation = 'lighter';
-        g.fillStyle = rgba(pal.neon, 0.22);
-        this.rr(g, -11, -38, 22, 76, 10);
+        const windowGrad = g.createLinearGradient(0, -38, 0, 38);
+        windowGrad.addColorStop(0, rgba(pal.neon, 0.15));
+        windowGrad.addColorStop(0.5, rgba(pal.neon, 0.25));
+        windowGrad.addColorStop(1, rgba(pal.neon, 0.15));
+        g.fillStyle = windowGrad;
+        this.rr(g, -11, -38, 22, 76, 11);
         g.fill();
         g.restore();
-        // 舱内机骸剪影
-        g.fillStyle = rgba(pal.neon, 0.35);
+        // 舱内剪影（更可爱）
+        g.fillStyle = rgba(pal.neon, 0.30);
         g.beginPath();
-        g.arc(0, -14, 5, 0, Math.PI * 2);
+        g.arc(0, -14, 6, 0, Math.PI * 2);
         g.fill();
-        g.fillRect(-4, -8, 8, 22);
+        this.rr(g, -5, -7, 10, 24, 4);
+        g.fill();
         // 顶部接口
         g.fillStyle = pal.prop;
-        this.rr(g, -6, -50, 12, 8, 2);
+        this.rr(g, -6, -50, 12, 8, 4);
         g.fill();
+        // 描边
         g.strokeStyle = pal.rim;
-        g.globalAlpha = 0.45;
-        g.lineWidth = 1.4;
-        this.rr(g, -16, -44, 32, 88, 14);
+        g.globalAlpha = 0.5;
+        g.lineWidth = 1.5;
+        this.rr(g, -16, -44, 32, 88, 16);
         g.stroke();
         g.globalAlpha = 1;
         g.restore();
     }
-    /** 悬垂电缆（俯视：多股线束 + 束线夹） */
+    /** Q版：可爱的悬垂电缆 */
     paintCable(g, pal, x, y) {
         g.save();
         g.translate(x, y);
+        // 主线
         g.strokeStyle = pal.rim;
-        g.globalAlpha = 0.5;
-        g.lineWidth = 1.6;
+        g.globalAlpha = 0.45;
+        g.lineWidth = 2;
+        g.lineCap = 'round';
         g.beginPath();
         g.moveTo(0, 26);
         g.lineTo(0, -24);
         g.stroke();
-        g.beginPath();
-        g.moveTo(-9, 26);
-        g.lineTo(9, 26);
-        g.stroke();
         g.globalAlpha = 1;
-        // 线束
-        g.strokeStyle = rgba(pal.neon, 0.55);
-        g.lineWidth = 1.2;
+        // 线束（更圆润的曲线）
+        g.strokeStyle = rgba(pal.neon, 0.50);
+        g.lineWidth = 1.5;
         g.beginPath();
         g.moveTo(-3, 22);
-        g.quadraticCurveTo(-7, -6, -2, -30);
+        g.bezierCurveTo(-8, 0, -6, -15, -2, -30);
         g.stroke();
         g.beginPath();
         g.moveTo(3, 22);
-        g.quadraticCurveTo(7, -4, 2, -30);
+        g.bezierCurveTo(8, 0, 6, -15, 2, -30);
         g.stroke();
-        // 束线夹
+        // 束线夹（圆润）
         g.fillStyle = pal.prop;
-        this.rr(g, -7, -34, 14, 5, 1.5);
+        this.rr(g, -7, -34, 14, 6, 3);
         g.fill();
+        g.strokeStyle = pal.rim;
+        g.globalAlpha = 0.4;
+        g.lineWidth = 1;
+        this.rr(g, -7, -34, 14, 6, 3);
+        g.stroke();
+        g.globalAlpha = 1;
         g.restore();
     }
-    /** 反应堆柱（俯视：柱体 + 中心辉光 + 冷却环） */
+    /** Q版：风格化的反应堆柱（更圆润，带高光） */
     paintReactorColumn(g, pal, x, y) {
         g.save();
         g.translate(x, y);
-        g.fillStyle = 'rgba(0,0,0,0.45)';
+        // 阴影
+        g.fillStyle = 'rgba(0,0,0,0.35)';
         g.beginPath();
-        g.ellipse(0, 4, 14, 30, 0, 0, Math.PI * 2);
+        g.ellipse(0, 5, 14, 30, 0, 0, Math.PI * 2);
         g.fill();
-        g.fillStyle = pal.propDark;
-        this.rr(g, -13, -30, 26, 60, 6);
+        // 主体
+        const bodyGrad = g.createLinearGradient(-13, 0, 13, 0);
+        bodyGrad.addColorStop(0, pal.propDark);
+        bodyGrad.addColorStop(0.4, pal.propHighlight);
+        bodyGrad.addColorStop(1, pal.propDark);
+        g.fillStyle = bodyGrad;
+        this.rr(g, -13, -30, 26, 60, 10);
         g.fill();
         // 中心辉光柱
         g.save();
         g.globalCompositeOperation = 'lighter';
         const gg = g.createLinearGradient(0, -30, 0, 30);
         gg.addColorStop(0, rgba(pal.neon, 0));
-        gg.addColorStop(0.5, rgba(pal.neon, 0.5));
+        gg.addColorStop(0.5, rgba(pal.neon, 0.45));
         gg.addColorStop(1, rgba(pal.neon, 0));
         g.fillStyle = gg;
-        this.rr(g, -4, -28, 8, 56, 3);
+        this.rr(g, -4, -28, 8, 56, 4);
         g.fill();
         g.restore();
-        // 冷却环
+        // 冷却环（圆润）
         g.strokeStyle = pal.rim;
-        g.globalAlpha = 0.5;
-        g.lineWidth = 1.2;
+        g.globalAlpha = 0.45;
+        g.lineWidth = 1.5;
+        g.lineCap = 'round';
         for (let i = 0; i < 3; i++) {
             g.beginPath();
-            g.moveTo(-13, -18 + i * 18);
-            g.lineTo(13, -18 + i * 18);
+            g.moveTo(-12, -18 + i * 18);
+            g.quadraticCurveTo(0, -16 + i * 18, 12, -18 + i * 18);
             g.stroke();
         }
         g.globalAlpha = 1;
-        this.rr(g, -13, -30, 26, 60, 6);
+        // 描边
+        this.rr(g, -13, -30, 26, 60, 10);
         g.strokeStyle = pal.rim;
-        g.globalAlpha = 0.35;
-        g.lineWidth = 1;
+        g.globalAlpha = 0.4;
+        g.lineWidth = 1.2;
         g.stroke();
         g.globalAlpha = 1;
         g.restore();
     }
-    /** 冷却管（俯视：管体 + 法兰 + 液位窗） */
+    /** Q版：圆润的冷却管 */
     paintCoolantPipe(g, pal, x, y) {
         g.save();
         g.translate(x, y);
-        g.fillStyle = 'rgba(0,0,0,0.45)';
+        // 阴影
+        g.fillStyle = 'rgba(0,0,0,0.35)';
         g.beginPath();
-        g.ellipse(0, 20, 9, 4, 0, 0, Math.PI * 2);
+        g.ellipse(0, 21, 9, 4, 0, 0, Math.PI * 2);
         g.fill();
-        g.fillStyle = pal.prop;
-        this.rr(g, -8, -20, 16, 40, 7);
+        // 主体
+        const bodyGrad = g.createLinearGradient(-8, 0, 8, 0);
+        bodyGrad.addColorStop(0, pal.propDark);
+        bodyGrad.addColorStop(0.5, pal.propHighlight);
+        bodyGrad.addColorStop(1, pal.propDark);
+        g.fillStyle = bodyGrad;
+        this.rr(g, -8, -20, 16, 40, 8);
         g.fill();
+        // 顶部
         g.fillStyle = pal.propDark;
-        this.rr(g, -4, -25, 8, 7, 2);
+        this.rr(g, -4, -25, 8, 7, 3);
         g.fill();
-        // 法兰
+        // 法兰（圆润）
         g.strokeStyle = pal.rim;
         g.globalAlpha = 0.45;
-        g.lineWidth = 1.2;
-        this.rr(g, -10, -6, 20, 4, 1);
+        g.lineWidth = 1.5;
+        this.rr(g, -10, -6, 20, 4, 2);
         g.stroke();
-        this.rr(g, -10, 6, 20, 4, 1);
+        this.rr(g, -10, 6, 20, 4, 2);
         g.stroke();
         g.globalAlpha = 1;
-        // 液位窗
-        g.fillStyle = rgba(pal.neon, 0.7);
-        this.rr(g, -3, -18, 6, 32, 2);
+        // 液位窗（柔和发光）
+        const liquidGrad = g.createLinearGradient(0, -18, 0, 14);
+        liquidGrad.addColorStop(0, rgba(pal.neon, 0.5));
+        liquidGrad.addColorStop(0.5, rgba(pal.neon, 0.7));
+        liquidGrad.addColorStop(1, rgba(pal.neon, 0.5));
+        g.fillStyle = liquidGrad;
+        this.rr(g, -3, -18, 6, 32, 3);
         g.fill();
+        // 描边
         g.strokeStyle = pal.rim;
         g.globalAlpha = 0.35;
         g.lineWidth = 1;
-        this.rr(g, -8, -20, 16, 40, 7);
+        this.rr(g, -8, -20, 16, 40, 8);
         g.stroke();
         g.globalAlpha = 1;
         g.restore();
     }
-    /** 全息导视牌（外环防线） */
+    /** Q版：可爱的全息导视牌 */
     paintHoloSign(g, pal, accent, x, y) {
         g.save();
         g.translate(x, y);
-        g.fillStyle = 'rgba(0,0,0,0.4)';
-        this.rr(g, -11, -18 + 3, 22, 36, 3);
+        // 阴影
+        g.fillStyle = 'rgba(0,0,0,0.3)';
+        this.rr(g, -11, -18 + 3, 22, 36, 6);
         g.fill();
+        // 主体
         g.fillStyle = pal.propDark;
-        this.rr(g, -11, -18, 22, 36, 3);
+        this.rr(g, -11, -18, 22, 36, 6);
         g.fill();
+        // 全息内容（柔和发光）
         g.save();
         g.globalCompositeOperation = 'lighter';
-        g.fillStyle = rgba(accent, 0.4);
-        this.rr(g, -8, -14, 16, 5, 1);
+        g.fillStyle = rgba(accent, 0.35);
+        this.rr(g, -8, -14, 16, 5, 2);
         g.fill();
-        this.rr(g, -8, -6, 16, 3, 1);
+        g.fillStyle = rgba(accent, 0.25);
+        this.rr(g, -8, -6, 16, 3, 1.5);
         g.fill();
-        this.rr(g, -8, 0, 10, 3, 1);
+        this.rr(g, -8, 0, 10, 3, 1.5);
         g.fill();
         g.restore();
+        // 描边
         g.strokeStyle = pal.rim;
-        g.globalAlpha = 0.45;
-        g.lineWidth = 1;
-        this.rr(g, -11, -18, 22, 36, 3);
+        g.globalAlpha = 0.5;
+        g.lineWidth = 1.2;
+        this.rr(g, -11, -18, 22, 36, 6);
         g.stroke();
         g.globalAlpha = 1;
         g.restore();
     }
-    /** 机械臂残骸（机械巢穴） */
+    /** Q版：圆润的机械臂残骸 */
     paintMechArm(g, pal, x, y) {
         g.save();
         g.translate(x, y);
+        // 臂段（圆润的线条）
         g.strokeStyle = pal.rim;
-        g.globalAlpha = 0.55;
-        g.lineWidth = 3;
+        g.globalAlpha = 0.5;
+        g.lineWidth = 4;
         g.lineCap = 'round';
+        g.lineJoin = 'round';
         g.beginPath();
         g.moveTo(-10, 30);
-        g.lineTo(-2, 4);
-        g.lineTo(6, -14);
+        g.quadraticCurveTo(-6, 17, -2, 4);
         g.stroke();
-        g.lineWidth = 2;
+        g.lineWidth = 3;
+        g.beginPath();
+        g.moveTo(-2, 4);
+        g.quadraticCurveTo(2, -5, 6, -14);
+        g.stroke();
+        g.lineWidth = 2.5;
         g.beginPath();
         g.moveTo(6, -14);
-        g.lineTo(14, -26);
+        g.quadraticCurveTo(10, -20, 14, -26);
         g.stroke();
         g.globalAlpha = 1;
-        // 关节
+        // 关节（圆润的圆球）
         g.fillStyle = pal.prop;
         g.beginPath();
-        g.arc(-2, 4, 4, 0, Math.PI * 2);
+        g.arc(-2, 4, 5, 0, Math.PI * 2);
         g.fill();
         g.beginPath();
-        g.arc(6, -14, 3.4, 0, Math.PI * 2);
+        g.arc(6, -14, 4, 0, Math.PI * 2);
         g.fill();
-        // 断口火花
-        g.fillStyle = rgba(pal.neon, 0.8);
+        // 关节高光
+        g.fillStyle = pal.propHighlight;
         g.beginPath();
-        g.arc(14, -26, 2.2, 0, Math.PI * 2);
+        g.arc(-3, 3, 2, 0, Math.PI * 2);
+        g.fill();
+        g.beginPath();
+        g.arc(5, -15, 1.5, 0, Math.PI * 2);
+        g.fill();
+        // 断口火花（柔和发光）
+        g.save();
+        g.globalCompositeOperation = 'lighter';
+        const sparkGlow = g.createRadialGradient(14, -26, 0, 14, -26, 6);
+        sparkGlow.addColorStop(0, rgba(pal.neon, 0.6));
+        sparkGlow.addColorStop(0.5, rgba(pal.neon, 0.2));
+        sparkGlow.addColorStop(1, rgba(pal.neon, 0));
+        g.fillStyle = sparkGlow;
+        g.beginPath();
+        g.arc(14, -26, 6, 0, Math.PI * 2);
         g.fill();
         g.restore();
+        g.restore();
     }
-    /** 监控屏（核心反应堆）：屏 + 波形 */
+    /** Q版：可爱的监控屏 */
     paintMonitor(g, pal, x, y) {
         g.save();
         g.translate(x, y);
+        // 阴影
+        g.fillStyle = 'rgba(0,0,0,0.3)';
+        this.rr(g, -13, -12 + 3, 26, 24, 6);
+        g.fill();
+        // 外框
         g.fillStyle = pal.propDark;
-        this.rr(g, -13, -12, 26, 24, 3);
+        this.rr(g, -13, -12, 26, 24, 6);
         g.fill();
-        g.fillStyle = 'rgba(4, 26, 30, 0.9)';
-        this.rr(g, -10, -9, 20, 18, 2);
+        // 屏幕
+        g.fillStyle = 'rgba(8, 30, 40, 0.85)';
+        this.rr(g, -10, -9, 20, 18, 4);
         g.fill();
+        // 波形（更圆润）
         g.strokeStyle = pal.neon;
-        g.globalAlpha = 0.85;
-        g.lineWidth = 1.2;
+        g.globalAlpha = 0.8;
+        g.lineWidth = 1.5;
+        g.lineCap = 'round';
+        g.lineJoin = 'round';
         g.beginPath();
-        g.moveTo(-9, 1);
-        g.lineTo(-4, 1);
-        g.lineTo(-2, -6);
-        g.lineTo(0, 6);
+        g.moveTo(-8, 1);
+        g.quadraticCurveTo(-6, 1, -4, 1);
+        g.lineTo(-2, -5);
+        g.lineTo(0, 5);
         g.lineTo(2, 1);
-        g.lineTo(9, 1);
+        g.quadraticCurveTo(5, 1, 8, 1);
         g.stroke();
         g.globalAlpha = 1;
+        // 描边
         g.strokeStyle = pal.rim;
-        g.globalAlpha = 0.35;
-        g.lineWidth = 1;
-        this.rr(g, -13, -12, 26, 24, 3);
+        g.globalAlpha = 0.4;
+        g.lineWidth = 1.2;
+        this.rr(g, -13, -12, 26, 24, 6);
         g.stroke();
         g.globalAlpha = 1;
         g.restore();
@@ -731,7 +832,6 @@ export class EnvironmentRenderer {
     layoutLamps(pal) {
         this.lamps = [];
         if (pal.key === 'outer') {
-            // 顶棚灯阵列（3 列 × 3 行）
             for (let c = 0; c < 3; c++) {
                 for (let r = 0; r < 3; r++) {
                     this.lamps.push({
@@ -739,7 +839,7 @@ export class EnvironmentRenderer {
                         y: 150 + r * 200,
                         r: 108,
                         phase: this.rng() * 6.28,
-                        flicker: (c === 1 && r === 1) ? 0.9 : 0.15
+                        flicker: (c === 1 && r === 1) ? 0.7 : 0.12
                     });
                 }
             }
@@ -751,20 +851,19 @@ export class EnvironmentRenderer {
                     y: 130 + r * 165,
                     r: 96,
                     phase: this.rng() * 6.28,
-                    flicker: r === 2 ? 1 : 0.25
+                    flicker: r === 2 ? 0.8 : 0.2
                 });
             }
         }
         else {
-            // 反应堆：两盏主灯 + 一盏应急红灯
-            this.lamps.push({ x: 140, y: 220, r: 150, phase: 0, flicker: 0.1 });
-            this.lamps.push({ x: 310, y: 420, r: 150, phase: 2.1, flicker: 0.1 });
-            this.lamps.push({ x: 225, y: 600, r: 120, phase: 4.2, flicker: 0.35 });
+            this.lamps.push({ x: 140, y: 220, r: 150, phase: 0, flicker: 0.08 });
+            this.lamps.push({ x: 310, y: 420, r: 150, phase: 2.1, flicker: 0.08 });
+            this.lamps.push({ x: 225, y: 600, r: 120, phase: 4.2, flicker: 0.25 });
         }
     }
     seedMotes(pal) {
         this.motes = [];
-        const n = pal.motes === 'dust' ? 26 : pal.motes === 'spark' ? 18 : 22;
+        const n = pal.motes === 'dust' ? 22 : pal.motes === 'spark' ? 15 : 18;
         for (let i = 0; i < n; i++) {
             const m = { x: 0, y: 0, vx: 0, vy: 0, size: 1, life: this.rng() * 3, max: 3 };
             this.respawnMote(m, pal, true);
@@ -776,26 +875,26 @@ export class EnvironmentRenderer {
         if (pal.motes === 'dust') {
             m.x = r() * W;
             m.y = r() * H;
-            m.vx = (r() - 0.5) * 8;
-            m.vy = -4 - r() * 12;
-            m.size = 0.7 + r() * 1.3;
+            m.vx = (r() - 0.5) * 6;
+            m.vy = -3 - r() * 10;
+            m.size = 0.8 + r() * 1.2;
             m.max = 3 + r() * 3;
         }
         else if (pal.motes === 'spark') {
             m.x = r() * W;
             m.y = 120 + r() * (H - 240);
-            m.vx = (r() - 0.5) * 18;
-            m.vy = (r() - 0.5) * 30;
-            m.size = 1.0 + r() * 1.2;
-            m.max = 1.2 + r() * 1.6;
+            m.vx = (r() - 0.5) * 14;
+            m.vy = (r() - 0.5) * 24;
+            m.size = 1.0 + r() * 1.0;
+            m.max = 1.2 + r() * 1.4;
         }
         else {
             m.x = r() * W;
             m.y = 120 + r() * (H - 240);
-            m.vx = (r() - 0.5) * 14;
-            m.vy = -18 - r() * 26;
-            m.size = 0.8 + r() * 1.2;
-            m.max = 2 + r() * 2.5;
+            m.vx = (r() - 0.5) * 10;
+            m.vy = -14 - r() * 20;
+            m.size = 0.8 + r() * 1.0;
+            m.max = 2 + r() * 2;
         }
         m.life = initial ? r() * m.max : 0;
     }
@@ -813,11 +912,11 @@ export class EnvironmentRenderer {
         g.closePath();
     }
 }
-/** 供外部（如 HUD）取主题霓虹色的便捷出口 */
+/** 供外部取主题霓虹色 */
 export function levelNeon(levelKey) {
     return paletteFor(levelKey).neon;
 }
-/** 供外部把十六进制色转成 [r,g,b]（避免各处重复实现） */
+/** 供外部把十六进制色转成 [r,g,b] */
 export function rgbTriple(hex) {
     return hexRgb(hex);
 }

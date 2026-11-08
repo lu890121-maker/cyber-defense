@@ -3565,15 +3565,15 @@ export class GameManager {
     }
     renderUI() {
         const ctx = this.ctx;
-        // 顶部UI（渐变背景）
+        // Q版：顶部UI（更柔和的深蓝紫渐变背景）
         const topGradient = ctx.createLinearGradient(0, 0, 0, 96);
-        topGradient.addColorStop(0, 'rgba(9, 12, 19, 0.95)');
-        topGradient.addColorStop(1, 'rgba(9, 12, 19, 0.88)');
+        topGradient.addColorStop(0, 'rgba(18, 16, 42, 0.95)');
+        topGradient.addColorStop(1, 'rgba(18, 16, 42, 0.88)');
         ctx.fillStyle = topGradient;
         ctx.fillRect(0, 0, this.canvas.width, 96);
-        // 顶部边框
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.30)';
-        ctx.lineWidth = 1;
+        // Q版：顶部边框（更柔和的青色）
+        ctx.strokeStyle = 'rgba(51, 255, 255, 0.35)';
+        ctx.lineWidth = 1.2;
         ctx.beginPath();
         ctx.moveTo(0, 96);
         ctx.lineTo(this.canvas.width, 96);
@@ -3674,22 +3674,22 @@ export class GameManager {
         this.renderRestartButton();
         // 底部按钮区域背景
         const bottomGradient = ctx.createLinearGradient(0, this.canvas.height - 80, 0, this.canvas.height);
-        bottomGradient.addColorStop(0, 'rgba(9, 12, 19, 0.88)');
-        bottomGradient.addColorStop(1, 'rgba(9, 12, 19, 0.95)');
+        bottomGradient.addColorStop(0, 'rgba(18, 16, 42, 0.88)');
+        bottomGradient.addColorStop(1, 'rgba(18, 16, 42, 0.95)');
         ctx.fillStyle = bottomGradient;
         ctx.fillRect(0, this.canvas.height - 80, this.canvas.width, 80);
         // 底部边框
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.30)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(51, 255, 255, 0.35)';
+        ctx.lineWidth = 1.2;
         ctx.beginPath();
         ctx.moveTo(0, this.canvas.height - 80);
         ctx.lineTo(this.canvas.width, this.canvas.height - 80);
         ctx.stroke();
         // 底部按钮（无「下一波」——波次自动推进，倒计时画在场景里）
         // 召唤不再有固定价：价格随品阶浮动（50~150），所以按钮只显示"召唤"
-        this.renderButton('summon', '召唤\n免费', '#9D00FF');
+        this.renderButton('summon', '召唤\n免费', '#CC66FF');
         this.renderOverloadButton();
-        this.renderButton('speed', `${this.gameSpeed}x`, '#00F0FF');
+        this.renderButton('speed', `${this.gameSpeed}x`, '#33FFFF');
         // 渲染合成区域
         this.renderMergeArea();
         // 渲染卖钱区域
@@ -3704,19 +3704,21 @@ export class GameManager {
         const mergeAreaY = GAME_CONSTANTS.CANVAS_HEIGHT - 100;
         const panelTop = mergeAreaY - 44;
         const panelHeight = 82;
+        // Q版：更柔和的渐变背景
         const mergeGradient = ctx.createLinearGradient(8, panelTop, 8, panelTop + panelHeight);
-        mergeGradient.addColorStop(0, 'rgba(16, 22, 32, 0.98)');
-        mergeGradient.addColorStop(1, 'rgba(9, 12, 19, 0.98)');
+        mergeGradient.addColorStop(0, 'rgba(26, 21, 53, 0.95)');
+        mergeGradient.addColorStop(1, 'rgba(18, 16, 42, 0.95)');
         ctx.fillStyle = mergeGradient;
-        cutRectPath(ctx, 8, panelTop, 434, panelHeight, 12);
+        cutRectPath(ctx, 8, panelTop, 434, panelHeight, CYBER.panelRadius);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.45)';
-        ctx.lineWidth = 1.5;
-        cutRectPath(ctx, 8, panelTop, 434, panelHeight, 12);
+        // Q版：更柔和的描边
+        ctx.strokeStyle = 'rgba(51, 255, 255, 0.50)';
+        ctx.lineWidth = 1.8;
+        cutRectPath(ctx, 8, panelTop, 434, panelHeight, CYBER.panelRadius);
         ctx.stroke();
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.14)';
+        ctx.strokeStyle = 'rgba(51, 255, 255, 0.16)';
         ctx.lineWidth = 1;
-        cutRectPath(ctx, 13, panelTop + 5, 424, panelHeight - 10, 9);
+        cutRectPath(ctx, 13, panelTop + 5, 424, panelHeight - 10, CYBER.smallRadius);
         ctx.stroke();
         for (const slot of this.mergeAreaSlots) {
             ctx.fillStyle = slot.tower ? CYBER.cyan : 'rgba(0,240,255,0.28)';
@@ -3781,20 +3783,20 @@ export class GameManager {
     renderSellArea() {
         const ctx = this.ctx;
         const sellArea = this.getSellArea();
-        // 卖钱区域（红色切角面板）
+        // Q版：卖钱区域（柔和的圆角面板，粉色调）
         const sellGradient = ctx.createLinearGradient(sellArea.x, sellArea.y, sellArea.x, sellArea.y + sellArea.h);
-        sellGradient.addColorStop(0, 'rgba(255, 0, 51, 0.16)');
-        sellGradient.addColorStop(1, 'rgba(255, 0, 51, 0.26)');
+        sellGradient.addColorStop(0, 'rgba(255, 68, 102, 0.18)');
+        sellGradient.addColorStop(1, 'rgba(255, 102, 136, 0.28)');
         ctx.fillStyle = sellGradient;
-        cutRectPath(ctx, sellArea.x, sellArea.y, sellArea.w, sellArea.h, 12);
+        cutRectPath(ctx, sellArea.x, sellArea.y, sellArea.w, sellArea.h, CYBER.panelRadius);
         ctx.fill();
-        // 边框（红色外发光）
+        // Q版：边框（柔和的粉色外发光）
         ctx.save();
         ctx.shadowColor = CYBER.red;
-        ctx.shadowBlur = 10;
-        ctx.strokeStyle = 'rgba(255, 0, 51, 0.75)';
-        ctx.lineWidth = 1.5;
-        cutRectPath(ctx, sellArea.x, sellArea.y, sellArea.w, sellArea.h, 12);
+        ctx.shadowBlur = 12;
+        ctx.strokeStyle = 'rgba(255, 102, 136, 0.70)';
+        ctx.lineWidth = 1.8;
+        cutRectPath(ctx, sellArea.x, sellArea.y, sellArea.w, sellArea.h, CYBER.panelRadius);
         ctx.stroke();
         ctx.restore();
         // 图标 + 文案
@@ -4298,51 +4300,44 @@ export class GameManager {
         ctx.restore();
     }
     /**
-     * 赛博按钮：暗底 + 霓虹描边 + 切角 + 内侧高光。
+     * Q版按钮：暗底 + 霓虹描边 + 圆角 + 柔和阴影 + 内侧高光。
      * color 决定霓虹色（召唤=紫 / 速度=青 / 过载=橙/红/灰）。
      */
     renderButton(name, text, color) {
         const ctx = this.ctx;
         const btn = this.buttons.get(name);
-        const cut = 10;
-        // 外发光底
+        const radius = CYBER.buttonRadius;
+        // Q版：柔和外发光底（带阴影偏移增强立体感）
         ctx.save();
         ctx.shadowColor = color;
-        ctx.shadowBlur = 12;
-        ctx.fillStyle = 'rgba(9, 12, 19, 0.88)';
-        cutRectPath(ctx, btn.x, btn.y, btn.w, btn.h, cut);
+        ctx.shadowBlur = 14;
+        ctx.shadowOffsetY = 3;
+        ctx.fillStyle = 'rgba(18, 16, 42, 0.90)';
+        cutRectPath(ctx, btn.x, btn.y, btn.w, btn.h, radius);
         ctx.fill();
         ctx.restore();
-        // 顶部内侧高光（塑料感 → 玻璃感）
+        // Q版：顶部内侧高光（更柔和的玻璃感）
         ctx.save();
-        cutRectPath(ctx, btn.x, btn.y, btn.w, btn.h, cut);
+        cutRectPath(ctx, btn.x, btn.y, btn.w, btn.h, radius);
         ctx.clip();
-        const hl = ctx.createLinearGradient(0, btn.y, 0, btn.y + btn.h);
-        hl.addColorStop(0, 'rgba(255, 255, 255, 0.10)');
-        hl.addColorStop(0.45, 'rgba(255, 255, 255, 0)');
+        const hl = ctx.createLinearGradient(0, btn.y, 0, btn.y + btn.h * 0.6);
+        hl.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
+        hl.addColorStop(0.5, 'rgba(255, 255, 255, 0.03)');
+        hl.addColorStop(1, 'rgba(255, 255, 255, 0)');
         ctx.fillStyle = hl;
         ctx.fillRect(btn.x, btn.y, btn.w, btn.h);
         ctx.restore();
-        // 霓虹描边
+        // Q版：霓虹描边（更圆润）
         ctx.strokeStyle = color;
-        ctx.lineWidth = 1.6;
-        cutRectPath(ctx, btn.x, btn.y, btn.w, btn.h, cut);
+        ctx.lineWidth = 1.8;
+        cutRectPath(ctx, btn.x, btn.y, btn.w, btn.h, radius);
         ctx.stroke();
-        // 左下 / 右上角短亮线（切角处补一笔，强化"切"的感觉）
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(btn.x + cut, btn.y + btn.h);
-        ctx.lineTo(btn.x + cut + 10, btn.y + btn.h);
-        ctx.moveTo(btn.x + btn.w - cut, btn.y);
-        ctx.lineTo(btn.x + btn.w - cut - 10, btn.y);
-        ctx.stroke();
-        // 文字
+        // Q版：文字（更清晰）
         ctx.save();
         ctx.shadowColor = color;
-        ctx.shadowBlur = 8;
-        ctx.fillStyle = '#E8F6FF';
-        ctx.font = 'bold 12px sans-serif';
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = '#F0F8FF';
+        ctx.font = 'bold 13px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(text, btn.x + btn.w / 2, btn.y + btn.h / 2);
@@ -4351,38 +4346,41 @@ export class GameManager {
     renderOverloadButton() {
         const ctx = this.ctx;
         const btn = this.buttons.get('overload');
-        const cut = 10;
-        // 特级召唤按钮样式
+        const radius = CYBER.buttonRadius;
+        // Q版：特级召唤按钮样式（更圆润）
         const canAfford = this.resourceManager.getGold() >= PREMIUM_SUMMON_COST;
         const accent = canAfford ? CYBER.gold : CYBER.textLow;
         const text = `特级召唤\n${PREMIUM_SUMMON_COST}金`;
-        // 外发光底
+        // Q版：柔和外发光底（带阴影）
         ctx.save();
         ctx.shadowColor = accent;
-        ctx.shadowBlur = canAfford ? 16 : 8;
+        ctx.shadowBlur = canAfford ? 18 : 10;
+        ctx.shadowOffsetY = 3;
         ctx.fillStyle = canAfford
-            ? 'rgba(255, 215, 0, 0.18)'
-            : 'rgba(9, 12, 19, 0.88)';
-        cutRectPath(ctx, btn.x, btn.y, btn.w, btn.h, cut);
+            ? 'rgba(255, 228, 77, 0.20)'
+            : 'rgba(18, 16, 42, 0.90)';
+        cutRectPath(ctx, btn.x, btn.y, btn.w, btn.h, radius);
         ctx.fill();
         ctx.restore();
-        // 内侧高光
+        // Q版：内侧高光（更柔和）
         ctx.save();
-        cutRectPath(ctx, btn.x, btn.y, btn.w, btn.h, cut);
+        cutRectPath(ctx, btn.x, btn.y, btn.w, btn.h, radius);
         ctx.clip();
-        const hl = ctx.createLinearGradient(0, btn.y, 0, btn.y + btn.h);
-        hl.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
-        hl.addColorStop(0.45, 'rgba(255, 255, 255, 0)');
+        const hl = ctx.createLinearGradient(0, btn.y, 0, btn.y + btn.h * 0.6);
+        hl.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
+        hl.addColorStop(0.5, 'rgba(255, 255, 255, 0.04)');
+        hl.addColorStop(1, 'rgba(255, 255, 255, 0)');
         ctx.fillStyle = hl;
         ctx.fillRect(btn.x, btn.y, btn.w, btn.h);
         ctx.restore();
-        // 霓虹描边
+        // Q版：霓虹描边
         ctx.save();
         ctx.strokeStyle = accent;
-        ctx.lineWidth = canAfford ? 2.0 : 1.2;
+        ctx.lineWidth = canAfford ? 2.2 : 1.4;
+        cutRectPath(ctx, btn.x, btn.y, btn.w, btn.h, radius);
         ctx.stroke();
         ctx.restore();
-        // 文字
+        // Q版：文字（更清晰）
         ctx.save();
         ctx.fillStyle = accent;
         ctx.font = 'bold 13px sans-serif';

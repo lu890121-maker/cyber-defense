@@ -1,56 +1,65 @@
 /**
- * 赛博主题：全局配色 / UI 样式单一事实来源
+ * Q版赛博主题：全局配色 / UI 样式单一事实来源
  *
- * 《赛博防线：机械入侵》重构后的视觉规范集中在这里。
- * 之前配色散落在 GameManager / EnvironmentRenderer / TechnicalArtRenderer 三处，
- * 每改一次主题要翻四个文件、还容易漏 —— 现在所有新代码只准从这里取色。
+ * 《赛博防线：机械入侵》Q版改造后的视觉规范集中在这里。
+ * 改造方向：更可爱、更鲜艳、更立体，减少工业粗粝感。
  *
- * 规范（PRD）：
- *   背景 #0B0E14 · 路径 #12131C · 青 #00F0FF · 紫 #9D00FF · 黄 #FFD700 · 红 #FF0033
- *   UI 面板 = 暗色半透明 + 1px 青色描边；按钮 = 切角（右上 / 左下切掉）
- *   地面 = 40px 赛博网格
+ * 规范（Q版赛博朋克）：
+ *   背景 深蓝紫渐变（不是纯黑）· 路径 柔和暗紫 · 青 #33FFFF · 紫 #CC66FF · 黄 #FFE44D · 红 #FF4466
+ *   粉彩辅助色：#FFB3D9（粉）· #B3E6FF（淡蓝）· #C9FFB3（淡绿）
+ *   UI 面板 = 暗色半透明 + 圆角描边；按钮 = 圆角矩形（代替切角）
+ *   地面 = 40px 赛博网格（更柔和）
  *
- * ⚠️ 稀有度四色必须保持「灰 / 蓝(青) / 紫 / 金(黄)」的色相分离：
- *    tools/verify_hud.mjs 的 hueOk() 用「墨减纸」差分验色相方向
- *    （N 低饱和 / R 蓝通道最高 / SR 蓝最高且红次之 / SSR 红通道最高）。
- *    青色满足 R（b 远大于 r），金色满足 SSR（r 远大于 b），所以这套映射天然兼容。
+ * ⚠️ 稀有度四色必须保持「灰 / 蓝(青) / 紫 / 金(黄)」的色相分离。
  */
 export const CYBER = {
-    // ── 基底 ──
-    bgDeep: '#05070C',
-    bgBase: '#0B0E14',
-    bgPath: '#12131C',
-    bgPanel: '#12131C',
-    bgRaised: '#171A26',
-    // ── 霓虹主色（PRD 四色） ──
-    cyan: '#00F0FF',
-    purple: '#9D00FF',
-    gold: '#FFD700',
-    red: '#FF0033',
+    // ── 基底（Q版：更柔和的深蓝紫，不再是纯黑）──
+    bgDeep: '#0A0818',
+    bgBase: '#12102A',
+    bgPath: '#1A1535',
+    bgPanel: '#1A1535',
+    bgRaised: '#221D42',
+    // ── 霓虹主色（Q版：更鲜艳饱和）──
+    cyan: '#33FFFF',
+    purple: '#CC66FF',
+    gold: '#FFE44D',
+    red: '#FF4466',
     /** 辅助：生体/纳米绿、警示橙 */
-    green: '#39FF88',
-    orange: '#FF8A1F',
-    // ── 文本 ──
-    textHi: '#E8F6FF',
-    textMid: '#8FA3BF',
-    textLow: '#5A6B85',
-    // ── 地面网格 ──
+    green: '#66FFAA',
+    orange: '#FFAA44',
+    // ── 粉彩辅助色（Q版新增）──
+    pink: '#FFB3D9',
+    skyBlue: '#B3E6FF',
+    mintGreen: '#C9FFB3',
+    lavender: '#D9B3FF',
+    // ── 文本（Q版：更明亮清晰）──
+    textHi: '#F0F8FF',
+    textMid: '#A8BDD9',
+    textLow: '#6B7FA0',
+    // ── 地面网格（Q版：更柔和的网格线）──
     /** 小格线（40px） */
-    grid: 'rgba(0, 240, 255, 0.055)',
+    grid: 'rgba(51, 255, 255, 0.045)',
     /** 大格线（每 5 小格 = 200px） */
-    gridMajor: 'rgba(0, 240, 255, 0.13)',
-    /** 网格交点光点 */
-    gridNode: 'rgba(0, 240, 255, 0.30)',
+    gridMajor: 'rgba(51, 255, 255, 0.11)',
+    /** 网格交点光点（更大更圆） */
+    gridNode: 'rgba(51, 255, 255, 0.28)',
     gridSize: 40,
-    // ── 面板 ──
-    panelFill: 'rgba(9, 12, 19, 0.90)',
-    panelFillSoft: 'rgba(9, 12, 19, 0.72)',
-    panelBorder: 'rgba(0, 240, 255, 0.45)',
-    panelBorderDim: 'rgba(0, 240, 255, 0.16)',
+    // ── 面板（Q版：圆角 + 柔和阴影）──
+    panelFill: 'rgba(18, 16, 42, 0.92)',
+    panelFillSoft: 'rgba(18, 16, 42, 0.75)',
+    panelBorder: 'rgba(51, 255, 255, 0.50)',
+    panelBorderDim: 'rgba(51, 255, 255, 0.18)',
     // ── 状态色 ──
-    ok: '#4ade80',
-    warn: '#FFD700',
-    danger: '#FF0033',
+    ok: '#66FFAA',
+    warn: '#FFE44D',
+    danger: '#FF4466',
+    // ── Q版 UI 圆角参数 ──
+    /** 默认按钮圆角 */
+    buttonRadius: 14,
+    /** 面板圆角 */
+    panelRadius: 16,
+    /** 小元素圆角 */
+    smallRadius: 8,
 };
 // ══════════════════════════════════════════════════════════════
 //  颜色工具
@@ -85,57 +94,61 @@ export function darkenHex(hex, t) {
     return mixHex(hex, '#000000', t);
 }
 // ══════════════════════════════════════════════════════════════
-//  赛博 UI 形状
+//  Q版 UI 形状（圆润代替切角）
 // ══════════════════════════════════════════════════════════════
 /**
- * 切角矩形路径：右上 / 左下切掉一个直角，这是赛博 UI 的标准按钮形状。
+ * 圆角矩形路径：Q版标准按钮形状，替代原来的切角矩形。
  * 只建路径不填充，调用方自己 fill / stroke / clip。
  */
-export function cutRectPath(ctx, x, y, w, h, cut = 8) {
-    const c = Math.max(0, Math.min(cut, Math.min(w, h) / 2));
+export function cutRectPath(ctx, x, y, w, h, cut = 14) {
+    const r = Math.max(0, Math.min(cut, Math.min(w, h) / 2));
     ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + w - c, y);
-    ctx.lineTo(x + w, y + c);
-    ctx.lineTo(x + w, y + h);
-    ctx.lineTo(x + c, y + h);
-    ctx.lineTo(x, y + h - c);
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
     ctx.closePath();
 }
-/** 四角都切（八边形）—— 用于「框架」类元素 */
-export function octRectPath(ctx, x, y, w, h, cut = 8) {
-    const c = Math.max(0, Math.min(cut, Math.min(w, h) / 2));
-    ctx.beginPath();
-    ctx.moveTo(x + c, y);
-    ctx.lineTo(x + w - c, y);
-    ctx.lineTo(x + w, y + c);
-    ctx.lineTo(x + w, y + h - c);
-    ctx.lineTo(x + w - c, y + h);
-    ctx.lineTo(x + c, y + h);
-    ctx.lineTo(x, y + h - c);
-    ctx.lineTo(x, y + c);
-    ctx.closePath();
+/** 圆角矩形面板 —— 用于「框架」类元素（Q版：全圆角代替八边形） */
+export function octRectPath(ctx, x, y, w, h, cut = 14) {
+    // Q版：与 cutRectPath 相同，都是圆角矩形
+    cutRectPath(ctx, x, y, w, h, cut);
 }
-/** 切角面板：暗底 + 1px 霓虹描边（可选外发光） */
+/** 圆角面板：暗底 + 圆角描边 + 柔和外发光（Q版） */
 export function cutPanel(ctx, x, y, w, h, opts = {}) {
-    const cut = opts.cut ?? 10;
+    const radius = opts.cut ?? CYBER.panelRadius;
     const fill = opts.fill ?? CYBER.panelFill;
     const border = opts.border ?? CYBER.panelBorder;
-    cutRectPath(ctx, x, y, w, h, cut);
+    // Q版：柔和阴影
+    ctx.save();
+    if (opts.glow) {
+        ctx.shadowColor = border;
+        ctx.shadowBlur = opts.glow;
+        ctx.shadowOffsetY = 3;
+    }
+    cutRectPath(ctx, x, y, w, h, radius);
     ctx.fillStyle = fill;
     ctx.fill();
+    ctx.restore();
+    // 描边
     ctx.save();
     if (opts.glow) {
         ctx.shadowColor = border;
         ctx.shadowBlur = opts.glow;
     }
     ctx.strokeStyle = border;
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.5;
+    cutRectPath(ctx, x, y, w, h, radius);
     ctx.stroke();
     ctx.restore();
 }
 /**
- * 赛博网格：40px 小格 + 每 5 格一条亮线 + 交点光点。
+ * Q版赛博网格：40px 小格 + 每 5 格一条亮线 + 交点光点（更圆润）。
  * 只画网格线，底色由调用方铺好。
  */
 export function paintCyberGrid(ctx, w, h, opts = {}) {
@@ -144,7 +157,7 @@ export function paintCyberGrid(ctx, w, h, opts = {}) {
     const minorColor = opts.minorColor ?? CYBER.grid;
     const majorColor = opts.majorColor ?? CYBER.gridMajor;
     const nodeColor = opts.nodeColor ?? CYBER.gridNode;
-    const nodeRadius = opts.nodeRadius ?? 1.2;
+    const nodeRadius = opts.nodeRadius ?? 1.8;
     ctx.save();
     ctx.lineWidth = 1;
     for (let i = 0, x = 0; x <= w; i++, x += size) {
@@ -161,7 +174,7 @@ export function paintCyberGrid(ctx, w, h, opts = {}) {
         ctx.lineTo(w, Math.round(y) + 0.5);
         ctx.stroke();
     }
-    // 大格交点上的小光点 —— 让网格"通电"
+    // 大格交点上的小光点 —— Q版：更大更圆润的发光点
     ctx.fillStyle = nodeColor;
     for (let x = 0; x <= w; x += size * major) {
         for (let y = 0; y <= h; y += size * major) {
@@ -172,22 +185,22 @@ export function paintCyberGrid(ctx, w, h, opts = {}) {
     }
     ctx.restore();
 }
-/** 霓虹文字：先铺一层发光再写字 */
+/** 霓虹文字：先铺一层发光再写字（Q版：更柔和的发光） */
 export function neonText(ctx, text, x, y, color, opts = {}) {
     ctx.save();
     ctx.font = opts.font ?? 'bold 14px sans-serif';
     ctx.textAlign = opts.align ?? 'center';
     ctx.textBaseline = opts.baseline ?? 'middle';
     ctx.shadowColor = color;
-    ctx.shadowBlur = opts.blur ?? 10;
+    ctx.shadowBlur = opts.blur ?? 8;
     ctx.fillStyle = color;
     ctx.fillText(text, x, y);
     ctx.shadowBlur = 0;
-    ctx.fillStyle = lightenHex(color, 0.55);
+    ctx.fillStyle = lightenHex(color, 0.45);
     ctx.fillText(text, x, y);
     ctx.restore();
 }
-/** 六边形路径（塔位 / 节点用） */
+/** 六边形路径（塔位 / 节点用）—— Q版：更圆润的六角 */
 export function hexPath(ctx, cx, cy, r, rot = Math.PI / 6) {
     ctx.beginPath();
     for (let i = 0; i < 6; i++) {
@@ -201,11 +214,11 @@ export function hexPath(ctx, cx, cy, r, rot = Math.PI / 6) {
     }
     ctx.closePath();
 }
-/** 扫描线（后处理用）：每 3px 一条极淡暗线 */
-export function paintScanlines(ctx, w, h, alpha = 0.055) {
+/** 扫描线（后处理用）：Q版更轻柔，每 4px 一条极淡线 */
+export function paintScanlines(ctx, w, h, alpha = 0.03) {
     ctx.save();
     ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
-    for (let y = 0; y < h; y += 3)
+    for (let y = 0; y < h; y += 4)
         ctx.fillRect(0, y, w, 1);
     ctx.restore();
 }
