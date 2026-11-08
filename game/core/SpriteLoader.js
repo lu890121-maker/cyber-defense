@@ -8,7 +8,6 @@
  * 不会出现"隐形单位"；isLoaded() 只在至少一张图就绪后为 true。
  */
 import { TowerType, EnemyType, TOWER_CONFIGS, ENEMY_CONFIGS } from '../config/GameConfig.js';
-import { CYBER } from '../config/CyberTheme.js';
 /**
  * 机械军团通用装甲色（敌人绘制用）。
  * 各兵种的识别色来自 ENEMY_CONFIGS[type].color，只用在发光镜头 / 能量缝 / 条纹上，
@@ -881,111 +880,68 @@ export class SpriteLoader {
         ctx.restore();
     }
     /**
-     * 通用机械基座：切角装甲板 + 液压杆 + 黄黑警戒斜纹 + 主题色能量环 + 六角螺栓。
-     * 造型语言对齐 PRD「赛博机械」：**硬边棱角 + 霓虹发光缝 + 工业警示色**，
-     * 不要画回圆润的医疗设备（那是被否掉的一版）。
+     * Q版通用机械基座：圆润底座 + 可爱能量核心 + 柔和发光。
+     * 造型语言：圆润可爱 + 霓虹发光 + 柔和阴影。
      */
     drawDeviceBase(ctx, acc, seed, rec, glow = 1) {
-        // 档位越高，主题色越亮 —— 所有 A(...) 调用点自动受益，不必逐处改
         const A = (a) => this.rgbaStr(acc, Math.min(1, a * glow));
         const t = this.time;
-        // 地面暗影
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        // 地面暗影（更柔和）
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
         ctx.beginPath();
-        ctx.ellipse(0, 15, 19, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 15, 17, 5, 0, 0, Math.PI * 2);
         ctx.fill();
-        // 接地发光环
+        // 接地发光环（更圆润）
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = A(0.32 + rec * 0.35);
-        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = A(0.35 + rec * 0.4);
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.ellipse(0, 14.5, 15, 4.4, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 14.5, 14, 4, 0, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
-        // 主装甲基座（切角八边形，硬边）
-        ctx.beginPath();
-        ctx.moveTo(-13, 14);
-        ctx.lineTo(-15, 6);
-        ctx.lineTo(-10, -2);
-        ctx.lineTo(10, -2);
-        ctx.lineTo(15, 6);
-        ctx.lineTo(13, 14);
-        ctx.closePath();
-        const baseGrad = ctx.createLinearGradient(0, -2, 0, 14);
-        baseGrad.addColorStop(0, '#3A4150');
-        baseGrad.addColorStop(0.5, '#232833');
-        baseGrad.addColorStop(1, '#14171E');
+        // Q版主装甲基座（圆润椭圆形）
+        const baseGrad = ctx.createRadialGradient(0, 6, 0, 0, 6, 16);
+        baseGrad.addColorStop(0, '#4A5568');
+        baseGrad.addColorStop(0.6, '#2D3748');
+        baseGrad.addColorStop(1, '#1A202C');
         ctx.fillStyle = baseGrad;
-        ctx.fill();
-        // 上层装甲板
-        ctx.fillStyle = '#2B313D';
         ctx.beginPath();
-        ctx.moveTo(-10, -2);
-        ctx.lineTo(-7, -7);
-        ctx.lineTo(7, -7);
-        ctx.lineTo(10, -2);
-        ctx.closePath();
+        ctx.ellipse(0, 6, 14, 10, 0, 0, Math.PI * 2);
         ctx.fill();
-        // 黄黑警戒斜纹带
-        ctx.save();
+        // 上层装甲（圆润）
+        ctx.fillStyle = '#3A4A5E';
         ctx.beginPath();
-        ctx.rect(-11.5, 6.5, 23, 4.4);
-        ctx.clip();
-        ctx.fillStyle = '#C9A21F';
-        ctx.fillRect(-11.5, 6.5, 23, 4.4);
-        ctx.fillStyle = CYBER.bgPath;
-        for (let i = -1; i < 7; i++) {
-            ctx.save();
-            ctx.translate(-11.5 + i * 4.4, 6.5);
-            ctx.rotate(0.6);
-            ctx.fillRect(0, -3, 2.2, 12);
-            ctx.restore();
-        }
-        ctx.restore();
-        // 散热格栅（两侧）
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
-        for (let i = 0; i < 3; i++) {
-            ctx.fillRect(-13.5, i * 2.4, 4, 1.2);
-            ctx.fillRect(9.5, i * 2.4, 4, 1.2);
-        }
-        // 六角螺栓
-        ctx.fillStyle = '#5A6577';
-        for (const [bx, by] of [[-10.5, 4], [10.5, 4], [-11.5, 11], [11.5, 11]]) {
-            ctx.beginPath();
-            for (let i = 0; i < 6; i++) {
-                const a = (i / 6) * Math.PI * 2;
-                const px = bx + Math.cos(a) * 1.5, py = by + Math.sin(a) * 1.5;
-                if (i === 0)
-                    ctx.moveTo(px, py);
-                else
-                    ctx.lineTo(px, py);
-            }
-            ctx.closePath();
-            ctx.fill();
-        }
-        // 主题色能量环（脉冲，开火时更亮）
-        const pulse = Math.min(1, 0.42 + Math.abs(Math.sin(t * 2.4 + seed)) * 0.36 + rec * 0.45);
+        ctx.ellipse(0, 0, 10, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Q版可爱装饰：主题色能量环（脉冲，开火时更亮）
+        const pulse = Math.min(1, 0.5 + Math.abs(Math.sin(t * 2.4 + seed)) * 0.4 + rec * 0.5);
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = A(pulse * 0.8);
-        ctx.lineWidth = 1.6;
+        ctx.strokeStyle = A(pulse * 0.9);
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.ellipse(0, 8.4, 9, 2.6, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 8, 10, 3, 0, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
-        // 云台转轴 + 能量核心
-        ctx.fillStyle = '#1B1F27';
+        // Q版云台转轴（圆润）
+        ctx.fillStyle = '#2D3748';
         ctx.beginPath();
-        ctx.arc(0, -4, 6.4, 0, Math.PI * 2);
+        ctx.arc(0, -4, 7, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#333A47';
+        ctx.fillStyle = '#4A5568';
         ctx.beginPath();
-        ctx.arc(0, -4, 4.4, 0, Math.PI * 2);
+        ctx.arc(0, -4, 5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = A(0.9);
+        // Q版能量核心（更亮的发光）
+        ctx.fillStyle = A(0.95);
         ctx.beginPath();
-        ctx.arc(0, -4, 2.2 + rec * 0.8, 0, Math.PI * 2);
+        ctx.arc(0, -4, 3 + rec * 1, 0, Math.PI * 2);
+        ctx.fill();
+        // 高光点
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.beginPath();
+        ctx.arc(-1, -5, 1.2, 0, Math.PI * 2);
         ctx.fill();
     }
     /** 红色警戒灯：基座前缘的小灯，脉冲发光（开火时更亮），画在所有器械之上 */
@@ -1005,326 +961,316 @@ export class SpriteLoader {
         ctx.fill();
     }
     /**
-     * 11 件赛博机械武器。基座直立不动，武器头绕 (0, PIV) 按 aim 旋转朝目标。
-     * 造型语言：暗金属棱角机身 + 主题色能量核心/能量条 + 开火能量团。
-     * 其中 4 件对齐 PRD 的原型：激光炮台(LASER) / EMP 塔(ELECTRIC) /
-     * 导弹发射器(BOMB) / 无人机塔(ANESTHESIA，悬浮无人机 + 束缚场)。
+     * Q版 11 件可爱武器。基座直立不动，武器头绕 (0, PIV) 按 aim 旋转朝目标。
+     * 造型语言：圆润可爱 + 大眼睛 + 主题色能量核心 + 开火能量团。
      */
     drawDevice(ctx, type, t, seed, acc, rec, aim, glow = 1) {
-        // 档位越高，武器头的能量核心 / 能量条越亮（11 件共用这一个 A()，改一处全生效）
         const A = (a) => this.rgbaStr(acc, Math.min(1, a * glow));
         const PIV = -3;
         const r = Math.min(1, rec);
+        const accentHex = TOWER_CONFIGS[type].color;
         switch (type) {
             case TowerType.MACHINE_GUN: {
-                // 脉冲炮：双联炮管 + 电容鼓 + 枪口能量团
+                // Q版脉冲炮：圆润炮身 + 可爱大眼睛 + 双管炮口
                 ctx.save();
                 ctx.translate(0, PIV);
                 ctx.rotate(aim);
-                ctx.fillStyle = '#2B313D';
-                ctx.fillRect(-10, -7, 16, 14);
-                ctx.fillStyle = '#1B1F27';
+                // 圆润炮身
+                const bodyGrad = ctx.createRadialGradient(-2, 0, 0, -2, 0, 12);
+                bodyGrad.addColorStop(0, '#5A6B80');
+                bodyGrad.addColorStop(1, '#2B313D');
+                ctx.fillStyle = bodyGrad;
                 ctx.beginPath();
-                ctx.arc(-4, -1, 5.6, 0, Math.PI * 2);
+                ctx.roundRect(-10, -8, 18, 16, 6);
                 ctx.fill();
-                ctx.fillStyle = A(0.9);
+                // 双管炮口
+                ctx.fillStyle = '#4A5568';
                 ctx.beginPath();
-                ctx.arc(-4, -1, 2.4, 0, Math.PI * 2);
+                ctx.roundRect(6, -6, 24, 4, 2);
                 ctx.fill();
-                ctx.fillStyle = '#5A6577';
-                ctx.fillRect(4, -6, 26, 4.4);
-                ctx.fillRect(4, 1.6, 26, 4.4);
-                ctx.fillStyle = '#3A4150';
-                for (let i = 0; i < 4; i++) {
-                    ctx.fillRect(9 + i * 5, -6.6, 2, 5.6);
-                    ctx.fillRect(9 + i * 5, 1, 2, 5.6);
-                }
-                ctx.fillStyle = A(0.95);
-                ctx.fillRect(30, -5.4, 2.6, 3.6);
-                ctx.fillRect(30, 2.2, 2.6, 3.6);
+                ctx.beginPath();
+                ctx.roundRect(6, 2, 24, 4, 2);
+                ctx.fill();
+                // 可爱大眼睛
+                this.drawCuteEye(ctx, -2, -2, 3.5, accentHex, 1, 0);
+                this.drawCuteEye(ctx, -2, 3, 3.5, accentHex, 1, 0);
+                // 炮口能量团
                 if (rec > 0.1) {
                     ctx.fillStyle = A(r);
                     ctx.beginPath();
-                    ctx.arc(34, -3.6, 2.2 + rec * 2.2, 0, Math.PI * 2);
+                    ctx.arc(32, -4, 3 + rec * 2, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.beginPath();
-                    ctx.arc(34, 3.8, 2.2 + rec * 2.2, 0, Math.PI * 2);
+                    ctx.arc(32, 4, 3 + rec * 2, 0, Math.PI * 2);
                     ctx.fill();
                 }
                 ctx.restore();
                 break;
             }
             case TowerType.FROST: {
-                // 冷冻炮：低温罐 + 管路 + 外扩喷口 + 霜雾
+                // Q版冷冻炮：像可爱的小冰块，带霜雾效果
                 ctx.save();
                 ctx.translate(0, PIV);
                 ctx.rotate(aim);
-                ctx.fillStyle = '#2B313D';
-                ctx.fillRect(-11, -12, 13, 20);
-                ctx.fillStyle = '#3A4150';
-                ctx.fillRect(-11, -12, 13, 3);
-                ctx.fillStyle = A(0.75);
-                ctx.fillRect(-8, -9, 7, 14);
-                ctx.fillStyle = '#5A6577';
-                ctx.fillRect(0, -6, 22, 9);
-                ctx.fillStyle = '#7C8290';
+                // 圆润冰晶身体
+                const frostGrad = ctx.createRadialGradient(-4, 0, 0, -4, 0, 14);
+                frostGrad.addColorStop(0, '#7DD3FC');
+                frostGrad.addColorStop(0.5, '#38BDF8');
+                frostGrad.addColorStop(1, '#0EA5E9');
+                ctx.fillStyle = frostGrad;
                 ctx.beginPath();
-                ctx.moveTo(22, -7);
-                ctx.lineTo(30, -10);
-                ctx.lineTo(30, 10);
-                ctx.lineTo(22, 7);
-                ctx.closePath();
+                ctx.roundRect(-12, -10, 20, 20, 8);
                 ctx.fill();
-                ctx.fillStyle = A(0.9);
+                // 喷口
+                ctx.fillStyle = '#64748B';
                 ctx.beginPath();
-                ctx.arc(12, 0, 2.6, 0, Math.PI * 2);
+                ctx.roundRect(6, -5, 20, 10, 3);
                 ctx.fill();
+                // 可爱大眼睛
+                this.drawCuteEye(ctx, -4, -2, 3, accentHex, 1, 0);
+                this.drawCuteEye(ctx, -4, 3, 3, accentHex, 1, 0);
+                // 霜雾效果
                 if (rec > 0.05) {
-                    ctx.fillStyle = A(r * 0.85);
+                    ctx.fillStyle = A(r * 0.6);
                     ctx.beginPath();
-                    ctx.moveTo(30, -8);
-                    ctx.lineTo(45, -12);
-                    ctx.lineTo(45, 12);
-                    ctx.lineTo(30, 8);
-                    ctx.closePath();
+                    ctx.ellipse(32, 0, 12, 8, 0, 0, Math.PI * 2);
                     ctx.fill();
                 }
                 ctx.restore();
                 break;
             }
             case TowerType.ELECTRIC: {
-                // EMP 塔：线圈塔身 + 双电极 + 电弧
+                // Q版 EMP 塔：像可爱的小机器人，带电弧
                 ctx.save();
                 ctx.translate(0, PIV);
                 ctx.rotate(aim);
-                ctx.fillStyle = '#2B313D';
-                ctx.fillRect(-8, -9, 17, 18);
-                ctx.strokeStyle = '#5A6577';
-                ctx.lineWidth = 1.5;
-                for (let i = 0; i < 3; i++) {
-                    ctx.beginPath();
-                    ctx.arc(-1, 0, 4 + i * 2.6, -1.1, 1.1);
-                    ctx.stroke();
-                }
-                ctx.fillStyle = '#7C8290';
-                ctx.fillRect(14, -10, 9, 5);
-                ctx.fillRect(14, 5, 9, 5);
-                ctx.strokeStyle = A(0.95);
+                // 圆润身体
+                const empGrad = ctx.createRadialGradient(-2, 0, 0, -2, 0, 12);
+                empGrad.addColorStop(0, '#A78BFA');
+                empGrad.addColorStop(1, '#6D28D9');
+                ctx.fillStyle = empGrad;
+                ctx.beginPath();
+                ctx.roundRect(-10, -9, 18, 18, 7);
+                ctx.fill();
+                // 电极
+                ctx.fillStyle = '#7C3AED';
+                ctx.beginPath();
+                ctx.roundRect(6, -8, 8, 6, 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.roundRect(6, 2, 8, 6, 2);
+                ctx.fill();
+                // 可爱大眼睛
+                this.drawCuteEye(ctx, -2, -2, 3, accentHex, 1, 0);
+                this.drawCuteEye(ctx, -2, 3, 3, accentHex, 1, 0);
+                // 电弧
+                ctx.strokeStyle = A(0.9);
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.moveTo(23, -7.5);
-                ctx.lineTo(28, 0);
-                ctx.lineTo(24, 0);
-                ctx.lineTo(29, 7.5);
-                ctx.stroke();
-                ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-                ctx.lineWidth = 0.8;
-                ctx.beginPath();
-                ctx.moveTo(23, -7.5);
-                ctx.lineTo(28, 0);
-                ctx.lineTo(24, 0);
-                ctx.lineTo(29, 7.5);
+                ctx.moveTo(14, -5);
+                ctx.lineTo(20, 0);
+                ctx.lineTo(14, 5);
                 ctx.stroke();
                 ctx.restore();
                 break;
             }
             case TowerType.POISON: {
-                // 毒蚀炮：纳米毒剂罐 + 扇形喷头
+                // Q版毒蚀炮：像可爱的小毒瓶
                 ctx.save();
                 ctx.translate(0, PIV);
                 ctx.rotate(aim);
-                ctx.fillStyle = '#2B313D';
+                // 圆润毒瓶身体
+                const poisonGrad = ctx.createRadialGradient(-4, 0, 0, -4, 0, 12);
+                poisonGrad.addColorStop(0, '#86EFAC');
+                poisonGrad.addColorStop(0.5, '#22C55E');
+                poisonGrad.addColorStop(1, '#16A34A');
+                ctx.fillStyle = poisonGrad;
                 ctx.beginPath();
-                ctx.arc(-4, -1, 7.4, 0, Math.PI * 2);
+                ctx.arc(-4, 0, 9, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillStyle = A(0.8);
+                // 喷头
+                ctx.fillStyle = '#4ADE80';
                 ctx.beginPath();
-                ctx.arc(-4, 0, 4.6, 0, Math.PI * 2);
+                ctx.roundRect(4, -4, 18, 8, 3);
                 ctx.fill();
-                ctx.fillStyle = '#5A6577';
-                ctx.fillRect(3, -3.4, 19, 7);
-                ctx.fillStyle = '#7C8290';
-                ctx.beginPath();
-                ctx.moveTo(22, -5.6);
-                ctx.lineTo(28, -8);
-                ctx.lineTo(28, 8);
-                ctx.lineTo(22, 5.6);
-                ctx.closePath();
-                ctx.fill();
+                // 可爱大眼睛
+                this.drawCuteEye(ctx, -4, -2, 3, accentHex, 1, 0);
+                this.drawCuteEye(ctx, -4, 3, 3, accentHex, 1, 0);
+                // 毒雾
                 if (rec > 0.05) {
-                    ctx.fillStyle = A(r * 0.85);
+                    ctx.fillStyle = A(r * 0.7);
                     ctx.beginPath();
-                    ctx.moveTo(28, -7);
-                    ctx.lineTo(42, -11);
-                    ctx.lineTo(42, 11);
-                    ctx.lineTo(28, 7);
-                    ctx.closePath();
+                    ctx.ellipse(28, 0, 10, 7, 0, 0, Math.PI * 2);
                     ctx.fill();
                 }
                 ctx.restore();
                 break;
             }
             case TowerType.BOMB: {
-                // 导弹发射器：双联发射箱 + 两枚导弹 + 导焰
+                // Q版导弹发射器：像可爱的小火箭发射器
                 ctx.save();
                 ctx.translate(0, PIV);
                 ctx.rotate(aim);
-                ctx.fillStyle = '#2B313D';
-                ctx.fillRect(-4, -10, 22, 20);
-                ctx.fillStyle = '#1B1F27';
-                ctx.fillRect(-4, -10, 3, 20);
-                ctx.fillStyle = CYBER.bgPath;
+                // 圆润发射箱
+                const bombGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 14);
+                bombGrad.addColorStop(0, '#FB923C');
+                bombGrad.addColorStop(1, '#EA580C');
+                ctx.fillStyle = bombGrad;
                 ctx.beginPath();
-                ctx.arc(13, -5.4, 3.4, 0, Math.PI * 2);
+                ctx.roundRect(-6, -10, 20, 20, 6);
+                ctx.fill();
+                // 导弹
+                ctx.fillStyle = '#F97316';
+                ctx.beginPath();
+                ctx.ellipse(14, -5, 6, 3, 0, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.arc(13, 5.4, 3.4, 0, Math.PI * 2);
+                ctx.ellipse(14, 5, 6, 3, 0, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillStyle = '#C7CCD4';
-                for (const oy of [-5.4, 5.4]) {
-                    ctx.beginPath();
-                    ctx.moveTo(11, oy - 2.4);
-                    ctx.lineTo(19, oy - 1.2);
-                    ctx.lineTo(21, oy);
-                    ctx.lineTo(19, oy + 1.2);
-                    ctx.lineTo(11, oy + 2.4);
-                    ctx.closePath();
-                    ctx.fill();
-                }
-                ctx.fillStyle = A(0.9);
-                ctx.fillRect(-2, -1.4, 16, 2.8);
+                // 可爱大眼睛
+                this.drawCuteEye(ctx, 0, -2, 3, accentHex, 1, 0);
+                this.drawCuteEye(ctx, 0, 3, 3, accentHex, 1, 0);
+                // 爆炸效果
                 if (rec > 0.1) {
                     ctx.fillStyle = A(r);
-                    for (const oy of [-5.4, 5.4]) {
-                        ctx.beginPath();
-                        ctx.arc(23, oy, 2.6 + rec * 2.4, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
+                    ctx.beginPath();
+                    ctx.arc(24, -5, 4 + rec * 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(24, 5, 4 + rec * 2, 0, Math.PI * 2);
+                    ctx.fill();
                 }
                 ctx.restore();
                 break;
             }
             case TowerType.LASER: {
-                // 激光炮台：聚焦环 ×3 + 透镜 + 光束
+                // Q版激光炮台：像可爱的小激光枪
                 ctx.save();
                 ctx.translate(0, PIV);
                 ctx.rotate(aim);
-                ctx.fillStyle = '#2B313D';
-                ctx.fillRect(-9, -7, 19, 14);
-                ctx.fillStyle = '#5A6577';
-                ctx.fillRect(6, -4.4, 22, 8.8);
-                ctx.strokeStyle = A(0.9);
-                ctx.lineWidth = 1.6;
-                for (let i = 0; i < 3; i++) {
-                    ctx.beginPath();
-                    ctx.arc(12 + i * 6, 0, 4.8, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
-                ctx.fillStyle = A(0.95);
+                // 圆润枪身
+                const laserGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 12);
+                laserGrad.addColorStop(0, '#F472B6');
+                laserGrad.addColorStop(1, '#DB2777');
+                ctx.fillStyle = laserGrad;
                 ctx.beginPath();
-                ctx.arc(28, 0, 3.4, 0, Math.PI * 2);
+                ctx.roundRect(-10, -7, 20, 14, 5);
                 ctx.fill();
+                // 枪管
+                ctx.fillStyle = '#EC4899';
+                ctx.beginPath();
+                ctx.roundRect(8, -4, 20, 8, 3);
+                ctx.fill();
+                // 可爱大眼睛
+                this.drawCuteEye(ctx, -2, -2, 3, accentHex, 1, 0);
+                this.drawCuteEye(ctx, -2, 3, 3, accentHex, 1, 0);
+                // 激光束
                 if (rec > 0.05) {
                     ctx.fillStyle = A(r);
                     ctx.beginPath();
-                    ctx.moveTo(30, -1.8);
-                    ctx.lineTo(49, -4);
-                    ctx.lineTo(49, 4);
-                    ctx.lineTo(30, 1.8);
-                    ctx.closePath();
+                    ctx.roundRect(30, -2, 20, 4, 2);
                     ctx.fill();
                 }
                 ctx.restore();
                 break;
             }
             case TowerType.SNIPER: {
-                // 磁轨炮：电容组 + 双导轨 + 加速段 + 弹丸
+                // Q版磁轨炮：像可爱的小狙击枪
                 ctx.save();
                 ctx.translate(0, PIV);
                 ctx.rotate(aim);
-                ctx.fillStyle = '#2B313D';
-                ctx.fillRect(-11, -8, 13, 16);
-                ctx.fillStyle = '#5A6577';
-                for (let i = 0; i < 3; i++) {
-                    ctx.beginPath();
-                    ctx.arc(-5, -5 + i * 5, 2.1, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-                ctx.fillStyle = '#7C8290';
-                ctx.fillRect(2, -6.4, 38, 3.4);
-                ctx.fillRect(2, 3, 38, 3.4);
-                ctx.strokeStyle = A(0.6);
-                ctx.lineWidth = 1;
+                // 圆润枪身
+                const sniperGrad = ctx.createRadialGradient(-4, 0, 0, -4, 0, 12);
+                sniperGrad.addColorStop(0, '#FBBF24');
+                sniperGrad.addColorStop(1, '#D97706');
+                ctx.fillStyle = sniperGrad;
                 ctx.beginPath();
-                ctx.moveTo(6, 0);
-                ctx.lineTo(28, 0);
-                ctx.stroke();
-                ctx.fillStyle = A(0.95);
-                ctx.beginPath();
-                ctx.arc(32, 0, 3.2, 0, Math.PI * 2);
+                ctx.roundRect(-12, -8, 16, 16, 6);
                 ctx.fill();
+                // 长导轨
+                ctx.fillStyle = '#F59E0B';
+                ctx.beginPath();
+                ctx.roundRect(2, -5, 36, 3, 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.roundRect(2, 2, 36, 3, 2);
+                ctx.fill();
+                // 可爱大眼睛
+                this.drawCuteEye(ctx, -4, -2, 3, accentHex, 1, 0);
+                this.drawCuteEye(ctx, -4, 3, 3, accentHex, 1, 0);
+                // 弹丸
                 if (rec > 0.1) {
                     ctx.fillStyle = A(r);
                     ctx.beginPath();
-                    ctx.arc(42, 0, 2.4 + rec * 2.6, 0, Math.PI * 2);
+                    ctx.arc(42, 0, 3 + rec * 2, 0, Math.PI * 2);
                     ctx.fill();
                 }
                 ctx.restore();
                 break;
             }
             case TowerType.FLAME: {
-                // 焚化器：等离子燃料罐 + 喷管 + 火舌
+                // Q版焚化器：像可爱的小火焰喷射器
                 ctx.save();
                 ctx.translate(0, PIV);
                 ctx.rotate(aim);
-                ctx.fillStyle = '#2B313D';
-                ctx.fillRect(-11, -10, 15, 20);
-                ctx.fillStyle = A(0.8);
-                ctx.fillRect(-11, -3, 15, 4);
-                ctx.fillStyle = '#5A6577';
-                ctx.fillRect(3, -4.4, 20, 8.8);
-                ctx.fillStyle = '#7C8290';
-                ctx.fillRect(22, -5.4, 5, 10.8);
-                const f = 0.75 + Math.sin(t * 11 + seed) * 0.25;
-                ctx.fillStyle = A(0.95);
+                // 圆润燃料罐
+                const flameGrad = ctx.createRadialGradient(-4, 0, 0, -4, 0, 12);
+                flameGrad.addColorStop(0, '#FCA5A5');
+                flameGrad.addColorStop(0.5, '#EF4444');
+                flameGrad.addColorStop(1, '#DC2626');
+                ctx.fillStyle = flameGrad;
                 ctx.beginPath();
-                ctx.ellipse(33, 0, 9 * f, 6 * f, 0, 0, Math.PI * 2);
+                ctx.roundRect(-12, -10, 18, 20, 7);
                 ctx.fill();
-                ctx.fillStyle = 'rgba(255,236,180,0.95)';
+                // 喷管
+                ctx.fillStyle = '#F87171';
                 ctx.beginPath();
-                ctx.ellipse(33, 0, 4 * f, 3 * f, 0, 0, Math.PI * 2);
+                ctx.roundRect(4, -5, 20, 10, 3);
+                ctx.fill();
+                // 可爱大眼睛
+                this.drawCuteEye(ctx, -4, -2, 3, accentHex, 1, 0);
+                this.drawCuteEye(ctx, -4, 3, 3, accentHex, 1, 0);
+                // 火焰
+                const f = 0.75 + Math.sin(t * 11 + seed) * 0.25;
+                ctx.fillStyle = A(0.9);
+                ctx.beginPath();
+                ctx.ellipse(30, 0, 8 * f, 5 * f, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'rgba(255,236,180,0.8)';
+                ctx.beginPath();
+                ctx.ellipse(30, 0, 4 * f, 2.5 * f, 0, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.restore();
                 break;
             }
             case TowerType.MAGNETIC: {
-                // 引力场：环形发生器 + 三轴旋转场环 + 悬浮核心
+                // Q版引力场：像可爱的小磁铁
                 ctx.save();
                 ctx.translate(0, PIV);
                 ctx.rotate(aim);
-                ctx.strokeStyle = '#5A6577';
-                ctx.lineWidth = 2.4;
+                // 圆润磁体
+                const magGrad = ctx.createRadialGradient(4, 0, 0, 4, 0, 12);
+                magGrad.addColorStop(0, '#67E8F9');
+                magGrad.addColorStop(1, '#06B6D4');
+                ctx.fillStyle = magGrad;
                 ctx.beginPath();
                 ctx.arc(4, 0, 10, 0, Math.PI * 2);
-                ctx.stroke();
+                ctx.fill();
+                // 可爱大眼睛
+                this.drawCuteEye(ctx, 2, -2, 3, accentHex, 1, 0);
+                this.drawCuteEye(ctx, 2, 3, 3, accentHex, 1, 0);
+                // 旋转场环
                 ctx.strokeStyle = A(0.7);
-                ctx.lineWidth = 1.3;
+                ctx.lineWidth = 1.5;
                 for (let i = 0; i < 3; i++) {
                     const a = t * 1.6 + i * 2.1 + seed;
                     ctx.beginPath();
                     ctx.ellipse(4, 0, 10 + Math.cos(a) * 2, 4.4 + Math.sin(a) * 1.6, a * 0.4, 0, Math.PI * 2);
                     ctx.stroke();
                 }
-                ctx.fillStyle = A(0.95);
-                ctx.beginPath();
-                ctx.arc(4, 0, 3.6, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = CYBER.textHi;
-                ctx.beginPath();
-                ctx.arc(3, 0, 1.4, 0, Math.PI * 2);
-                ctx.fill();
+                // 引力效果
                 if (rec > 0.1) {
-                    ctx.fillStyle = A(r * 0.7);
+                    ctx.fillStyle = A(r * 0.5);
                     ctx.beginPath();
                     ctx.arc(4, 0, 14 + rec * 6, 0, Math.PI * 2);
                     ctx.fill();
@@ -1333,20 +1279,32 @@ export class SpriteLoader {
                 break;
             }
             case TowerType.SINGULARITY: {
-                // 奇点炮：暗物质弹仓与引力环
+                // Q版奇点炮：像可爱的小黑洞
                 ctx.save();
                 ctx.translate(0, PIV);
                 ctx.rotate(aim);
-                ctx.fillStyle = '#20202E';
-                ctx.fillRect(-10, -9, 20, 18);
-                ctx.strokeStyle = A(0.85);
+                // 圆润暗物质核心
+                const singGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 12);
+                singGrad.addColorStop(0, '#A855F7');
+                singGrad.addColorStop(0.5, '#7C3AED');
+                singGrad.addColorStop(1, '#581C87');
+                ctx.fillStyle = singGrad;
+                ctx.beginPath();
+                ctx.roundRect(-10, -9, 20, 18, 7);
+                ctx.fill();
+                // 可爱大眼睛
+                this.drawCuteEye(ctx, -2, -2, 3, accentHex, 1, 0);
+                this.drawCuteEye(ctx, -2, 3, 3, accentHex, 1, 0);
+                // 引力环
+                ctx.strokeStyle = A(0.8);
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.ellipse(12, 0, 12, 6, t * 1.4 + seed, 0, Math.PI * 2);
+                ctx.ellipse(12, 0, 10, 5, t * 1.4 + seed, 0, Math.PI * 2);
                 ctx.stroke();
                 ctx.beginPath();
-                ctx.ellipse(12, 0, 7, 12, -t * 1.1, 0, Math.PI * 2);
+                ctx.ellipse(12, 0, 6, 10, -t * 1.1, 0, Math.PI * 2);
                 ctx.stroke();
+                // 奇点核心
                 ctx.fillStyle = A(0.95);
                 ctx.beginPath();
                 ctx.arc(13, 0, 3.5 + rec * 2, 0, Math.PI * 2);
@@ -1368,6 +1326,66 @@ export class SpriteLoader {
     }
     rgbaStr(c, a) {
         return `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a.toFixed(3)})`;
+    }
+    // ══════════════════════════════════════════════════════════
+    // Q版辅助绘制方法
+    // ══════════════════════════════════════════════════════════
+    /** Q版大眼睛：大圆眼白 + 主题色虹膜 + 黑色瞳孔 + 高光点 */
+    drawCuteEye(ctx, cx, cy, r, accent, lookX = 0, lookY = 0) {
+        // 眼白（大圆）
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        // 虹膜（主题色）
+        ctx.fillStyle = accent;
+        ctx.beginPath();
+        ctx.arc(cx + lookX * r * 0.3, cy + lookY * r * 0.3, r * 0.65, 0, Math.PI * 2);
+        ctx.fill();
+        // 瞳孔（黑色）
+        ctx.fillStyle = '#1A1A2E';
+        ctx.beginPath();
+        ctx.arc(cx + lookX * r * 0.4, cy + lookY * r * 0.4, r * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        // 高光点（两个）
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(cx + lookX * r * 0.2 - r * 0.15, cy + lookY * r * 0.2 - r * 0.15, r * 0.18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx + lookX * r * 0.3 + r * 0.1, cy + lookY * r * 0.3 + r * 0.1, r * 0.1, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    /** Q版可爱嘴巴：小弧线 */
+    drawCuteMouth(ctx, cx, cy, w, happy = true) {
+        ctx.strokeStyle = '#2A2A3E';
+        ctx.lineWidth = 1.2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        if (happy) {
+            ctx.arc(cx, cy, w * 0.5, 0.2, Math.PI - 0.2);
+        }
+        else {
+            ctx.arc(cx, cy + w * 0.3, w * 0.5, Math.PI + 0.2, -0.2);
+        }
+        ctx.stroke();
+    }
+    /** Q版圆角身体 */
+    drawCuteBody(ctx, x, y, w, h, color, radius = 8) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.roundRect(x - w / 2, y - h / 2, w, h, radius);
+        ctx.fill();
+    }
+    /** Q版小短腿 */
+    drawCuteLimb(ctx, x1, y1, x2, y2, thickness, color) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = thickness;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
     }
     /**
      * 程序化敌人绘制：机械军团。
@@ -1535,513 +1553,402 @@ export class SpriteLoader {
         ctx.fill();
     }
     /**
-     * 纳米虫群：矮胖的六足侦察机体。
-     * 剪影 = 圆角机体 + 横贯的主题色扫描缝 + 下方四足。
+     * Q版纳米虫群：圆润可爱的侦察小机器人。
+     * 剪影 = 圆形大头 + 短小四肢 + 可爱大眼睛 + 主题色装饰。
      */
     drawNormalEnemy(ctx, accent, mechColors) {
         const t = this.time;
         const dark = mechColors?.dark || MECH_DARK;
         const mid = mechColors?.mid || MECH_MID;
         const hi = mechColors?.hi || MECH_HI;
-        const edge = mechColors?.edge || MECH_EDGE;
-        const legSwing = Math.sin(t * 7) * 1.6;
-        // 四足
+        const legSwing = Math.sin(t * 7) * 1.2;
+        // Q版短小四肢（圆润）
         ctx.strokeStyle = dark;
-        ctx.lineWidth = 2.2;
+        ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         for (let i = 0; i < 4; i++) {
             const sx = i < 2 ? -1 : 1;
             const sw = i % 2 === 0 ? legSwing : -legSwing;
             ctx.beginPath();
-            ctx.moveTo(sx * 6, 8);
-            ctx.lineTo(sx * 11, 13 + sw);
+            ctx.moveTo(sx * 5, 6);
+            ctx.lineTo(sx * 8, 10 + sw);
             ctx.stroke();
         }
-        // 机体
-        const body = ctx.createLinearGradient(0, -12, 0, 10);
-        body.addColorStop(0, hi);
-        body.addColorStop(0.45, mid);
-        body.addColorStop(1, dark);
-        ctx.fillStyle = body;
+        // Q版圆润大头（占整体 50%）
+        const bodyGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, 12);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
         ctx.beginPath();
-        ctx.moveTo(-12, -3);
-        ctx.lineTo(-7, -10);
-        ctx.lineTo(7, -10);
-        ctx.lineTo(12, -3);
-        ctx.lineTo(10, 8);
-        ctx.lineTo(-10, 8);
-        ctx.closePath();
+        ctx.arc(0, -2, 11, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = edge;
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-        // 顶部散热格栅
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-        for (let i = 0; i < 3; i++)
-            ctx.fillRect(-5 + i * 4, -8.4, 2.4, 5);
-        // 扫描缝（主题色）
+        // 主题色扫描缝（Q版：更柔和的弧形）
         ctx.save();
         ctx.shadowColor = accent;
-        ctx.shadowBlur = 7;
-        ctx.fillStyle = accent;
-        ctx.fillRect(-9, -1.2, 18, 2.6);
-        ctx.restore();
-        // 单只大镜头
-        this.drawLens(ctx, 0, 4.4, 4.2, accent, 0.6 + Math.sin(t * 5) * 0.4);
-        // 铆钉
-        ctx.fillStyle = MECH_EDGE;
+        ctx.shadowBlur = 6;
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(-9.5, 5.5, 1.1, 0, Math.PI * 2);
-        ctx.arc(9.5, 5.5, 1.1, 0, Math.PI * 2);
+        ctx.arc(0, 2, 8, 0.3, Math.PI - 0.3);
+        ctx.stroke();
+        ctx.restore();
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -4, -3, 3.5, accent, 0, 0.2);
+        this.drawCuteEye(ctx, 4, -3, 3.5, accent, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 4, 3, true);
+        // Q版腮红
+        ctx.fillStyle = 'rgba(255, 150, 150, 0.3)';
+        ctx.beginPath();
+        ctx.arc(-7, 1, 2, 0, Math.PI * 2);
+        ctx.arc(7, 1, 2, 0, Math.PI * 2);
         ctx.fill();
     }
     /**
-     * 侦察机兵：高速俯冲的箭形侦察机。
-     * 剪影 = 前掠尖锥 + 后掠翼 + 尾鳍，尾部拖出速度线。
+     * Q版侦察机兵：圆润可爱的快速侦察机器人。
+     * 剪影 = 圆润身体 + 小翅膀 + 速度感装饰 + 可爱大眼睛。
      */
     drawFastEnemy(ctx, accent, mechColors) {
         const t = this.time;
         const dark = mechColors?.dark || MECH_DARK;
         const mid = mechColors?.mid || MECH_MID;
         const hi = mechColors?.hi || MECH_HI;
-        const edge = mechColors?.edge || MECH_EDGE;
-        const streak = (t * 40) % 12;
         const rgb = this.hexRgb(accent);
-        // 速度线（向后拖）
-        ctx.strokeStyle = this.rgbaStr(rgb, 0.45);
-        ctx.lineWidth = 1.4;
-        for (let i = 0; i < 3; i++) {
-            const yy = -4 + i * 4;
-            ctx.beginPath();
-            ctx.moveTo(-11 - streak - i * 3, yy);
-            ctx.lineTo(-18 - streak - i * 3, yy);
-            ctx.stroke();
-        }
-        // 后掠翼
+        // Q版圆润身体（占整体 45%）
+        const bodyGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, 10);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 9, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Q版小翅膀（圆润）
         ctx.fillStyle = mid;
         ctx.beginPath();
-        ctx.moveTo(-2, -2);
-        ctx.lineTo(-9, -11);
-        ctx.lineTo(-5, 1);
-        ctx.closePath();
+        ctx.ellipse(-6, -5, 4, 6, -0.3, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.moveTo(-2, 3);
-        ctx.lineTo(-9, 11);
-        ctx.lineTo(-5, 1);
-        ctx.closePath();
+        ctx.ellipse(-6, 5, 4, 6, 0.3, 0, Math.PI * 2);
         ctx.fill();
-        // 机身（朝右的尖锥）
-        const g = ctx.createLinearGradient(0, -6, 0, 6);
-        g.addColorStop(0, hi);
-        g.addColorStop(0.5, mid);
-        g.addColorStop(1, dark);
-        ctx.fillStyle = g;
+        // 主题色速度条纹（Q版：更柔和）
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(13, 0);
-        ctx.lineTo(2, -6);
-        ctx.lineTo(-8, -5);
-        ctx.lineTo(-10, 0);
-        ctx.lineTo(-8, 5);
-        ctx.lineTo(2, 6);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = edge;
-        ctx.lineWidth = 1;
+        ctx.moveTo(-4, 0);
+        ctx.lineTo(4, 0);
         ctx.stroke();
-        // 主题色机腹条纹
-        ctx.fillStyle = accent;
-        ctx.fillRect(-7, -1, 12, 2);
-        // 尾鳍
-        ctx.fillStyle = dark;
-        ctx.beginPath();
-        ctx.moveTo(-9, -1);
-        ctx.lineTo(-14, -6.5);
-        ctx.lineTo(-9, -4);
-        ctx.closePath();
-        ctx.fill();
-        // 机首镜头
-        this.drawLens(ctx, 8.5, 0, 3, accent, 0.7 + Math.sin(t * 8) * 0.3);
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -2, -2, 3, accent, 0.5, 0);
+        this.drawCuteEye(ctx, -2, 2, 3, accent, 0.5, 0);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 4, 0, 2, true);
     }
     /**
-     * 重装装甲车：履带式重装甲载具。
-     * 剪影 = 方正车体 + 左右履带（齿纹滚动）+ 炮塔与炮管。
+     * Q版重装装甲车：圆润可爱的重型坦克机器人。
+     * 剪影 = 圆润车身 + 小履带 + 可爱炮塔 + 大眼睛。
      */
     drawHeavyEnemy(ctx, accent, mechColors) {
         const t = this.time;
         const dark = mechColors?.dark || MECH_DARK;
         const mid = mechColors?.mid || MECH_MID;
         const hi = mechColors?.hi || MECH_HI;
-        const edge = mechColors?.edge || MECH_EDGE;
-        const tread = (t * 26) % 6;
-        // 履带
-        for (const sx of [-1, 1]) {
-            const bx = sx * 10 - 4;
-            ctx.fillStyle = '#171A21';
-            ctx.fillRect(bx, -2, 8, 14);
-            ctx.strokeStyle = edge;
-            ctx.lineWidth = 1;
-            ctx.strokeRect(bx, -2, 8, 14);
-            ctx.strokeStyle = '#0B0D12';
-            ctx.lineWidth = 1.6;
-            for (let i = 0; i < 5; i++) {
-                const yy = -1 + ((i * 3 + tread) % 13);
-                ctx.beginPath();
-                ctx.moveTo(bx + 0.8, yy);
-                ctx.lineTo(bx + 7.2, yy);
-                ctx.stroke();
-            }
-        }
-        // 车体
-        const g = ctx.createLinearGradient(0, -12, 0, 8);
-        g.addColorStop(0, hi);
-        g.addColorStop(0.5, mid);
-        g.addColorStop(1, dark);
-        ctx.fillStyle = g;
+        // Q版圆润车身（占整体 50%）
+        const bodyGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, 13);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
         ctx.beginPath();
-        ctx.moveTo(-12, -4);
-        ctx.lineTo(-9, -11);
-        ctx.lineTo(8, -11);
-        ctx.lineTo(13, -5);
-        ctx.lineTo(13, 7);
-        ctx.lineTo(-12, 7);
-        ctx.closePath();
+        ctx.ellipse(0, 0, 12, 10, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = edge;
-        ctx.lineWidth = 1.3;
-        ctx.stroke();
-        // 装甲分块
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(-2, -11);
-        ctx.lineTo(-2, 7);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(-12, 2);
-        ctx.lineTo(13, 2);
-        ctx.stroke();
-        // 观察窗（主题色）
-        ctx.save();
-        ctx.shadowColor = accent;
-        ctx.shadowBlur = 6;
-        ctx.fillStyle = accent;
-        ctx.fillRect(-9, -8.4, 13, 2.6);
-        ctx.restore();
-        // 炮塔 + 炮管
+        // Q版小履带（圆润）
         ctx.fillStyle = dark;
         ctx.beginPath();
-        ctx.arc(-1, -11, 5.5, Math.PI, 0);
+        ctx.ellipse(-8, 8, 4, 3, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = mid;
-        ctx.fillRect(-1, -15, 12, 3.2);
-        ctx.fillStyle = '#151820';
-        ctx.fillRect(11, -15.6, 3, 4.4);
-        // 铆钉
-        ctx.fillStyle = edge;
-        for (const p of [[-10, -2], [-10, 5], [11, -2], [11, 5]]) {
-            ctx.beginPath();
-            ctx.arc(p[0], p[1], 1.2, 0, Math.PI * 2);
-            ctx.fill();
-        }
+        ctx.beginPath();
+        ctx.ellipse(8, 8, 4, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Q版可爱炮塔（小圆头）
+        const turretGrad = ctx.createRadialGradient(-1, -8, 0, 0, -6, 6);
+        turretGrad.addColorStop(0, hi);
+        turretGrad.addColorStop(1, mid);
+        ctx.fillStyle = turretGrad;
+        ctx.beginPath();
+        ctx.arc(0, -6, 6, 0, Math.PI * 2);
+        ctx.fill();
+        // 主题色装饰条纹
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-6, 3);
+        ctx.lineTo(6, 3);
+        ctx.stroke();
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -3, -7, 2.5, accent, 0.3, 0);
+        this.drawCuteEye(ctx, 3, -7, 2.5, accent, 0.3, 0);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, -3, 2, true);
     }
     /**
-     * 分裂孢子机：三段式裂变舱。
-     * 剪影 = 圆舱 + 两条纵向能量缝 —— 死亡裂成 3 段，剪影提前把机制说清楚。
+     * Q版分裂孢子机：圆润可爱的分裂机器人。
+     * 剪影 = 圆润身体 + 分裂线装饰 + 可爱大眼睛。
      */
     drawSplitEnemy(ctx, accent, mechColors) {
         const t = this.time;
         const dark = mechColors?.dark || MECH_DARK;
         const mid = mechColors?.mid || MECH_MID;
         const hi = mechColors?.hi || MECH_HI;
-        const edge = mechColors?.edge || MECH_EDGE;
         const seam = 0.55 + Math.sin(t * 4) * 0.45;
-        // 舱体
-        const g = ctx.createRadialGradient(-4, -5, 0, 0, 0, 15);
-        g.addColorStop(0, hi);
-        g.addColorStop(0.55, mid);
-        g.addColorStop(1, dark);
-        ctx.fillStyle = g;
+        // Q版圆润身体（占整体 50%）
+        const bodyGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, 12);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
         ctx.beginPath();
-        ctx.ellipse(0, 0, 12, 13.5, 0, 0, Math.PI * 2);
+        ctx.arc(0, 0, 11, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = edge;
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-        // 顶部注入阀
-        ctx.fillStyle = dark;
-        ctx.fillRect(-3, -16, 6, 3.5);
-        ctx.fillStyle = edge;
-        ctx.beginPath();
-        ctx.arc(0, -16.5, 1.6, 0, Math.PI * 2);
-        ctx.fill();
-        // 两条能量缝（主题色）—— 死亡裂变的预告
+        // 分裂线装饰（Q版：更柔和的曲线）
         ctx.save();
         ctx.shadowColor = accent;
-        ctx.shadowBlur = 8 * seam;
-        ctx.strokeStyle = this.rgbaStr(this.hexRgb(accent), 0.5 + seam * 0.45);
-        ctx.lineWidth = 2.2;
-        for (const dx of [-4.5, 4.5]) {
-            ctx.beginPath();
-            ctx.moveTo(dx, -11.5);
-            ctx.quadraticCurveTo(dx * 1.6, 0, dx, 11.5);
-            ctx.stroke();
-        }
+        ctx.shadowBlur = 6 * seam;
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, -8);
+        ctx.quadraticCurveTo(2, 0, 0, 8);
+        ctx.stroke();
         ctx.restore();
-        // 中央核心
-        this.drawLens(ctx, 0, 0, 4, accent, 0.6 + Math.sin(t * 6) * 0.4);
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -4, -2, 3, accent, 0, 0.2);
+        this.drawCuteEye(ctx, 4, -2, 3, accent, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 4, 2.5, true);
     }
     /**
-     * 修复无人机：悬停四旋翼维修机。
-     * 剪影 = 十字机身 + 四个旋转桨盘 + 底部主题色维修光束。
+     * Q版修复无人机：圆润可爱的治疗机器人。
+     * 剪影 = 圆润身体 + 小旋翼 + 十字标志 + 可爱大眼睛。
      */
     drawHealerEnemy(ctx, accent, mechColors) {
         const t = this.time;
         const dark = mechColors?.dark || MECH_DARK;
         const mid = mechColors?.mid || MECH_MID;
         const hi = mechColors?.hi || MECH_HI;
-        const edge = mechColors?.edge || MECH_EDGE;
         const spin = t * 14;
         const rgb = this.hexRgb(accent);
         ctx.save();
         ctx.translate(0, Math.sin(t * 3) * 1.2);
-        // 旋翼臂 + 桨盘
+        // Q版圆润身体（占整体 45%）
+        const bodyGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, 10);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 9, 0, Math.PI * 2);
+        ctx.fill();
+        // Q版小旋翼（圆润）
         for (const p of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-            const cx = p[0] * 10, cy = p[1] * 8;
+            const cx = p[0] * 8, cy = p[1] * 7;
             ctx.strokeStyle = dark;
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.moveTo(p[0] * 3, p[1] * 2.5);
+            ctx.moveTo(p[0] * 4, p[1] * 3);
             ctx.lineTo(cx, cy);
             ctx.stroke();
             ctx.save();
             ctx.translate(cx, cy);
             ctx.rotate(spin * (p[0] * p[1] > 0 ? 1 : -1));
-            ctx.fillStyle = this.rgbaStr(rgb, 0.5);
-            ctx.fillRect(-6, -1, 12, 2);
-            ctx.fillRect(-1, -6, 2, 12);
-            ctx.restore();
-            ctx.fillStyle = edge;
+            ctx.fillStyle = this.rgbaStr(rgb, 0.4);
             ctx.beginPath();
-            ctx.arc(cx, cy, 2.2, 0, Math.PI * 2);
+            ctx.ellipse(0, 0, 4, 1.5, 0, 0, Math.PI * 2);
             ctx.fill();
+            ctx.restore();
         }
-        // 十字机身（维修标记）
-        ctx.fillStyle = mid;
-        ctx.fillRect(-4, -9, 8, 18);
-        ctx.fillRect(-9, -4, 18, 8);
-        ctx.strokeStyle = edge;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(-4, -9, 8, 18);
-        ctx.strokeRect(-9, -4, 18, 8);
-        // 主题色维修核心
-        this.drawLens(ctx, 0, 0, 4.4, accent, 0.65 + Math.sin(t * 5) * 0.35);
-        // 底部维修光束
-        ctx.save();
-        ctx.globalAlpha = 0.32 + Math.sin(t * 6) * 0.14;
+        // 十字医疗标志（Q版：更圆润）
         ctx.fillStyle = accent;
         ctx.beginPath();
-        ctx.moveTo(-4, 9);
-        ctx.lineTo(4, 9);
-        ctx.lineTo(7, 16);
-        ctx.lineTo(-7, 16);
-        ctx.closePath();
+        ctx.roundRect(-2, -5, 4, 10, 1);
         ctx.fill();
-        ctx.restore();
+        ctx.beginPath();
+        ctx.roundRect(-5, -2, 10, 4, 1);
+        ctx.fill();
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -3, -2, 2.5, accent, 0, 0.2);
+        this.drawCuteEye(ctx, 3, -2, 2.5, accent, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 3, 2, true);
         ctx.restore();
     }
     /**
-     * 微型机虫：分裂残片，最小的单眼三足机。
+     * Q版微型机虫：圆润可爱的小分裂体。
+     * 剪影 = 圆润小身体 + 短小四肢 + 可爱大眼睛。
      */
     drawMiniEnemy(ctx, accent, mechColors) {
         const t = this.time;
         const dark = mechColors?.dark || MECH_DARK;
         const mid = mechColors?.mid || MECH_MID;
-        const edge = mechColors?.edge || MECH_EDGE;
-        // 三足
+        const hi = mechColors?.hi || MECH_HI;
+        // Q版短小四肢
         ctx.strokeStyle = dark;
-        ctx.lineWidth = 1.6;
+        ctx.lineWidth = 2;
         ctx.lineCap = 'round';
         for (let i = 0; i < 3; i++) {
             const a = Math.PI * 0.5 + (i - 1) * 0.75;
             ctx.beginPath();
-            ctx.moveTo(Math.cos(a) * 4, 5);
-            ctx.lineTo(Math.cos(a) * 8, 11 + Math.sin(t * 9 + i) * 1.2);
+            ctx.moveTo(Math.cos(a) * 4, 4);
+            ctx.lineTo(Math.cos(a) * 7, 8 + Math.sin(t * 9 + i) * 1);
             ctx.stroke();
         }
-        // 六边机体
-        ctx.fillStyle = mid;
+        // Q版圆润身体（占整体 50%）
+        const bodyGrad = ctx.createRadialGradient(-1, -1, 0, 0, 0, 7);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
         ctx.beginPath();
-        for (let i = 0; i < 6; i++) {
-            const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
-            const px = Math.cos(a) * 7, py = Math.sin(a) * 7;
-            if (i === 0)
-                ctx.moveTo(px, py);
-            else
-                ctx.lineTo(px, py);
-        }
-        ctx.closePath();
+        ctx.arc(0, 0, 6, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = edge;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        // 单眼
-        this.drawLens(ctx, 0, 0, 3, accent, 0.6 + Math.sin(t * 8) * 0.4);
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -2, -1, 2, accent, 0, 0.2);
+        this.drawCuteEye(ctx, 2, -1, 2, accent, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 2, 1.5, true);
     }
     /**
-     * 相位隐形机：无翼棱锥隐形机。
-     * 剪影 = 尖锐的三角楔形 + 断续的棱边（表达"相位不稳定"）。
+     * Q版相位隐形机：圆润可爱的隐身机器人。
+     * 剪影 = 圆润身体 + 闪烁效果 + 可爱大眼睛。
      */
     drawGhostEnemy(ctx, accent, mechColors) {
         const t = this.time;
         const dark = mechColors?.dark || MECH_DARK;
         const mid = mechColors?.mid || MECH_MID;
         const flick = Math.sin(t * 5) * 0.5 + 0.5;
-        // 机体
-        const g = ctx.createLinearGradient(-12, 0, 12, 0);
-        g.addColorStop(0, dark);
-        g.addColorStop(1, mid);
-        ctx.fillStyle = g;
+        // Q版圆润身体（占整体 45%）
+        const bodyGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, 10);
+        bodyGrad.addColorStop(0, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
         ctx.beginPath();
-        ctx.moveTo(14, 0);
-        ctx.lineTo(-2, -11);
-        ctx.lineTo(-12, -5);
-        ctx.lineTo(-7, 0);
-        ctx.lineTo(-12, 5);
-        ctx.lineTo(-2, 11);
-        ctx.closePath();
+        ctx.arc(0, 0, 9, 0, Math.PI * 2);
         ctx.fill();
-        // 主题色棱边（断续 = 相位不稳定）
+        // 闪烁效果（Q版：柔和的虚线圆环）
         ctx.save();
         ctx.shadowColor = accent;
-        ctx.shadowBlur = 9 * flick;
-        ctx.strokeStyle = this.rgbaStr(this.hexRgb(accent), 0.5 + flick * 0.5);
-        ctx.lineWidth = 1.6;
-        ctx.setLineDash([5, 4]);
-        ctx.lineDashOffset = -t * 12;
+        ctx.shadowBlur = 6 * flick;
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([3, 3]);
+        ctx.lineDashOffset = -t * 8;
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
         ctx.restore();
-        // 视觉核心
-        this.drawLens(ctx, 4, 0, 3.6, accent, 0.5 + flick * 0.5);
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -3, -2, 2.8, accent, 0.3, 0);
+        this.drawCuteEye(ctx, 3, -2, 2.8, accent, 0.3, 0);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 3, 2, true);
     }
     /**
-     * 护盾机兵：正面举盾的步兵机。
-     * 剪影 = 宽肩机体 + 身前六边盾（主题色描边 = 护盾量）。
+     * Q版护盾机兵：圆润可爱的防御机器人。
+     * 剪影 = 圆润身体 + 小短腿 + 圆形护盾 + 可爱大眼睛。
      */
     drawShieldEnemy(ctx, accent, mechColors) {
         const t = this.time;
         const dark = mechColors?.dark || MECH_DARK;
         const mid = mechColors?.mid || MECH_MID;
         const hi = mechColors?.hi || MECH_HI;
-        const edge = mechColors?.edge || MECH_EDGE;
         const pulse = 0.6 + Math.sin(t * 4) * 0.4;
         const rgb = this.hexRgb(accent);
-        // 腿
+        // Q版小短腿
         ctx.fillStyle = dark;
-        ctx.fillRect(-7, 6, 5, 8);
-        ctx.fillRect(2, 6, 5, 8);
-        // 机体
-        const g = ctx.createLinearGradient(0, -12, 0, 8);
-        g.addColorStop(0, hi);
-        g.addColorStop(0.5, mid);
-        g.addColorStop(1, dark);
-        ctx.fillStyle = g;
-        ctx.fillRect(-8, -8, 16, 15);
-        ctx.strokeStyle = edge;
-        ctx.lineWidth = 1.2;
-        ctx.strokeRect(-8, -8, 16, 15);
-        // 肩甲
-        ctx.fillStyle = mid;
-        ctx.fillRect(-13, -11, 6, 7);
-        ctx.fillRect(7, -11, 6, 7);
-        ctx.strokeRect(-13, -11, 6, 7);
-        ctx.strokeRect(7, -11, 6, 7);
-        // 头盔 + 目镜
-        ctx.fillStyle = dark;
-        ctx.fillRect(-4.5, -14, 9, 7);
-        ctx.save();
-        ctx.shadowColor = accent;
-        ctx.shadowBlur = 6;
-        ctx.fillStyle = accent;
-        ctx.fillRect(-3.5, -11.5, 7, 2.2);
-        ctx.restore();
-        // 身前六边盾（朝右 = 前进方向）
-        ctx.save();
-        ctx.translate(10, 1);
-        ctx.shadowColor = accent;
-        ctx.shadowBlur = 10 * pulse;
-        ctx.fillStyle = this.rgbaStr(rgb, 0.16);
-        ctx.strokeStyle = this.rgbaStr(rgb, 0.55 + pulse * 0.4);
-        ctx.lineWidth = 1.8;
         ctx.beginPath();
-        for (let i = 0; i < 6; i++) {
-            const a = (i / 6) * Math.PI * 2;
-            const px = Math.cos(a) * 6, py = Math.sin(a) * 7.5;
-            if (i === 0)
-                ctx.moveTo(px, py);
-            else
-                ctx.lineTo(px, py);
-        }
-        ctx.closePath();
+        ctx.ellipse(-4, 8, 3, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(4, 8, 3, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Q版圆润身体（占整体 45%）
+        const bodyGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, 11);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+        ctx.fill();
+        // Q版圆润护盾（圆形，更可爱）
+        ctx.save();
+        ctx.translate(8, 0);
+        ctx.shadowColor = accent;
+        ctx.shadowBlur = 8 * pulse;
+        ctx.fillStyle = this.rgbaStr(rgb, 0.2);
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.6 + pulse * 0.3);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, 7, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
         ctx.restore();
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -3, -2, 3, accent, 0, 0.2);
+        this.drawCuteEye(ctx, 3, -2, 3, accent, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 4, 2.5, true);
     }
     /**
-     * 自爆机雷：布满尖刺的浮游机雷。
-     * 剪影 = 球形弹体 + 8 根尖刺 + 急促闪烁的红芯
-     * （警告玩家"别让它死在你的塔旁边"）。
+     * Q版自爆机雷：圆润可爱的爆炸机器人。
+     * 剪影 = 圆润球体 + 小尖刺 + 闪烁红芯 + 可爱大眼睛。
      */
     drawBomberEnemy(ctx, accent, mechColors) {
         const t = this.time;
         const dark = mechColors?.dark || MECH_DARK;
         const mid = mechColors?.mid || MECH_MID;
         const hi = mechColors?.hi || MECH_HI;
-        const edge = mechColors?.edge || MECH_EDGE;
         const blink = Math.sin(t * 9) > 0 ? 1 : 0.25;
-        // 尖刺（用亮装甲色，暗色尖刺在暗通道上等于没画）
-        ctx.strokeStyle = edge;
-        ctx.lineWidth = 2.4;
+        // Q版小尖刺（圆润）
+        ctx.strokeStyle = hi;
+        ctx.lineWidth = 2.5;
         ctx.lineCap = 'round';
         for (let i = 0; i < 8; i++) {
             const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
             ctx.beginPath();
-            ctx.moveTo(Math.cos(a) * 9, Math.sin(a) * 9);
-            ctx.lineTo(Math.cos(a) * 13.5, Math.sin(a) * 13.5);
+            ctx.moveTo(Math.cos(a) * 8, Math.sin(a) * 8);
+            ctx.lineTo(Math.cos(a) * 11, Math.sin(a) * 11);
             ctx.stroke();
         }
-        // 球体
-        const g = ctx.createRadialGradient(-4, -4, 0, 0, 0, 12);
-        g.addColorStop(0, hi);
-        g.addColorStop(0.55, mid);
-        g.addColorStop(1, '#151920');
-        ctx.fillStyle = g;
+        // Q版圆润球体（占整体 50%）
+        const bodyGrad = ctx.createRadialGradient(-3, -3, 0, 0, 0, 10);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
         ctx.beginPath();
-        ctx.arc(0, 0, 10.5, 0, Math.PI * 2);
+        ctx.arc(0, 0, 9, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = edge;
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-        // 环形警示带（主题色，上下断口）
-        ctx.strokeStyle = this.rgbaStr(this.hexRgb(accent), 0.75);
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, 0, 7, 0.25, Math.PI - 0.25);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(0, 0, 7, Math.PI + 0.25, Math.PI * 2 - 0.25);
-        ctx.stroke();
-        // 中心红芯（急促闪烁）
+        // 闪烁红芯（Q版：更柔和的发光）
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         ctx.shadowColor = '#FF0033';
-        ctx.shadowBlur = 12 * blink;
-        ctx.fillStyle = `rgba(255, 0, 51, ${0.45 + blink * 0.5})`;
+        ctx.shadowBlur = 10 * blink;
+        ctx.fillStyle = `rgba(255, 0, 51, ${0.5 + blink * 0.4})`;
         ctx.beginPath();
-        ctx.arc(0, 0, 4.2, 0, Math.PI * 2);
+        ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -3, -2, 2.5, accent, 0, 0.2);
+        this.drawCuteEye(ctx, 3, -2, 2.5, accent, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 3, 2, true);
     }
     // ══════════════════════════════════════════════════════════
     // v1.9 新增 6 种机制小怪 + 4 种精英
@@ -2049,8 +1956,8 @@ export class SpriteLoader {
     // 认出「这只是沉默我的 / 那只是会反弹的」，而不是靠血条下面的小字。
     // ══════════════════════════════════════════════════════════
     /**
-     * EMP无人机：悬浮四旋翼，机腹挂一枚橙色放电环。
-     * 剪影 = 菱形机体 + 四个旋翼圈 + 下垂电弧锥（悬浮，无腿）。
+     * Q版 EMP无人机：圆润可爱的电磁机器人。
+     * 剪影 = 圆润身体 + 小旋翼 + 电弧装饰 + 可爱大眼睛。
      */
     drawEmpDroneEnemy(ctx, accent, mechColors) {
         const t = this.time;
@@ -2059,68 +1966,51 @@ export class SpriteLoader {
         const hi = mechColors?.hi || MECH_HI;
         const rgb = this.hexRgb(accent);
         const spark = Math.sin(t * 11) * 0.5 + 0.5;
-        // 四个旋翼（十字臂 + 旋转桨叶虚影）
-        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
-        ctx.lineWidth = 1.8;
-        ctx.lineCap = 'round';
+        // Q版圆润身体（占整体 45%）
+        const bodyGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, 9);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 8, 0, Math.PI * 2);
+        ctx.fill();
+        // Q版小旋翼（圆润）
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = 1.5;
         for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
             ctx.beginPath();
-            ctx.moveTo(0, -2);
-            ctx.lineTo(dx * 9, dy * 5 - 2);
+            ctx.moveTo(dx * 4, dy * 3);
+            ctx.lineTo(dx * 7, dy * 5);
             ctx.stroke();
             ctx.save();
-            ctx.globalAlpha = 0.55;
-            ctx.strokeStyle = this.rgbaStr(rgb, 0.55);
-            ctx.lineWidth = 1.2;
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = this.rgbaStr(rgb, 0.5);
+            ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.ellipse(dx * 9, dy * 5 - 2, 5, 1.6, t * 9 + dx, 0, Math.PI * 2);
+            ctx.ellipse(dx * 7, dy * 5, 3, 1.2, t * 9 + dx, 0, Math.PI * 2);
             ctx.stroke();
             ctx.restore();
         }
-        // 菱形机体
-        const g = ctx.createLinearGradient(0, -8, 0, 8);
-        g.addColorStop(0, hi);
-        g.addColorStop(0.55, mid);
-        g.addColorStop(1, dark);
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.moveTo(0, -8);
-        ctx.lineTo(7, 0);
-        ctx.lineTo(0, 8);
-        ctx.lineTo(-7, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-        // 机腹放电环（主题色，闪烁 = 正在蓄能）
+        // 电弧装饰（Q版：柔和的弧线）
         ctx.save();
         ctx.shadowColor = accent;
-        ctx.shadowBlur = 10 * (0.4 + spark * 0.6);
-        ctx.strokeStyle = this.rgbaStr(rgb, 0.45 + spark * 0.5);
-        ctx.lineWidth = 1.8;
+        ctx.shadowBlur = 6 * spark;
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(0, 3, 5.2, t * 6, t * 6 + Math.PI * 1.4);
+        ctx.arc(0, 3, 4, 0.5, Math.PI - 0.5);
         ctx.stroke();
         ctx.restore();
-        // 下垂电弧（断续 = 干扰范围）
-        ctx.save();
-        ctx.globalAlpha = 0.35 + spark * 0.45;
-        ctx.strokeStyle = accent;
-        ctx.lineWidth = 1.1;
-        for (let i = 0; i < 3; i++) {
-            const ox = (i - 1) * 3.4;
-            ctx.beginPath();
-            ctx.moveTo(ox, 7);
-            ctx.lineTo(ox + (i % 2 ? 1.6 : -1.6), 10.5);
-            ctx.lineTo(ox, 13.5);
-            ctx.stroke();
-        }
-        ctx.restore();
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -3, -2, 2.5, accent, 0, 0.2);
+        this.drawCuteEye(ctx, 3, -2, 2.5, accent, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 3, 2, true);
     }
     /**
-     * 反射甲虫：半球甲壳 + 镜面分格。
-     * 剪影 = 低矮半圆壳 + 六条短足 + 壳面上的镜面高光切块。
+     * Q版反射甲虫：圆润可爱的反射机器人。
+     * 剪影 = 圆润半球身体 + 短小四肢 + 镜面装饰 + 可爱大眼睛。
      */
     drawReflectorEnemy(ctx, accent, mechColors) {
         const t = this.time;
@@ -2129,58 +2019,48 @@ export class SpriteLoader {
         const hi = mechColors?.hi || MECH_HI;
         const rgb = this.hexRgb(accent);
         const glint = Math.sin(t * 3.4) * 0.5 + 0.5;
-        // 六条短足
+        // Q版短小四肢
         ctx.strokeStyle = dark;
-        ctx.lineWidth = 1.8;
+        ctx.lineWidth = 2;
         ctx.lineCap = 'round';
         for (let i = 0; i < 3; i++) {
-            const bx = -5 + i * 5;
+            const bx = -4 + i * 4;
             ctx.beginPath();
-            ctx.moveTo(bx, 5);
-            ctx.lineTo(bx - 3, 11);
+            ctx.moveTo(bx, 4);
+            ctx.lineTo(bx - 2, 8);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(bx, 5);
-            ctx.lineTo(bx + 3, 11);
+            ctx.moveTo(bx, 4);
+            ctx.lineTo(bx + 2, 8);
             ctx.stroke();
         }
-        // 半球甲壳
-        const g = ctx.createLinearGradient(0, -11, 0, 6);
-        g.addColorStop(0, hi);
-        g.addColorStop(0.45, mid);
-        g.addColorStop(1, dark);
-        ctx.fillStyle = g;
+        // Q版圆润半球身体（占整体 50%）
+        const bodyGrad = ctx.createRadialGradient(-2, -3, 0, 0, 0, 11);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
         ctx.beginPath();
-        ctx.ellipse(0, 0, 12, 9.5, 0, Math.PI, Math.PI * 2);
-        ctx.lineTo(12, 5);
-        ctx.ellipse(0, 5, 12, 4, 0, 0, Math.PI);
-        ctx.closePath();
+        ctx.ellipse(0, 0, 10, 8, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-        // 镜面分格（三块，随视角轻微闪动 = "会反弹"的视觉暗示）
+        // 镜面装饰（Q版：柔和的高光弧线）
         ctx.save();
-        ctx.globalAlpha = 0.55 + glint * 0.35;
-        ctx.strokeStyle = this.rgbaStr(rgb, 0.85);
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 3; i++) {
-            ctx.beginPath();
-            ctx.ellipse(0, 0, 4 + i * 3.2, 3 + i * 2.4, 0, Math.PI, Math.PI * 2);
-            ctx.stroke();
-        }
-        // 高光斜切
+        ctx.globalAlpha = 0.5 + glint * 0.3;
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.7);
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.moveTo(-7, -3);
-        ctx.lineTo(2, -9);
+        ctx.arc(0, -2, 6, -0.8, 0.8);
         ctx.stroke();
         ctx.restore();
-        // 头前小灯
-        this.drawLens(ctx, 10, 3, 2.2, accent, 0.5 + glint * 0.5);
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -3, -1, 2.5, accent, 0.3, 0);
+        this.drawCuteEye(ctx, 3, -1, 2.5, accent, 0.3, 0);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 4, 2, true);
     }
     /**
-     * 加速引擎兵：背后双喷口的轻装机。
-     * 剪影 = 前倾机体 + 两条向后拉长的绿色尾焰。
+     * Q版加速引擎兵：圆润可爱的加速机器人。
+     * 剪影 = 圆润身体 + 小喷口 + 尾焰装饰 + 可爱大眼睛。
      */
     drawAcceleratorEnemy(ctx, accent, mechColors) {
         const t = this.time;
@@ -2189,129 +2069,94 @@ export class SpriteLoader {
         const hi = mechColors?.hi || MECH_HI;
         const rgb = this.hexRgb(accent);
         const flame = 0.6 + Math.sin(t * 14) * 0.4;
-        // 尾焰（向后 = -x）
+        // Q版圆润身体（占整体 45%）
+        const bodyGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, 10);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 9, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Q版小喷口
+        ctx.fillStyle = dark;
+        ctx.beginPath();
+        ctx.ellipse(-7, -3, 2, 2.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(-7, 3, 2, 2.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // 尾焰装饰（Q版：柔和的发光）
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        for (const oy of [-4, 4]) {
-            const fg = ctx.createLinearGradient(-6, oy, -20, oy);
-            fg.addColorStop(0, this.rgbaStr(rgb, 0.85));
+        for (const oy of [-3, 3]) {
+            const fg = ctx.createLinearGradient(-8, oy, -14, oy);
+            fg.addColorStop(0, this.rgbaStr(rgb, 0.7));
             fg.addColorStop(1, this.rgbaStr(rgb, 0));
             ctx.fillStyle = fg;
             ctx.beginPath();
-            ctx.moveTo(-6, oy - 2.6);
-            ctx.lineTo(-16 - flame * 5, oy);
-            ctx.lineTo(-6, oy + 2.6);
-            ctx.closePath();
+            ctx.ellipse(-11, oy, 3 * flame, 2, 0, 0, Math.PI * 2);
             ctx.fill();
         }
         ctx.restore();
-        // 腿（前倾步态）
-        ctx.fillStyle = dark;
-        ctx.fillRect(-4, 5, 4, 8);
-        ctx.fillRect(3, 5, 4, 8);
-        // 机体（前倾平行四边形）
-        const g = ctx.createLinearGradient(-8, -10, 8, 8);
-        g.addColorStop(0, hi);
-        g.addColorStop(0.5, mid);
-        g.addColorStop(1, dark);
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.moveTo(-7, -8);
-        ctx.lineTo(8, -5);
-        ctx.lineTo(6, 6);
-        ctx.lineTo(-6, 3);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-        // 背部喷口
-        ctx.fillStyle = dark;
-        ctx.fillRect(-9, -6, 3, 4);
-        ctx.fillRect(-9, 2, 3, 4);
-        // 速度条纹
-        ctx.save();
-        ctx.globalAlpha = 0.6 + flame * 0.35;
-        ctx.strokeStyle = accent;
-        ctx.lineWidth = 1.4;
-        for (let i = 0; i < 2; i++) {
-            ctx.beginPath();
-            ctx.moveTo(-4 + i * 5, -2 + i * 3);
-            ctx.lineTo(3 + i * 5, -2 + i * 3);
-            ctx.stroke();
-        }
-        ctx.restore();
-        this.drawLens(ctx, 7, -3, 2.4, accent, 0.6 + flame * 0.4);
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -2, -2, 2.8, accent, 0.4, 0);
+        this.drawCuteEye(ctx, -2, 2, 2.8, accent, 0.4, 0);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 4, 0, 2, true);
     }
     /**
-     * 隐身刺客：细长人形 + 单刃。
-     * 本体已经很淡（外部再乘 stealthAlpha），所以线条必须**亮**才看得见，
-     * 否则半透明 + 暗装甲 = 完全消失，玩家会以为是 bug。
+     * Q版隐身刺客：圆润可爱的隐身机器人。
+     * 剪影 = 圆润身体 + 小刀刃 + 闪烁效果 + 可爱大眼睛。
      */
     drawAssassinEnemy(ctx, accent, mechColors) {
         const t = this.time;
         const dark = mechColors?.dark || MECH_DARK;
+        const mid = mechColors?.mid || MECH_MID;
+        const hi = mechColors?.hi || MECH_HI;
         const rgb = this.hexRgb(accent);
         const shimmer = Math.sin(t * 6) * 0.5 + 0.5;
-        // 双腿（细）
-        ctx.strokeStyle = dark;
-        ctx.lineWidth = 2.4;
-        ctx.lineCap = 'round';
+        // Q版圆润身体（占整体 45%）
+        const bodyGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, 10);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
         ctx.beginPath();
-        ctx.moveTo(-2, 2);
-        ctx.lineTo(-4, 11);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(2, 2);
-        ctx.lineTo(4, 11);
-        ctx.stroke();
-        // 躯干（细长梭形）
-        const g = ctx.createLinearGradient(0, -11, 0, 4);
-        g.addColorStop(0, this.rgbaStr(rgb, 0.9));
-        g.addColorStop(1, dark);
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.moveTo(0, -12);
-        ctx.lineTo(5, -2);
-        ctx.lineTo(0, 4);
-        ctx.lineTo(-5, -2);
-        ctx.closePath();
+        ctx.ellipse(0, 0, 9, 8, 0, 0, Math.PI * 2);
         ctx.fill();
-        // 披风（后半透明，随呼吸摆动）
+        // 闪烁效果（Q版：柔和的虚线圆环）
         ctx.save();
         ctx.globalAlpha = 0.3 + shimmer * 0.2;
-        ctx.fillStyle = accent;
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([2, 2]);
         ctx.beginPath();
-        ctx.moveTo(-4, -8);
-        ctx.quadraticCurveTo(-13 - shimmer * 3, 0, -6, 7);
-        ctx.lineTo(-2, 2);
-        ctx.closePath();
-        ctx.fill();
+        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
         ctx.restore();
-        // 单刃（右前）
+        // Q版小刀刃（圆润）
         ctx.save();
         ctx.shadowColor = accent;
-        ctx.shadowBlur = 8;
-        ctx.strokeStyle = this.rgbaStr(rgb, 0.85);
-        ctx.lineWidth = 1.6;
+        ctx.shadowBlur = 6;
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.8);
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(4, -4);
-        ctx.lineTo(14, -10);
+        ctx.moveTo(6, -2);
+        ctx.quadraticCurveTo(10, -4, 12, -6);
         ctx.stroke();
         ctx.restore();
-        // 单眼（唯一的实心亮点 = 混战里的定位锚）
-        ctx.save();
-        ctx.shadowColor = accent;
-        ctx.shadowBlur = 9 * (0.5 + shimmer * 0.5);
-        ctx.fillStyle = accent;
-        ctx.beginPath();
-        ctx.arc(2, -8, 1.9, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -3, -2, 2.8, accent, 0.3, 0);
+        this.drawCuteEye(ctx, 3, -2, 2.8, accent, 0.3, 0);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 3, 2, true);
     }
     /**
-     * 磁力盾卫：方块机身 + 两侧磁极。
-     * 剪影 = 又矮又宽的重甲 + 左右两个「U 型磁铁」半环。
+     * Q版磁力盾卫：圆润可爱的磁力机器人。
+     * 剪影 = 圆润身体 + 小履带 + 磁极装饰 + 可爱大眼睛。
      */
     drawMagneticGuardEnemy(ctx, accent, mechColors) {
         const t = this.time;
@@ -2320,55 +2165,56 @@ export class SpriteLoader {
         const hi = mechColors?.hi || MECH_HI;
         const rgb = this.hexRgb(accent);
         const spin = t * 2.2;
-        // 履带底座
+        // Q版小履带（圆润）
         ctx.fillStyle = dark;
         ctx.beginPath();
-        ctx.roundRect(-11, 6, 22, 6, 2);
+        ctx.ellipse(-6, 8, 4, 3, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        // 方块机身
-        const g = ctx.createLinearGradient(0, -10, 0, 8);
-        g.addColorStop(0, hi);
-        g.addColorStop(0.55, mid);
-        g.addColorStop(1, dark);
-        ctx.fillStyle = g;
         ctx.beginPath();
-        ctx.roundRect(-10, -9, 20, 16, 2.5);
+        ctx.ellipse(6, 8, 4, 3, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
-        ctx.lineWidth = 1.3;
-        ctx.stroke();
-        // 左右磁极（U 型半环）
+        // Q版圆润身体（占整体 50%）
+        const bodyGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, 11);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+        ctx.fill();
+        // 磁极装饰（Q版：柔和的圆弧）
         ctx.save();
-        ctx.strokeStyle = this.rgbaStr(rgb, 0.8);
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.7);
         ctx.shadowColor = accent;
-        ctx.shadowBlur = 8;
-        ctx.lineWidth = 2.2;
+        ctx.shadowBlur = 6;
+        ctx.lineWidth = 2;
         for (const sx of [-1, 1]) {
             ctx.beginPath();
-            ctx.arc(sx * 13, 0, 5, sx > 0 ? -1.1 : 2.05, sx > 0 ? 1.1 : 4.25);
+            ctx.arc(sx * 8, 0, 4, sx > 0 ? -0.8 : Math.PI - 0.8, sx > 0 ? 0.8 : Math.PI + 0.8);
             ctx.stroke();
         }
         ctx.restore();
-        // 磁力场弧（旋转虚线，表示吸引弹道）
+        // 磁力场装饰（Q版：柔和的虚线圆环）
         ctx.save();
-        ctx.globalAlpha = 0.35;
+        ctx.globalAlpha = 0.3;
         ctx.strokeStyle = accent;
         ctx.lineWidth = 1;
-        ctx.setLineDash([3, 6]);
-        ctx.lineDashOffset = -spin * 8;
+        ctx.setLineDash([2, 4]);
+        ctx.lineDashOffset = -spin * 6;
         ctx.beginPath();
-        ctx.ellipse(0, 0, 16, 10, 0, 0, Math.PI * 2);
+        ctx.arc(0, 0, 12, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
         ctx.restore();
-        this.drawLens(ctx, 0, -2, 3.4, accent, 0.7);
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -3, -2, 2.8, accent, 0, 0.2);
+        this.drawCuteEye(ctx, 3, -2, 2.8, accent, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 4, 2.5, true);
     }
     /**
-     * 再生巨虫：分节蠕虫。
-     * 剪影 = 四节由大到小的圆节 + 体内绿色再生核（脉冲 = 正在回血）。
+     * Q版再生巨虫：圆润可爱的再生机器人。
+     * 剪影 = 圆润分节身体 + 再生核心装饰 + 可爱大眼睛。
      */
     drawRegeneratorEnemy(ctx, accent, mechColors) {
         const t = this.time;
@@ -2377,11 +2223,11 @@ export class SpriteLoader {
         const hi = mechColors?.hi || MECH_HI;
         const rgb = this.hexRgb(accent);
         const beat = Math.sin(t * 3.6) * 0.5 + 0.5;
-        // 分节（从尾到头，头在前 = +x）
-        const segs = [[-11, 0, 6.5], [-5, -1, 8], [2, -1.5, 9], [8, -2, 7.5]];
+        // Q版圆润分节身体（4节，从尾到头）
+        const segs = [[-9, 0, 5.5], [-4, -1, 6.5], [2, -1.5, 7], [7, -2, 6]];
         for (let i = 0; i < segs.length; i++) {
             const [sx, sy, r] = segs[i];
-            const g = ctx.createRadialGradient(sx - r * 0.35, sy - r * 0.45, 0, sx, sy, r);
+            const g = ctx.createRadialGradient(sx - r * 0.3, sy - r * 0.3, 0, sx, sy, r);
             g.addColorStop(0, hi);
             g.addColorStop(0.6, mid);
             g.addColorStop(1, dark);
@@ -2389,37 +2235,29 @@ export class SpriteLoader {
             ctx.beginPath();
             ctx.arc(sx, sy, r, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
-            ctx.lineWidth = 1.1;
-            ctx.stroke();
         }
-        // 体内再生核（多圈脉冲 = 细胞分裂）
+        // 再生核心装饰（Q版：柔和的脉冲圆环）
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         for (let i = 0; i < 2; i++) {
-            const pr = 3 + ((t * 6 + i * 1.6) % 3.2) * 2.2;
-            ctx.globalAlpha = Math.max(0, 0.5 - ((t * 6 + i * 1.6) % 3.2) * 0.15);
-            ctx.strokeStyle = this.rgbaStr(rgb, 0.9);
-            ctx.lineWidth = 1.2;
+            const pr = 2.5 + ((t * 6 + i * 1.6) % 3.2) * 1.8;
+            ctx.globalAlpha = Math.max(0, 0.4 - ((t * 6 + i * 1.6) % 3.2) * 0.12);
+            ctx.strokeStyle = this.rgbaStr(rgb, 0.8);
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.arc(2, -1.5, pr, 0, Math.PI * 2);
             ctx.stroke();
         }
         ctx.restore();
-        // 头前口器
-        ctx.strokeStyle = dark;
-        ctx.lineWidth = 1.6;
-        for (const a of [-0.5, 0.5]) {
-            ctx.beginPath();
-            ctx.moveTo(13, -2);
-            ctx.lineTo(13 + Math.cos(a) * 5, -2 + Math.sin(a) * 5);
-            ctx.stroke();
-        }
-        this.drawLens(ctx, 10, -4, 2, accent, 0.55 + beat * 0.45);
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, 5, -3, 2, accent, 0.3, 0);
+        this.drawCuteEye(ctx, 9, -3, 2, accent, 0.3, 0);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 7, 1, 1.5, true);
     }
     /**
-     * 精英·电磁风暴：巨型四旋翼 + 头顶特斯拉线圈。
-     * 比普通 EMP 无人机多一圈「电弧冠」，一眼区分精英与杂兵。
+     * Q版精英·电磁风暴：圆润可爱的电磁精英机器人。
+     * 剪影 = 圆润大身体 + 小旋翼 + 电弧装饰 + 可爱大眼睛。
      */
     drawEliteStormEnemy(ctx, accent, mechColors) {
         const t = this.time;
@@ -2428,70 +2266,53 @@ export class SpriteLoader {
         const hi = mechColors?.hi || MECH_HI;
         const rgb = this.hexRgb(accent);
         const arc = Math.sin(t * 13) * 0.5 + 0.5;
-        // 六臂旋翼
-        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
+        // Q版圆润大身体（占整体 50%）
+        const bodyGrad = ctx.createRadialGradient(-3, -3, 0, 0, 0, 12);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 11, 0, Math.PI * 2);
+        ctx.fill();
+        // Q版小旋翼（6个，圆润）
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = 1.5;
         for (let i = 0; i < 6; i++) {
             const a = (i / 6) * Math.PI * 2 + t * 0.8;
-            const ex = Math.cos(a) * 13, ey = Math.sin(a) * 7 - 1;
+            const ex = Math.cos(a) * 10, ey = Math.sin(a) * 6 - 1;
             ctx.beginPath();
-            ctx.moveTo(0, -1);
+            ctx.moveTo(ex * 0.5, ey * 0.5);
             ctx.lineTo(ex, ey);
             ctx.stroke();
             ctx.save();
-            ctx.globalAlpha = 0.5;
-            ctx.strokeStyle = this.rgbaStr(rgb, 0.7);
-            ctx.lineWidth = 1.2;
+            ctx.globalAlpha = 0.4;
+            ctx.strokeStyle = this.rgbaStr(rgb, 0.6);
+            ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.ellipse(ex, ey, 4.5, 1.5, t * 12 + i, 0, Math.PI * 2);
+            ctx.ellipse(ex, ey, 3, 1.2, t * 12 + i, 0, Math.PI * 2);
             ctx.stroke();
             ctx.restore();
         }
-        // 主舱
-        const g = ctx.createRadialGradient(-3, -5, 0, 0, 0, 13);
-        g.addColorStop(0, hi);
-        g.addColorStop(0.55, mid);
-        g.addColorStop(1, dark);
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(0, 0, 10, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
-        ctx.lineWidth = 1.4;
-        ctx.stroke();
-        // 特斯拉线圈（顶部三环）
+        // 电弧装饰（Q版：柔和的圆弧）
         ctx.save();
-        ctx.strokeStyle = this.rgbaStr(rgb, 0.85);
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.7);
         ctx.shadowColor = accent;
-        ctx.shadowBlur = 9 * (0.4 + arc * 0.6);
+        ctx.shadowBlur = 6 * (0.4 + arc * 0.6);
         ctx.lineWidth = 1.5;
-        for (let i = 0; i < 3; i++) {
-            ctx.beginPath();
-            ctx.ellipse(0, -10 - i * 2.4, 6 - i * 1.3, 1.8, 0, 0, Math.PI * 2);
-            ctx.stroke();
-        }
+        ctx.beginPath();
+        ctx.arc(0, -8, 5, -0.8, 0.8);
+        ctx.stroke();
         ctx.restore();
-        // 电弧冠（向外劈出的锯齿）
-        ctx.save();
-        ctx.globalAlpha = 0.4 + arc * 0.5;
-        ctx.strokeStyle = accent;
-        ctx.lineWidth = 1.2;
-        for (let i = 0; i < 4; i++) {
-            const a = t * 5 + i * (Math.PI / 2);
-            const r0 = 11, r1 = 16;
-            ctx.beginPath();
-            ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
-            ctx.lineTo(Math.cos(a + 0.16) * (r0 + r1) / 2, Math.sin(a + 0.16) * (r0 + r1) / 2);
-            ctx.lineTo(Math.cos(a) * r1, Math.sin(a) * r1);
-            ctx.stroke();
-        }
-        ctx.restore();
-        this.drawLens(ctx, 0, 0, 4, accent, 0.65 + arc * 0.35);
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -3, -2, 3, accent, 0, 0.2);
+        this.drawCuteEye(ctx, 3, -2, 3, accent, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 4, 2.5, true);
     }
     /**
-     * 精英·反射堡垒：移动要塞。
-     * 剪影 = 梯形主堡 + 两侧镜面塔楼 + 中央六边核心（反射盾）。
+     * Q版精英·反射堡垒：圆润可爱的反射精英机器人。
+     * 剪影 = 圆润大身体 + 小履带 + 反射装饰 + 可爱大眼睛。
      */
     drawEliteFortressEnemy(ctx, accent, mechColors) {
         const t = this.time;
@@ -2500,72 +2321,41 @@ export class SpriteLoader {
         const hi = mechColors?.hi || MECH_HI;
         const rgb = this.hexRgb(accent);
         const glint = Math.sin(t * 2.6) * 0.5 + 0.5;
-        // 履带
+        // Q版小履带（圆润）
         ctx.fillStyle = dark;
         ctx.beginPath();
-        ctx.roundRect(-14, 8, 28, 6, 2);
+        ctx.ellipse(-8, 10, 5, 3, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        // 主堡（梯形）
-        const g = ctx.createLinearGradient(0, -12, 0, 8);
-        g.addColorStop(0, hi);
-        g.addColorStop(0.4, mid);
-        g.addColorStop(1, dark);
-        ctx.fillStyle = g;
         ctx.beginPath();
-        ctx.moveTo(-9, -12);
-        ctx.lineTo(9, -12);
-        ctx.lineTo(13, 8);
-        ctx.lineTo(-13, 8);
-        ctx.closePath();
+        ctx.ellipse(8, 10, 5, 3, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
-        ctx.lineWidth = 1.3;
-        ctx.stroke();
-        // 两侧镜面塔楼
-        for (const sx of [-1, 1]) {
-            ctx.fillStyle = mid;
-            ctx.beginPath();
-            ctx.roundRect(sx * 11 - 4, -17, 8, 12, 1.5);
-            ctx.fill();
-            ctx.stroke();
-            // 镜面切面
-            ctx.save();
-            ctx.globalAlpha = 0.6 + glint * 0.3;
-            ctx.strokeStyle = this.rgbaStr(rgb, 0.9);
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(sx * 11 - 3, -5);
-            ctx.lineTo(sx * 11 + 3, -16);
-            ctx.stroke();
-            ctx.restore();
-        }
-        // 中央六边反射核
+        // Q版圆润大身体（占整体 55%）
+        const bodyGrad = ctx.createRadialGradient(-3, -3, 0, 0, 0, 13);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 12, 0, Math.PI * 2);
+        ctx.fill();
+        // 反射装饰（Q版：柔和的高光弧线）
         ctx.save();
-        ctx.shadowColor = accent;
-        ctx.shadowBlur = 10 * (0.4 + glint * 0.6);
-        ctx.fillStyle = this.rgbaStr(rgb, 0.2);
-        ctx.strokeStyle = this.rgbaStr(rgb, 0.7 + glint * 0.3);
-        ctx.lineWidth = 1.6;
+        ctx.globalAlpha = 0.5 + glint * 0.3;
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.8);
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        for (let i = 0; i < 6; i++) {
-            const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
-            const px = Math.cos(a) * 5.5, py = Math.sin(a) * 5.5 - 2;
-            if (i === 0)
-                ctx.moveTo(px, py);
-            else
-                ctx.lineTo(px, py);
-        }
-        ctx.closePath();
-        ctx.fill();
+        ctx.arc(0, -2, 8, -0.6, 0.6);
         ctx.stroke();
         ctx.restore();
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -4, -2, 3, accent, 0, 0.2);
+        this.drawCuteEye(ctx, 4, -2, 3, accent, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 5, 3, true);
     }
     /**
-     * 精英·战旗指挥官：扛旗的重装机。
-     * 剪影 = 高举的旗杆 + 飘动的红旗 + 厚肩甲（旗子是"全场加成"的视觉源头）。
+     * Q版精英·战旗指挥官：圆润可爱的指挥官机器人。
+     * 剪影 = 圆润大身体 + 小旗帜 + 指挥装饰 + 可爱大眼睛。
      */
     drawEliteCommanderEnemy(ctx, accent, mechColors) {
         const t = this.time;
@@ -2574,138 +2364,91 @@ export class SpriteLoader {
         const hi = mechColors?.hi || MECH_HI;
         const rgb = this.hexRgb(accent);
         const wave = Math.sin(t * 3.2);
-        // 双腿
-        ctx.fillStyle = dark;
-        ctx.fillRect(-7, 6, 6, 9);
-        ctx.fillRect(2, 6, 6, 9);
-        // 躯干
-        const g = ctx.createLinearGradient(0, -12, 0, 8);
-        g.addColorStop(0, hi);
-        g.addColorStop(0.5, mid);
-        g.addColorStop(1, dark);
-        ctx.fillStyle = g;
+        // Q版圆润大身体（占整体 55%）
+        const bodyGrad = ctx.createRadialGradient(-3, -3, 0, 0, 0, 13);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
         ctx.beginPath();
-        ctx.roundRect(-8, -9, 16, 16, 2);
+        ctx.arc(0, 0, 12, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-        // 厚肩甲
-        ctx.fillStyle = mid;
-        ctx.beginPath();
-        ctx.roundRect(-14, -13, 8, 9, 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.roundRect(6, -13, 8, 9, 2);
-        ctx.fill();
-        ctx.stroke();
-        // 旗杆（从右手举起）
-        ctx.strokeStyle = mechColors?.edge || MECH_EDGE;
+        // Q版小旗帜（圆润）
+        ctx.strokeStyle = dark;
         ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(10, -10);
-        ctx.lineTo(13, -24);
+        ctx.moveTo(8, -8);
+        ctx.lineTo(8, -16);
         ctx.stroke();
-        // 旗面（波浪）
+        // 旗面（Q版：柔和的波浪）
         ctx.save();
         ctx.shadowColor = accent;
-        ctx.shadowBlur = 8;
-        ctx.fillStyle = this.rgbaStr(rgb, 0.85);
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = this.rgbaStr(rgb, 0.8);
         ctx.beginPath();
-        ctx.moveTo(13, -24);
-        ctx.quadraticCurveTo(19 + wave * 2, -23, 24, -21 + wave * 1.5);
-        ctx.quadraticCurveTo(19 + wave * 2, -18, 13, -16);
+        ctx.moveTo(8, -16);
+        ctx.quadraticCurveTo(12 + wave, -15, 14, -14);
+        ctx.quadraticCurveTo(12 + wave, -13, 8, -12);
         ctx.closePath();
         ctx.fill();
         ctx.restore();
-        // 胸前指挥徽记
+        // 指挥装饰（Q版：柔和的圆弧）
         ctx.save();
-        ctx.strokeStyle = this.rgbaStr(rgb, 0.9);
-        ctx.lineWidth = 1.3;
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.7);
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(0, -2, 3.2, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(-2.2, -2);
-        ctx.lineTo(2.2, -2);
+        ctx.arc(0, 0, 8, -0.5, 0.5);
         ctx.stroke();
         ctx.restore();
-        this.drawLens(ctx, 0, -7, 2.6, accent, 0.75);
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -4, -2, 3, accent, 0, 0.2);
+        this.drawCuteEye(ctx, 4, -2, 3, accent, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 5, 3, true);
     }
     /**
-     * 精英·虚空行者：胸口的虚空洞。
-     * 剪影 = 高瘦人形 + 胸口一个「吸光」的黑洞（用径向渐变把周围压暗）。
+     * Q版精英·虚空行者：圆润可爱的虚空机器人。
+     * 剪影 = 圆润身体 + 虚空核心装饰 + 闪烁效果 + 可爱大眼睛。
      */
     drawEliteVoidwalkerEnemy(ctx, accent, mechColors) {
         const t = this.time;
         const dark = mechColors?.dark || MECH_DARK;
+        const mid = mechColors?.mid || MECH_MID;
+        const hi = mechColors?.hi || MECH_HI;
         const rgb = this.hexRgb(accent);
         const breathe = Math.sin(t * 2.4) * 0.5 + 0.5;
-        // 长腿
-        ctx.strokeStyle = dark;
-        ctx.lineWidth = 2.6;
-        ctx.lineCap = 'round';
+        // Q版圆润身体（占整体 50%）
+        const bodyGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, 11);
+        bodyGrad.addColorStop(0, hi);
+        bodyGrad.addColorStop(0.6, mid);
+        bodyGrad.addColorStop(1, dark);
+        ctx.fillStyle = bodyGrad;
         ctx.beginPath();
-        ctx.moveTo(-3, 3);
-        ctx.lineTo(-6, 13);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(3, 3);
-        ctx.lineTo(6, 13);
-        ctx.stroke();
-        // 躯干（高瘦）
-        const g = ctx.createLinearGradient(0, -14, 0, 5);
-        g.addColorStop(0, this.rgbaStr(rgb, 0.75));
-        g.addColorStop(1, dark);
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.moveTo(0, -15);
-        ctx.lineTo(6, -3);
-        ctx.lineTo(3, 5);
-        ctx.lineTo(-3, 5);
-        ctx.lineTo(-6, -3);
-        ctx.closePath();
+        ctx.arc(0, 0, 10, 0, Math.PI * 2);
         ctx.fill();
-        // 肩部虚空裂隙（两根向外的短线）
-        ctx.save();
-        ctx.strokeStyle = this.rgbaStr(rgb, 0.6 + breathe * 0.4);
-        ctx.lineWidth = 1.2;
-        for (const sx of [-1, 1]) {
-            ctx.beginPath();
-            ctx.moveTo(sx * 5, -9);
-            ctx.lineTo(sx * (10 + breathe * 2), -13 - breathe * 2);
-            ctx.stroke();
-        }
-        ctx.restore();
-        // 胸口虚空洞：先压黑再套一圈紫边
-        const hole = ctx.createRadialGradient(0, -3, 0, 0, -3, 6.5);
-        hole.addColorStop(0, 'rgba(0,0,0,1)');
-        hole.addColorStop(0.55, 'rgba(10,4,26,0.95)');
+        // 虚空核心装饰（Q版：柔和的脉冲圆环）
+        const hole = ctx.createRadialGradient(0, 0, 0, 0, 0, 5);
+        hole.addColorStop(0, 'rgba(0,0,0,0.8)');
+        hole.addColorStop(0.6, 'rgba(10,4,26,0.6)');
         hole.addColorStop(1, this.rgbaStr(rgb, 0));
         ctx.fillStyle = hole;
         ctx.beginPath();
-        ctx.arc(0, -3, 6.5, 0, Math.PI * 2);
+        ctx.arc(0, 0, 5, 0, Math.PI * 2);
         ctx.fill();
+        // 虚空边框（Q版：柔和的圆环）
         ctx.save();
-        ctx.strokeStyle = this.rgbaStr(rgb, 0.5 + breathe * 0.5);
-        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = this.rgbaStr(rgb, 0.5 + breathe * 0.4);
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(0, -3, 4.2, 0, Math.PI * 2);
+        ctx.arc(0, 0, 4, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
-        // 双眼（两点紫光）
-        ctx.save();
-        ctx.shadowColor = accent;
-        ctx.shadowBlur = 8;
-        ctx.fillStyle = accent;
-        ctx.beginPath();
-        ctx.arc(-2, -11, 1.3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(2.6, -11, 1.3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        // Q版可爱大眼睛
+        this.drawCuteEye(ctx, -3, -3, 2.5, accent, 0, 0.2);
+        this.drawCuteEye(ctx, 3, -3, 2.5, accent, 0, 0.2);
+        // Q版可爱小嘴巴
+        this.drawCuteMouth(ctx, 0, 4, 2, true);
     }
     /**
      * 10种关卡 Boss，每种都有独特外观：
