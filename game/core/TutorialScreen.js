@@ -86,7 +86,9 @@ export function getTutorialLayout(_W, H) {
         next: { x: 300, y: btnY, w: 118, h: 48 },
         // ⚠️ 不能贴右边：主菜单/战场的静音按钮就在右上角（394..436 × 12..54），
         // handleClick 里静音判定跑在最前面，位置一叠就把「关闭」吃成「静音」。
-        close: { x: 330, y: 20, w: 40, h: 40 },
+        // 关闭按钮：避开手机状态栏（顶部 0~47）和微信胶囊（右上角 x≈342~425 / y≈54~80），
+        // 所以从 (330,20) 挪到 (288,52)。
+        close: { x: 288, y: 52, w: 40, h: 40 },
     };
 }
 /** 逐字折行：中文没有空格，按测量宽度硬断 */
@@ -477,6 +479,7 @@ export function renderTutorial(ctx, W, H, pageIndex, t) {
     ctx.font = '10.5px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('游戏内随时可以点右上角「?」重新查看本教程', W / 2, H - 30);
+    // 页脚：H-30 会落进 Home Indicator（766~800），上移到 H-48
+    ctx.fillText('游戏内随时可以点右上角「?」重新查看本教程', W / 2, H - 48);
 }
 //# sourceMappingURL=TutorialScreen.js.map

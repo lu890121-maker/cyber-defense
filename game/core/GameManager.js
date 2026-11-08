@@ -29,12 +29,13 @@ const MENU_BUTTONS = {
     start: { x: 60, y: 400, w: 160, h: 62 },
     tutorial: { x: 230, y: 400, w: 160, h: 62 },
 };
-/** 关卡地图：3×3 共 9 张卡片，渲染与点击判定共用 */
-const LEVEL_CARD = { w: 120, h: 80, startX: 25, startY: 160, stepX: 135, stepY: 90 };
-/** 关卡地图底部的「返回」按钮 */
-const LEVEL_BACK_BTN = { x: 150, y: 720, w: 150, h: 48 };
-/** 指挥官资产条位置 */
-const COMMANDER_ASSETS_BAR = { x: 20, y: 100, w: 410, h: 50 };
+/** 关卡地图：3×3 共 9 张卡片，渲染与点击判定共用
+ *  startY 160 → 186：给「指挥官资产条」腾出下移的空间（标题要避开状态栏） */
+const LEVEL_CARD = { w: 120, h: 80, startX: 25, startY: 186, stepX: 135, stepY: 90 };
+/** 关卡地图底部的「返回」按钮（上移到 Home Indicator 之上） */
+const LEVEL_BACK_BTN = { x: 150, y: 706, w: 150, h: 48 };
+/** 指挥官资产条位置（下移到静音按钮之下，避免互相压住） */
+const COMMANDER_ASSETS_BAR = { x: 20, y: 128, w: 410, h: 50 };
 /** 拥有的塔展示区 */
 const TOWER_DISPLAY_AREA = { x: 20, y: 450, w: 410, h: 240 };
 function levelCardRect(i) {
@@ -51,6 +52,25 @@ const SUMMON_TUTORIAL_BTN = { x: 105, y: 650, w: 240, h: 40 };
 const RESULT_TUTORIAL_BTN = { x: 150, y: 562, w: 150, h: 44 };
 /** 每次通关可带入下一关的炮塔数量。999表示无限制，所有塔都能带入。 */
 const CARRY_TOWER_LIMIT = 999;
+/**
+ * 安全区布局常量。
+ *
+ * 画布固定 450×800，微信小游戏会把它拉伸铺满整屏，垂直方向约等于 1:1，
+ * 于是「画布坐标 ≈ 屏幕坐标」：
+ *   · 屏幕顶部 0~47 是状态栏/灵动岛  → HUD 第一行画在 y=15 会被时间、电量盖住
+ *   · 屏幕底部 766~800 是 Home Indicator → 底部按钮画在 752~792 会被小白条压住
+ *   · 微信右上角胶囊（•••/⊙）固定占 x≈342~425、y≈54~80 → 重开/静音/词缀不能放那儿
+ *
+ * ⚠️ 上一次修复的教训：把顶栏高度一起改成 96+50=146，直接盖掉地图顶部（y=126），
+ *    用户反馈"不如之前的"。所以这里**只压缩内容行距**，顶栏只长到 124，
+ *    地图起点 126 仍然完整可见。
+ */
+const HUD_TOP = 52;
+const HUD_BOTTOM = 34;
+/** 顶栏可视高度：内容压在 48..121，地图从 126 起 */
+const TOP_BAR_H = 124;
+/** 微信胶囊左侧边界：HUD 右侧内容必须收在这条线以内 */
+const CAPSULE_LEFT = 338;
 export class GameManager {
     constructor(canvas) {
         this.gameState = 'menu';
@@ -289,7 +309,8 @@ export class GameManager {
         ctx.fillRect(x, y, w, 1);
     }
     setupButtons() {
-        const bottomY = GAME_CONSTANTS.CANVAS_HEIGHT - 48;
+        // 底部按钮行上移到 Home Indicator 之上（原 752..792 会被小白条压住）
+        const bottomY = GAME_CONSTANTS.CANVAS_HEIGHT - 72;
         // 底部三键：召唤 / 过载 / 加速（+ 右侧卖出区，见 getSellArea()）。
         // 「下一波」按钮已移除 —— 波次清空后固定 10 秒自动推进（见 update()），
         // 玩家不需要（也不应该）手动催波，节奏由系统统一控制。
@@ -300,15 +321,16 @@ export class GameManager {
         // 18..136 / 148..266 / 278..334 / 卖出区 346..432。
         // 起因：旧布局加速键 295..365 与卖出区 350..430 横向叠压 15px，
         // 而卖出区画在按钮之后 → 红面板把「1x」的右半边盖掉。
-        this.buttons.set('summon', { x: 18, y: bottomY, w: 96, h: 40 });
-        this.buttons.set('overload', { x: 124, y: bottomY, w: 102, h: 40 });
-        this.buttons.set('speed', { x: 236, y: bottomY, w: 48, h: 40 });
-        // 重新开始按钮（声音开关左边）- 显示"重开"文字
-        this.buttons.set('restart', { x: 375, y: 10, w: 36, h: 26 });
-        // 静音开关（右上角）
-        this.buttons.set('mute', { x: 415, y: 10, w: 26, h: 26 });
+        this.buttons.set('summon', { x: 18, y: bottomY, w: 96, h: 38 });
+        this.buttons.set('overload', { x: 124, y: bottomY, w: 102, h: 38 });
+        this.buttons.set('speed', { x: 236, y: bottomY, w: 48, h: 38 });
+        // 重开/静音：从右上角挪到第三行（下一波信息条）右侧。
+        // 右上角在微信里被胶囊固定占住（x≈342~425 / y≈54~80），原来 375/415 的位置
+        // 会整个被盖住，静音还贴着屏幕右边缘被切掉。y=96 已在胶囊下方，可以放回右侧。
+        this.buttons.set('restart', { x: 366, y: 96, w: 36, h: 24 });
+        this.buttons.set('mute', { x: 408, y: 96, w: 24, h: 24 });
         // 六个合成格均匀铺满底栏，留出塔名显示空间。
-        const mergeAreaY = GAME_CONSTANTS.CANVAS_HEIGHT - 100;
+        const mergeAreaY = GAME_CONSTANTS.CANVAS_HEIGHT - 116;
         const mergeAreaStartX = 53;
         const mergeAreaSpacing = 68;
         for (let i = 0; i < this.mergeAreaSlots.length; i++) {
@@ -681,7 +703,7 @@ export class GameManager {
      * 改这里必须同步 `verify_drag.mjs` 里"卖出"用例的注释坐标。
      */
     getSellArea() {
-        return { x: 294, y: 752, w: 138, h: 40 };
+        return { x: 294, y: 728, w: 138, h: 38 };
     }
     handleClick(e) {
         const rect = this.canvas.getBoundingClientRect();
@@ -2621,7 +2643,7 @@ export class GameManager {
         ctx.font = 'bold 28px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        neonText(ctx, '指挥官基地', W / 2, 40, CYBER.cyan, { blur: 14, font: 'bold 28px sans-serif' });
+        neonText(ctx, '指挥官基地', W / 2, 64, CYBER.cyan, { blur: 14, font: 'bold 28px sans-serif' });
         ctx.restore();
         // ── 指挥官资产条 ──
         if (save) {
@@ -3949,17 +3971,17 @@ export class GameManager {
     renderUI() {
         const ctx = this.ctx;
         // Q版：顶部UI（更柔和的深蓝紫渐变背景）
-        const topGradient = ctx.createLinearGradient(0, 0, 0, 96);
+        const topGradient = ctx.createLinearGradient(0, 0, 0, TOP_BAR_H);
         topGradient.addColorStop(0, 'rgba(18, 16, 42, 0.95)');
         topGradient.addColorStop(1, 'rgba(18, 16, 42, 0.88)');
         ctx.fillStyle = topGradient;
-        ctx.fillRect(0, 0, this.canvas.width, 96);
+        ctx.fillRect(0, 0, this.canvas.width, TOP_BAR_H);
         // Q版：顶部边框（更柔和的青色）
         ctx.strokeStyle = 'rgba(51, 255, 255, 0.35)';
         ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.moveTo(0, 96);
-        ctx.lineTo(this.canvas.width, 96);
+        ctx.moveTo(0, TOP_BAR_H);
+        ctx.lineTo(this.canvas.width, TOP_BAR_H);
         ctx.stroke();
         // 关卡 + 关内波次信息
         const curWave = Math.max(1, this.waveManager.getCurrentWave());
@@ -3968,13 +3990,15 @@ export class GameManager {
         ctx.font = 'bold 16px sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        ctx.fillText(`第 ${curWave}/${TOTAL_WAVES} 波`, 20, 15);
+        ctx.fillText(`第 ${curWave}/${TOTAL_WAVES} 波`, 20, HUD_TOP);
         // 关卡标识：主题色方块 + 第N关·关名
+        // 行内左起：波次(20) → 关卡名(116) → 倒计时(190) → 词缀 chip(右对齐到 336)
+        // 胶囊从 x=342 起，所以整行内容必须收在 338 以内。
         ctx.fillStyle = lv.accent;
-        ctx.fillRect(112, 19, 3, 14);
+        ctx.fillRect(107, HUD_TOP + 4, 3, 14);
         ctx.fillStyle = lv.accent;
         ctx.font = 'bold 12px sans-serif';
-        ctx.fillText(`${lv.id}.${lv.name}`, 121, 19);
+        ctx.fillText(`${lv.id}.${lv.name}`, 111, HUD_TOP + 4);
         // 波次时间：普通波画倒计时（20s 强制推进）；Boss 波**没有时限**，
         // 改画「清场解锁」—— 用户诉求「最后一关必须场上一个怪没有的时候才能解锁下一关」。
         // 必须常驻可见：否则"打着打着突然进下一波"在玩家眼里就是 bug，
@@ -3993,8 +4017,8 @@ export class GameManager {
                 // （已用离屏掩码 + 颜色探针实测：同页 66 个 emoji 全是彩色字形，只有它是残字）。
                 // 加 FE0F 变体选择符（'⚔️'）虽能走彩色 emoji，但会把卡通多色图标塞进霓虹单色 HUD，
                 // 和左边的单色 '⏱' 语言不一致。矢量画法与项目「零 PNG 依赖、全程序化」的美术铁律同源。
-                this.drawCrossedSwords(226, 22, 16, '#FFD700');
-                ctx.fillText('清场解锁', 239, 16);
+                this.drawCrossedSwords(191, HUD_TOP + 7, 16, '#FFD700');
+                ctx.fillText('清场解锁', 204, HUD_TOP + 1);
                 ctx.shadowBlur = 0;
             }
             else {
@@ -4005,33 +4029,34 @@ export class GameManager {
                     ctx.shadowColor = '#FF334F';
                     ctx.shadowBlur = 10;
                 }
-                ctx.fillText(`⏱ ${Math.ceil(left)}s`, 218, 16);
+                ctx.fillText(`⏱ ${Math.ceil(left)}s`, 183, HUD_TOP + 1);
                 ctx.shadowBlur = 0;
             }
         }
         // 本波词缀常驻显示 —— 旧设计里变异是战斗中才发现的黑箱，
         // 现在玩家随时能看到当前生效的规则。
-        this.renderModifierChip(296, 13, 92);
+        // 右对齐到胶囊左侧（336），不再被微信胶囊盖住。
+        this.renderModifierChip(CAPSULE_LEFT - 92, HUD_TOP, 90);
         // 金币（带图标光晕）
         ctx.shadowColor = '#fbbf24';
         ctx.shadowBlur = 8;
         ctx.fillStyle = '#fbbf24';
         ctx.font = 'bold 16px sans-serif';
-        ctx.fillText(`💰 ${this.resourceManager.getGold()}`, 20, 40);
+        ctx.fillText(`💰 ${this.resourceManager.getGold()}`, 20, HUD_TOP + 24);
         ctx.shadowBlur = 0;
         // 生命值（带图标光晕）
         ctx.shadowColor = '#FF0033';
         ctx.shadowBlur = 8;
         ctx.fillStyle = '#FF0033';
-        ctx.fillText(`❤️ ${this.resourceManager.getLives()}`, 100, 40);
+        ctx.fillText(`❤️ ${this.resourceManager.getLives()}`, 100, HUD_TOP + 24);
         ctx.shadowBlur = 0;
         // 速度显示
         ctx.fillStyle = '#9D00FF';
         ctx.font = '14px sans-serif';
-        ctx.fillText(`${this.gameSpeed}x`, 178, 40);
+        ctx.fillText(`${this.gameSpeed}x`, 178, HUD_TOP + 24);
         // 剩余敌人
         ctx.fillStyle = '#8FA3BF';
-        ctx.fillText(`剩余: ${this.waveManager.getRemainingCount()}`, 218, 40);
+        ctx.fillText(`剩余: ${this.waveManager.getRemainingCount()}`, 218, HUD_TOP + 24);
         // 强化机会计数（v1.6.2）：每关通关时一次，让玩家知道还差几波
         {
             const left = this.getEnhanceCountdown();
@@ -4044,7 +4069,8 @@ export class GameManager {
             else {
                 ctx.fillStyle = '#5A6B85';
             }
-            ctx.fillText(left === 0 ? '⚡通关强化 就绪' : `⚡通关强化 再${left}波`, 306, 40);
+            // 右上角被胶囊占住，这里必须收在 x=338 以内，所以文案压成短版
+            ctx.fillText(left === 0 ? '⚡强化就绪' : `⚡再${left}波`, 280, HUD_TOP + 24, 58);
             ctx.shadowBlur = 0;
         }
         // 下一波摘要放在HUD第三行，并独立预留倒计时栏位。
@@ -4055,18 +4081,18 @@ export class GameManager {
         this.renderMuteButton();
         // 右上角重新开始按钮
         this.renderRestartButton();
-        // 底部按钮区域背景
-        const bottomGradient = ctx.createLinearGradient(0, this.canvas.height - 80, 0, this.canvas.height);
+        // 底部按钮区域背景（整块上移到 Home Indicator 之上：640..800）
+        const bottomGradient = ctx.createLinearGradient(0, this.canvas.height - 160, 0, this.canvas.height);
         bottomGradient.addColorStop(0, 'rgba(18, 16, 42, 0.88)');
         bottomGradient.addColorStop(1, 'rgba(18, 16, 42, 0.95)');
         ctx.fillStyle = bottomGradient;
-        ctx.fillRect(0, this.canvas.height - 80, this.canvas.width, 80);
+        ctx.fillRect(0, this.canvas.height - 160, this.canvas.width, 160);
         // 底部边框
         ctx.strokeStyle = 'rgba(51, 255, 255, 0.35)';
         ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.moveTo(0, this.canvas.height - 80);
-        ctx.lineTo(this.canvas.width, this.canvas.height - 80);
+        ctx.moveTo(0, this.canvas.height - 160);
+        ctx.lineTo(this.canvas.width, this.canvas.height - 160);
         ctx.stroke();
         // 底部按钮（无「下一波」——波次自动推进，倒计时画在场景里）
         // 召唤不再有固定价：价格随品阶浮动（50~150），所以按钮只显示"召唤"
@@ -4084,9 +4110,9 @@ export class GameManager {
     }
     renderMergeArea() {
         const ctx = this.ctx;
-        const mergeAreaY = GAME_CONSTANTS.CANVAS_HEIGHT - 100;
+        const mergeAreaY = GAME_CONSTANTS.CANVAS_HEIGHT - 116;
         const panelTop = mergeAreaY - 44;
-        const panelHeight = 82;
+        const panelHeight = 78;
         // Q版：更柔和的渐变背景
         const mergeGradient = ctx.createLinearGradient(8, panelTop, 8, panelTop + panelHeight);
         mergeGradient.addColorStop(0, 'rgba(26, 21, 53, 0.95)');
@@ -4486,17 +4512,18 @@ export class GameManager {
         const countdownUrgent = this.nextWaveCountdownActive && Math.ceil(this.nextWaveCountdown) <= 5;
         ctx.save();
         ctx.fillStyle = 'rgba(2, 12, 25, 0.74)';
-        this.roundRect(12, 66, this.canvas.width - 24, 25, 7);
+        // 信息条落在顶栏第三行（y=96），右侧给「重开/静音」留出 366..432
+        this.roundRect(12, 96, 346, 25, 7);
         ctx.fill();
         ctx.strokeStyle = preview.isBoss ? 'rgba(201,168,255,0.48)' : 'rgba(0,240,255,0.24)';
         ctx.lineWidth = 1;
-        this.roundRect(12, 66, this.canvas.width - 24, 25, 7);
+        this.roundRect(12, 96, 346, 25, 7);
         ctx.stroke();
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.font = 'bold 12px sans-serif';
         ctx.fillStyle = preview.isBoss ? '#E2D2FF' : '#C7E7F4';
-        ctx.fillText(label, 20, 78.5, this.canvas.width - 105);
+        ctx.fillText(label, 20, 108.5, 268);
         if (this.nextWaveCountdownActive) {
             const seconds = Math.max(0, Math.ceil(this.nextWaveCountdown));
             ctx.textAlign = 'right';
@@ -4506,7 +4533,7 @@ export class GameManager {
                 ctx.shadowColor = '#FF334F';
                 ctx.shadowBlur = 10;
             }
-            ctx.fillText(`⏱ ${seconds}s`, this.canvas.width - 22, 78.5);
+            ctx.fillText(`⏱ ${seconds}s`, 348, 108.5);
         }
         ctx.restore();
     }
