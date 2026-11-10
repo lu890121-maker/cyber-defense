@@ -62,7 +62,7 @@ export declare class TechnicalArtRenderer {
      * 防御塔位：切角方形框架 + 四角指示块。
      * selected = 青色霓虹高亮；occupied = 已占位的暗色底。
      */
-    renderTowerSlot(x: number, y: number, occupied: boolean, selected: boolean): void;
+    renderTowerSlot(x: number, y: number, occupied: boolean, selected: boolean, locked?: boolean): void;
     /**
      * 后处理：暗角 + 扫描线 + 缓慢下移的 CRT 亮带。
      * 必须画在 UI 之前（见 MEMORY 渲染顺序铁律），否则会把 HUD 压暗。

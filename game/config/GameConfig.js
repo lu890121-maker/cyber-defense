@@ -26,7 +26,10 @@ export const GAME_CONSTANTS = {
     GAME_SPEED: {
         NORMAL: 1,
         FAST: 2
-    }
+    },
+    // 塔位解锁
+    SLOT_UNLOCK_COST: 200, // 解锁单个塔位的费用
+    INITIAL_UNLOCKED_SLOTS: 3 // 每关初始解锁的塔位数
 };
 // ══════════════════════════════════════════════════════════════
 //  稀有度系统
@@ -1543,7 +1546,7 @@ for (const level of LEVELS) {
 // 注意 TOWER_SLOTS 必须返回**全新的对象**：occupied 是运行时状态，
 // 直接复用 LEVELS[i].slots 会让上一关的占位标记残留到下一关。
 function cloneSlots(src) {
-    return src.map(s => ({ x: s.x, y: s.y, occupied: false }));
+    return src.map(s => ({ x: s.x, y: s.y, occupied: false, locked: false }));
 }
 export let ACTIVE_LEVEL_INDEX = 0;
 export let PATH_POINTS = LEVELS[0].path;

@@ -112,6 +112,7 @@ export function createDefaultCommanderSave() {
         lives: GAME_CONSTANTS.INITIAL_LIVES,
         towers: [],
         globalUpgradeState: cloneGlobalState(DEFAULT_GLOBAL_STATE),
+        unlockedSlotCount: GAME_CONSTANTS.INITIAL_UNLOCKED_SLOTS,
         timestamp: Date.now()
     };
 }
@@ -150,6 +151,15 @@ export function readCommanderSave() {
                 console.warn('[CommanderSave] 跳过非法塔快照', t);
         }
     }
+    // 兼容旧档：如果没有 unlockedSlotCount，使用默认初始值
+    let unlockedSlotCount;
+    if (isV2 && typeof raw.unlockedSlotCount === 'number') {
+        unlockedSlotCount = clampInt(raw.unlockedSlotCount, GAME_CONSTANTS.INITIAL_UNLOCKED_SLOTS, 9999, GAME_CONSTANTS.INITIAL_UNLOCKED_SLOTS);
+    }
+    else {
+        // 旧档或无效数据：使用初始解锁数
+        unlockedSlotCount = GAME_CONSTANTS.INITIAL_UNLOCKED_SLOTS;
+    }
     return {
         version: 2,
         maxUnlockedLevel: Math.max(currentLevelIndex, maxUnlockedLevel),
@@ -160,6 +170,7 @@ export function readCommanderSave() {
         globalUpgradeState: isV2
             ? normalizeGlobalState(raw.globalUpgradeState)
             : cloneGlobalState(DEFAULT_GLOBAL_STATE),
+        unlockedSlotCount,
         timestamp: finiteOr(raw.timestamp, Date.now())
     };
 }

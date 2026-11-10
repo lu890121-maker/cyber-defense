@@ -569,7 +569,7 @@ export class TechnicalArtRenderer {
      * 防御塔位：切角方形框架 + 四角指示块。
      * selected = 青色霓虹高亮；occupied = 已占位的暗色底。
      */
-    renderTowerSlot(x, y, occupied, selected) {
+    renderTowerSlot(x, y, occupied, selected, locked = false) {
         const ctx = this.ctx;
         const size = 44;
         const half = size / 2;
@@ -579,7 +579,9 @@ export class TechnicalArtRenderer {
         ctx.fill();
         // 主体
         let fill;
-        if (selected)
+        if (locked)
+            fill = 'rgba(30, 30, 35, 0.70)'; // 锁定状态：暗灰色
+        else if (selected)
             fill = rgba(CYBER.cyan, 0.20);
         else if (occupied)
             fill = 'rgba(20, 28, 40, 0.92)';
@@ -589,13 +591,17 @@ export class TechnicalArtRenderer {
         cutRectPath(ctx, x - half, y - half, size, size, 9);
         ctx.fill();
         // 内层刻线
-        ctx.strokeStyle = rgba(CYBER.cyan, selected ? 0.45 : 0.13);
+        ctx.strokeStyle = locked ? 'rgba(100, 100, 100, 0.3)' : rgba(CYBER.cyan, selected ? 0.45 : 0.13);
         ctx.lineWidth = 1;
         cutRectPath(ctx, x - half + 3.5, y - half + 3.5, size - 7, size - 7, 7);
         ctx.stroke();
         // 外框
         ctx.save();
-        if (selected) {
+        if (locked) {
+            ctx.strokeStyle = 'rgba(150, 150, 150, 0.4)';
+            ctx.lineWidth = 1.5;
+        }
+        else if (selected) {
             ctx.shadowColor = CYBER.cyan;
             ctx.shadowBlur = 14;
             ctx.strokeStyle = CYBER.cyan;
@@ -608,9 +614,24 @@ export class TechnicalArtRenderer {
         cutRectPath(ctx, x - half, y - half, size, size, 9);
         ctx.stroke();
         ctx.restore();
+        // 锁定状态：绘制锁图标
+        if (locked) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(200, 200, 200, 0.6)';
+            ctx.lineWidth = 2;
+            // 锁身
+            ctx.beginPath();
+            ctx.rect(x - 6, y - 2, 12, 10);
+            ctx.stroke();
+            // 锁环
+            ctx.beginPath();
+            ctx.arc(x, y - 2, 6, Math.PI, 0, false);
+            ctx.stroke();
+            ctx.restore();
+        }
         // 四角指示块
         const cs = 5;
-        ctx.fillStyle = selected ? CYBER.cyan : rgba(CYBER.cyan, occupied ? 0.5 : 0.28);
+        ctx.fillStyle = locked ? 'rgba(150, 150, 150, 0.3)' : (selected ? CYBER.cyan : rgba(CYBER.cyan, occupied ? 0.5 : 0.28));
         ctx.beginPath();
         ctx.moveTo(x - half, y - half);
         ctx.lineTo(x - half + cs, y - half);

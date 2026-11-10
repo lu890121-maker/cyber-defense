@@ -831,7 +831,8 @@ export class GameManager {
                 this.soundManager.toggleMute();
                 break;
             case 'restart':
-                this.restartCurrentLevel();
+                // 回到关卡选择界面（不重启当前关卡）
+                this.gameState = 'level_select';
                 break;
         }
     }
@@ -889,6 +890,29 @@ export class GameManager {
         this.placingTower = null;
     }
     handleSlotClick(slotIndex) {
+        const slot = TOWER_SLOTS[slotIndex];
+        // 检查塔位是否锁定
+        if (slot && slot.locked) {
+            // 尝试解锁塔位
+            const unlockCost = GAME_CONSTANTS.SLOT_UNLOCK_COST;
+            if (this.resourceManager.getGold() >= unlockCost) {
+                // 解锁成功
+                this.resourceManager.addGold(-unlockCost);
+                slot.locked = false;
+                this.soundManager.playPlaceTower();
+                // 更新存档中的全局解锁数量
+                const save = readCommanderSave();
+                if (save) {
+                    save.unlockedSlotCount = (save.unlockedSlotCount ?? GAME_CONSTANTS.INITIAL_UNLOCKED_SLOTS) + 1;
+                    writeCommanderSave(save);
+                }
+            }
+            else {
+                // 金币不足
+                this.soundManager.playDenied();
+            }
+            return;
+        }
         const tower = this.towerMergeSystem.getTowerAt(slotIndex);
         // 如果正在放置防御塔
         if (this.placingTower) {
@@ -1384,6 +1408,8 @@ export class GameManager {
             ...this.towerMergeSystem.getAllTowers(),
             ...this.mergeAreaSlots.flatMap(slot => slot.tower ? [slot.tower] : [])
         ];
+        const save = readCommanderSave();
+        const unlockedSlotCount = save?.unlockedSlotCount ?? GAME_CONSTANTS.INITIAL_UNLOCKED_SLOTS;
         return {
             version: 2,
             maxUnlockedLevel,
@@ -1392,6 +1418,7 @@ export class GameManager {
             lives: this.resourceManager.getLives(),
             towers: towers.map(snapshotTower),
             globalUpgradeState: cloneGlobalState(this.towerMergeSystem.getGlobalUpgradeState()),
+            unlockedSlotCount,
             timestamp: Date.now()
         };
     }
@@ -1458,6 +1485,14 @@ export class GameManager {
             const slot = TOWER_SLOTS[slotIndex];
             if (slot)
                 slot.occupied = true;
+        }
+        // ⑨ 根据存档限制可用塔位：前 N 个解锁，其余锁定
+        const unlockedCount = save.unlockedSlotCount ?? GAME_CONSTANTS.INITIAL_UNLOCKED_SLOTS;
+        for (let i = 0; i < TOWER_SLOTS.length; i++) {
+            const slot = TOWER_SLOTS[i];
+            if (slot) {
+                slot.locked = i >= unlockedCount;
+            }
         }
     }
     /**
@@ -3177,7 +3212,7 @@ export class GameManager {
         for (let i = 0; i < TOWER_SLOTS.length; i++) {
             const slot = TOWER_SLOTS[i];
             const isSelected = this.selectedSlot === i;
-            this.taRenderer.renderTowerSlot(slot.x, slot.y, slot.occupied, isSelected);
+            this.taRenderer.renderTowerSlot(slot.x, slot.y, slot.occupied, isSelected, slot.locked);
         }
         // 渲染迷雾禁区（L8）—— 必须在道路之后渲染，否则会被道路盖住
         for (const fog of ACTIVE_FOG_ZONES) {

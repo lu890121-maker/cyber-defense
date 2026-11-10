@@ -18,6 +18,8 @@ export declare const GAME_CONSTANTS: {
         NORMAL: number;
         FAST: number;
     };
+    SLOT_UNLOCK_COST: number;
+    INITIAL_UNLOCKED_SLOTS: number;
 };
 export declare enum Rarity {
     N = "N",// 普通
@@ -421,6 +423,7 @@ export declare let TOWER_SLOTS: Array<{
     x: number;
     y: number;
     occupied: boolean;
+    locked: boolean;
 }>;
 export declare let WAVE_CONFIGS: WaveConfig[];
 export declare let TOTAL_WAVES: number;

@@ -40,6 +40,8 @@ export interface CommanderSave {
     lives: number;
     towers: TowerSnapshot[];
     globalUpgradeState: GlobalUpgradeState;
+    /** 全局已解锁塔位数量（所有关卡共享此进度） */
+    unlockedSlotCount: number;
     timestamp: number;
 }
 export declare const SAVE_KEY = "cyber-defense.save";
