@@ -31,6 +31,8 @@ export declare class GameManager {
     private summonCostPaid;
     private upgradeOptions;
     private upgradeNoticeText;
+    /** 解锁塔位确认对话框：待解锁的塔位索引 */
+    private pendingUnlockSlotIndex;
     /**
      * 通关强化挂起标志（v1.6.2 修复）：每关通关后弹一次强化面板，
      * 选完后不是回 playing，而是进关卡结算（handleLevelCleared）。
@@ -171,6 +173,23 @@ export declare class GameManager {
     private handleButtonClick;
     private openTutorial;
     private handleTutorialClick;
+    /**
+     * 解锁塔位确认对话框：点击处理
+     * 对话框居中显示，包含"确认解锁"和"取消"两个按钮
+     */
+    private handleConfirmUnlockSlot;
+    /**
+     * 确认解锁塔位：扣除金币并解锁
+     */
+    private confirmUnlockSlot;
+    /**
+     * 重开确认对话框：点击处理
+     */
+    private handleConfirmRestart;
+    /**
+     * 判断点击是否在对话框区域内
+     */
+    private isInDialogArea;
     private handleGridClick;
     private handleSlotClick;
     /**
@@ -542,5 +561,7 @@ export declare class GameManager {
     private renderLevelClear;
     private renderTowerInfoPanel;
     private renderGameOver;
+    private renderConfirmUnlockSlotDialog;
+    private renderConfirmRestartDialog;
     private renderVictory;
 }

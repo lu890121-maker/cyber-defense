@@ -92,6 +92,8 @@ export class GameManager {
         this.summonCostPaid = false; // 追踪是否已扣费
         this.upgradeOptions = [];
         this.upgradeNoticeText = '';
+        /** 解锁塔位确认对话框：待解锁的塔位索引 */
+        this.pendingUnlockSlotIndex = -1;
         /**
          * 通关强化挂起标志（v1.6.2 修复）：每关通关后弹一次强化面板，
          * 选完后不是回 playing，而是进关卡结算（handleLevelCleared）。
@@ -798,6 +800,14 @@ export class GameManager {
             this.handleSummonSelect(x, y);
             return;
         }
+        if (this.gameState === 'confirm_unlock_slot') {
+            this.handleConfirmUnlockSlot(x, y);
+            return;
+        }
+        if (this.gameState === 'confirm_restart') {
+            this.handleConfirmRestart(x, y);
+            return;
+        }
         if (this.gameState === 'level_clear') {
             this.handleLevelClearClick(x, y);
             return;
@@ -831,8 +841,8 @@ export class GameManager {
                 this.soundManager.toggleMute();
                 break;
             case 'restart':
-                // 回到关卡选择界面（不重启当前关卡）
-                this.gameState = 'level_select';
+                // 弹出确认对话框，防止误触
+                this.gameState = 'confirm_restart';
                 break;
         }
     }
@@ -871,6 +881,110 @@ export class GameManager {
         }
         // 面板空白处不做事：避免小白到处乱点把教程点没
     }
+    /**
+     * 解锁塔位确认对话框：点击处理
+     * 对话框居中显示，包含"确认解锁"和"取消"两个按钮
+     */
+    handleConfirmUnlockSlot(x, y) {
+        const W = GAME_CONSTANTS.CANVAS_WIDTH;
+        const H = GAME_CONSTANTS.CANVAS_HEIGHT;
+        const dialogW = 300;
+        const dialogH = 180;
+        const dialogX = (W - dialogW) / 2;
+        const dialogY = (H - dialogH) / 2;
+        // 确认按钮：左侧
+        const confirmBtn = { x: dialogX + 30, y: dialogY + 120, w: 100, h: 40 };
+        // 取消按钮：右侧
+        const cancelBtn = { x: dialogX + 170, y: dialogY + 120, w: 100, h: 40 };
+        if (this.isInButton(x, y, confirmBtn)) {
+            this.soundManager.playButtonClick();
+            this.confirmUnlockSlot();
+            return;
+        }
+        if (this.isInButton(x, y, cancelBtn)) {
+            this.soundManager.playButtonClick();
+            this.gameState = 'playing';
+            this.pendingUnlockSlotIndex = -1;
+            return;
+        }
+        // 点击对话框外部区域：取消
+        if (!this.isInDialogArea(x, y, dialogX, dialogY, dialogW, dialogH)) {
+            this.soundManager.playButtonClick();
+            this.gameState = 'playing';
+            this.pendingUnlockSlotIndex = -1;
+        }
+    }
+    /**
+     * 确认解锁塔位：扣除金币并解锁
+     */
+    confirmUnlockSlot() {
+        if (this.pendingUnlockSlotIndex < 0) {
+            this.gameState = 'playing';
+            return;
+        }
+        const slotIndex = this.pendingUnlockSlotIndex;
+        const slot = TOWER_SLOTS[slotIndex];
+        if (!slot || !slot.locked) {
+            this.gameState = 'playing';
+            this.pendingUnlockSlotIndex = -1;
+            return;
+        }
+        const unlockCost = GAME_CONSTANTS.SLOT_UNLOCK_COST;
+        if (this.resourceManager.getGold() >= unlockCost) {
+            // 解锁成功
+            this.resourceManager.addGold(-unlockCost);
+            slot.locked = false;
+            this.soundManager.playPlaceTower();
+            // 更新存档中的全局解锁数量
+            const save = readCommanderSave();
+            if (save) {
+                save.unlockedSlotCount = (save.unlockedSlotCount ?? GAME_CONSTANTS.INITIAL_UNLOCKED_SLOTS) + 1;
+                writeCommanderSave(save);
+            }
+        }
+        else {
+            // 金币不足
+            this.soundManager.playDenied();
+        }
+        this.gameState = 'playing';
+        this.pendingUnlockSlotIndex = -1;
+    }
+    /**
+     * 重开确认对话框：点击处理
+     */
+    handleConfirmRestart(x, y) {
+        const W = GAME_CONSTANTS.CANVAS_WIDTH;
+        const H = GAME_CONSTANTS.CANVAS_HEIGHT;
+        const dialogW = 300;
+        const dialogH = 180;
+        const dialogX = (W - dialogW) / 2;
+        const dialogY = (H - dialogH) / 2;
+        // 确认按钮：左侧
+        const confirmBtn = { x: dialogX + 30, y: dialogY + 120, w: 100, h: 40 };
+        // 取消按钮：右侧
+        const cancelBtn = { x: dialogX + 170, y: dialogY + 120, w: 100, h: 40 };
+        if (this.isInButton(x, y, confirmBtn)) {
+            this.soundManager.playButtonClick();
+            this.gameState = 'level_select';
+            return;
+        }
+        if (this.isInButton(x, y, cancelBtn)) {
+            this.soundManager.playButtonClick();
+            this.gameState = 'playing';
+            return;
+        }
+        // 点击对话框外部区域：取消
+        if (!this.isInDialogArea(x, y, dialogX, dialogY, dialogW, dialogH)) {
+            this.soundManager.playButtonClick();
+            this.gameState = 'playing';
+        }
+    }
+    /**
+     * 判断点击是否在对话框区域内
+     */
+    isInDialogArea(x, y, dx, dy, dw, dh) {
+        return x >= dx && x <= dx + dw && y >= dy && y <= dy + dh;
+    }
     handleGridClick(x, y) {
         // 检查点击了哪个格子
         for (let i = 0; i < TOWER_SLOTS.length; i++) {
@@ -893,24 +1007,10 @@ export class GameManager {
         const slot = TOWER_SLOTS[slotIndex];
         // 检查塔位是否锁定
         if (slot && slot.locked) {
-            // 尝试解锁塔位
-            const unlockCost = GAME_CONSTANTS.SLOT_UNLOCK_COST;
-            if (this.resourceManager.getGold() >= unlockCost) {
-                // 解锁成功
-                this.resourceManager.addGold(-unlockCost);
-                slot.locked = false;
-                this.soundManager.playPlaceTower();
-                // 更新存档中的全局解锁数量
-                const save = readCommanderSave();
-                if (save) {
-                    save.unlockedSlotCount = (save.unlockedSlotCount ?? GAME_CONSTANTS.INITIAL_UNLOCKED_SLOTS) + 1;
-                    writeCommanderSave(save);
-                }
-            }
-            else {
-                // 金币不足
-                this.soundManager.playDenied();
-            }
+            // 弹出解锁确认对话框
+            this.pendingUnlockSlotIndex = slotIndex;
+            this.gameState = 'confirm_unlock_slot';
+            this.soundManager.playButtonClick();
             return;
         }
         const tower = this.towerMergeSystem.getTowerAt(slotIndex);
@@ -4142,6 +4242,13 @@ export class GameManager {
         if (this.draggingTower) {
             this.renderDraggingTower();
         }
+        // 渲染确认对话框（在最上层）
+        if (this.gameState === 'confirm_unlock_slot') {
+            this.renderConfirmUnlockSlotDialog();
+        }
+        else if (this.gameState === 'confirm_restart') {
+            this.renderConfirmRestartDialog();
+        }
     }
     renderMergeArea() {
         const ctx = this.ctx;
@@ -5615,6 +5722,92 @@ export class GameManager {
         ctx.fillText('重新开始', this.canvas.width / 2, 530);
         // 玩法教程：输了往往是没搞懂合成/技能，给个回头补课的入口
         this.renderTutorialLink(ctx, RESULT_TUTORIAL_BTN);
+    }
+    renderConfirmUnlockSlotDialog() {
+        const ctx = this.ctx;
+        const W = GAME_CONSTANTS.CANVAS_WIDTH;
+        const H = GAME_CONSTANTS.CANVAS_HEIGHT;
+        const dialogW = 300;
+        const dialogH = 180;
+        const dialogX = (W - dialogW) / 2;
+        const dialogY = (H - dialogH) / 2;
+        // 半透明背景遮罩
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, W, H);
+        // 对话框背景
+        ctx.fillStyle = '#1a1f3a';
+        ctx.fillRect(dialogX, dialogY, dialogW, dialogH);
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(dialogX, dialogY, dialogW, dialogH);
+        // 标题
+        ctx.fillStyle = '#00f0ff';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('解锁塔位', W / 2, dialogY + 40);
+        // 提示信息
+        ctx.fillStyle = '#e8f6ff';
+        ctx.font = '16px sans-serif';
+        ctx.fillText(`花费 ${GAME_CONSTANTS.SLOT_UNLOCK_COST} 金币解锁此塔位？`, W / 2, dialogY + 80);
+        // 当前金币
+        ctx.fillStyle = '#ffd700';
+        ctx.font = '14px sans-serif';
+        ctx.fillText(`当前金币: ${this.resourceManager.getGold()}`, W / 2, dialogY + 105);
+        // 确认按钮
+        const confirmBtn = { x: dialogX + 30, y: dialogY + 120, w: 100, h: 40 };
+        ctx.fillStyle = '#39ff88';
+        ctx.fillRect(confirmBtn.x, confirmBtn.y, confirmBtn.w, confirmBtn.h);
+        ctx.fillStyle = '#1a1f3a';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('确认', confirmBtn.x + confirmBtn.w / 2, confirmBtn.y + confirmBtn.h / 2 + 6);
+        // 取消按钮
+        const cancelBtn = { x: dialogX + 170, y: dialogY + 120, w: 100, h: 40 };
+        ctx.fillStyle = '#ff0033';
+        ctx.fillRect(cancelBtn.x, cancelBtn.y, cancelBtn.w, cancelBtn.h);
+        ctx.fillStyle = '#e8f6ff';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('取消', cancelBtn.x + cancelBtn.w / 2, cancelBtn.y + cancelBtn.h / 2 + 6);
+    }
+    renderConfirmRestartDialog() {
+        const ctx = this.ctx;
+        const W = GAME_CONSTANTS.CANVAS_WIDTH;
+        const H = GAME_CONSTANTS.CANVAS_HEIGHT;
+        const dialogW = 300;
+        const dialogH = 180;
+        const dialogX = (W - dialogW) / 2;
+        const dialogY = (H - dialogH) / 2;
+        // 半透明背景遮罩
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, W, H);
+        // 对话框背景
+        ctx.fillStyle = '#1a1f3a';
+        ctx.fillRect(dialogX, dialogY, dialogW, dialogH);
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(dialogX, dialogY, dialogW, dialogH);
+        // 标题
+        ctx.fillStyle = '#00f0ff';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('返回关卡选择', W / 2, dialogY + 40);
+        // 提示信息
+        ctx.fillStyle = '#e8f6ff';
+        ctx.font = '16px sans-serif';
+        ctx.fillText('确定要返回关卡选择界面吗？', W / 2, dialogY + 80);
+        // 确认按钮
+        const confirmBtn = { x: dialogX + 30, y: dialogY + 120, w: 100, h: 40 };
+        ctx.fillStyle = '#39ff88';
+        ctx.fillRect(confirmBtn.x, confirmBtn.y, confirmBtn.w, confirmBtn.h);
+        ctx.fillStyle = '#1a1f3a';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('确认', confirmBtn.x + confirmBtn.w / 2, confirmBtn.y + confirmBtn.h / 2 + 6);
+        // 取消按钮
+        const cancelBtn = { x: dialogX + 170, y: dialogY + 120, w: 100, h: 40 };
+        ctx.fillStyle = '#ff0033';
+        ctx.fillRect(cancelBtn.x, cancelBtn.y, cancelBtn.w, cancelBtn.h);
+        ctx.fillStyle = '#e8f6ff';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('取消', cancelBtn.x + cancelBtn.w / 2, cancelBtn.y + cancelBtn.h / 2 + 6);
     }
     renderVictory() {
         const ctx = this.ctx;
