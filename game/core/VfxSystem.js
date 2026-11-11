@@ -117,7 +117,7 @@ export function styleForLevel(type, level) {
 export function colorOf(type) {
     return styleOf(type).color || TOWER_CONFIGS[type].color;
 }
-const MAX_PARTICLES = 620;
+const MAX_PARTICLES = 1000;
 const rand = (a, b) => a + Math.random() * (b - a);
 /** hex '#rrggbb' → rgb */
 function hexRgb(hex) {
@@ -154,6 +154,8 @@ export class VfxSystem {
         this.time = 0;
         /** 场景氛围计时（手术灯闪烁/尘埃） */
         this.ambientTimer = 0;
+        /** 当前关卡索引（用于选择氛围粒子颜色） */
+        this.levelIndex = 0;
     }
     clear() {
         this.particles = [];
@@ -451,11 +453,12 @@ export class VfxSystem {
             this.hitStopTimer = Math.max(0, this.hitStopTimer - vdt);
         else
             this.hitStopTotal = 0;
-        // 场景氛围：手术灯尘、漂浮尘埃
+        // 场景氛围：漂浮尘埃（颜色随关卡变化，L1蓝/L5金/L9紫罗兰）
         this.ambientTimer -= deltaTime;
         if (this.ambientTimer <= 0) {
             this.ambientTimer = 0.09;
-            this.mkParticle(rand(0, 450), rand(40, 700), rand(-6, 6), rand(-14, -4), rand(2.5, 5), rand(0.6, 1.6), '#94a3b8', 'dot', false, 0.2);
+            const color = VfxSystem.LEVEL_COLORS[this.levelIndex] || '#94a3b8';
+            this.mkParticle(rand(0, 450), rand(40, 700), rand(-6, 6), rand(-14, -4), rand(2.5, 5), rand(0.6, 1.6), color, 'dot', false, 0.2);
         }
     }
     /** 弹道拖尾 */
@@ -577,7 +580,7 @@ export class VfxSystem {
             if (e.isAlive())
                 this.tracked.set(e, true);
     }
-    /** 死亡爆散：按体型缩放的血肉爆开 + 地面残留 */
+    /** 死亡爆散：按体型缩放的血肉爆开 + 地面残留 + 扩散粒子环 */
     deathBurst(x, y, size, _type) {
         const n = Math.round(10 + size * 1.1);
         this.burst360(x, y, n, [60, 260 + size * 6], [0.3, 0.8], [1.4, 3.4], '#b91c1c', 'dot', false, 380);
@@ -586,8 +589,19 @@ export class VfxSystem {
         this.waves.push({ x, y, life: 0.25, maxLife: 0.25, r0: 3, r1: 12 + size * 2, color: '#fca5a5', width: 2, kind: 'ring' });
         this.decals.push({ x, y, r: 10 + size * 1.4, life: 7, maxLife: 7, color: '#7f1d1d', kind: 'splat', seed: Math.random() * 10 });
         this.shake(0.8 + size * 0.12);
+        // 新增：扩散粒子环（更炫酷的死亡效果）
+        const ringCount = Math.round(6 + size * 0.5);
+        for (let i = 0; i < ringCount; i++) {
+            const a = (i / ringCount) * Math.PI * 2;
+            const s = 80 + size * 4;
+            this.mkParticle(x, y, Math.cos(a) * s, Math.sin(a) * s, 0.4, 2.5, '#ef4444', 'spark', true, 2);
+        }
     }
     // ── 渲染 ─────────────────────────────────────────────────
+    /** 设置当前关卡索引（用于氛围粒子颜色） */
+    setLevelIndex(index) {
+        this.levelIndex = Math.max(0, Math.min(index, VfxSystem.LEVEL_COLORS.length - 1));
+    }
     /** 进入/退出镜头扰动（世界层调用，返回可直接 setTransform 的偏移） */
     getShakeOffset() {
         return { x: this.shakeX, y: this.shakeY };
@@ -990,4 +1004,16 @@ export class VfxSystem {
         };
     }
 }
+/** 每关氛围粒子颜色 */
+VfxSystem.LEVEL_COLORS = [
+    '#60a5fa', // L1 蓝色
+    '#34d399', // L2 绿色
+    '#a78bfa', // L3 紫色
+    '#f472b6', // L4 粉色
+    '#fbbf24', // L5 金色
+    '#38bdf8', // L6 天蓝
+    '#ef4444', // L7 红色
+    '#f97316', // L8 橙色
+    '#c084fc', // L9 紫罗兰
+];
 //# sourceMappingURL=VfxSystem.js.map

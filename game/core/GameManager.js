@@ -18,6 +18,7 @@ import { TechnicalArtRenderer } from './TechnicalArtRenderer.js';
 import { CYBER, cutRectPath, neonText } from '../config/CyberTheme.js';
 import { renderTutorial, getTutorialLayout, TUTORIAL_PAGES } from './TutorialScreen.js';
 import { readCommanderSave, writeCommanderSave, createDefaultCommanderSave, cloneGlobalState, snapshotTower, rebuildTower } from './CommanderSave.js';
+import { WeatherSystem, WeatherType } from './WeatherSystem.js';
 /**
  * 主菜单三个按钮的位置：渲染与点击判定共用，避免画的和点的错位。
  *
@@ -232,6 +233,8 @@ export class GameManager {
         this.taRenderer = new TechnicalArtRenderer(canvas);
         // 分层环境：地面/陈设烘焙缓存 + 每帧光效
         this.env = new EnvironmentRenderer(canvas);
+        // 天气系统：每关不同的视觉效果
+        this.weatherSystem = new WeatherSystem(canvas.width, canvas.height);
         // 把特效中枢适配成 TowerVfxSink 注入给所有防御塔。
         // 显式绑定：把 VfxSystem 的方法拿出来包一层，Tower 侧只看接口。
         const v = this.vfx;
@@ -634,6 +637,11 @@ export class GameManager {
         for (let i = 0; i < TOWER_SLOTS.length; i++) {
             const slot = TOWER_SLOTS[i];
             if (Math.abs(x - slot.x) < 22 && Math.abs(y - slot.y) < 22) {
+                // 锁定塔位不能放塔（拖拽路径也要检查）
+                if (slot.locked) {
+                    this.soundManager.playDenied();
+                    return;
+                }
                 // 拖回自己原来的格子 = 空操作。
                 // 这里必须提前返回：否则 existingTower 就是 fromTower 本身，
                 // "同类型 + 同等级" 恒成立，每拖一次就升一级（无限升级 bug）。
@@ -888,14 +896,18 @@ export class GameManager {
     handleConfirmUnlockSlot(x, y) {
         const W = GAME_CONSTANTS.CANVAS_WIDTH;
         const H = GAME_CONSTANTS.CANVAS_HEIGHT;
-        const dialogW = 300;
-        const dialogH = 180;
+        const dialogW = 320;
+        const dialogH = 220;
         const dialogX = (W - dialogW) / 2;
         const dialogY = (H - dialogH) / 2;
-        // 确认按钮：左侧
-        const confirmBtn = { x: dialogX + 30, y: dialogY + 120, w: 100, h: 40 };
-        // 取消按钮：右侧
-        const cancelBtn = { x: dialogX + 170, y: dialogY + 120, w: 100, h: 40 };
+        // 按钮参数（与 renderConfirmDialog 保持一致）
+        const btnW = 110;
+        const btnH = 44;
+        const btnGap = 20;
+        const btnStartX = (W - (btnW * 2 + btnGap)) / 2;
+        const btnY = dialogY + dialogH - 62;
+        const confirmBtn = { x: btnStartX, y: btnY, w: btnW, h: btnH };
+        const cancelBtn = { x: btnStartX + btnW + btnGap, y: btnY, w: btnW, h: btnH };
         if (this.isInButton(x, y, confirmBtn)) {
             this.soundManager.playButtonClick();
             this.confirmUnlockSlot();
@@ -955,14 +967,18 @@ export class GameManager {
     handleConfirmRestart(x, y) {
         const W = GAME_CONSTANTS.CANVAS_WIDTH;
         const H = GAME_CONSTANTS.CANVAS_HEIGHT;
-        const dialogW = 300;
-        const dialogH = 180;
+        const dialogW = 320;
+        const dialogH = 220;
         const dialogX = (W - dialogW) / 2;
         const dialogY = (H - dialogH) / 2;
-        // 确认按钮：左侧
-        const confirmBtn = { x: dialogX + 30, y: dialogY + 120, w: 100, h: 40 };
-        // 取消按钮：右侧
-        const cancelBtn = { x: dialogX + 170, y: dialogY + 120, w: 100, h: 40 };
+        // 按钮参数（与 renderConfirmDialog 保持一致）
+        const btnW = 110;
+        const btnH = 44;
+        const btnGap = 20;
+        const btnStartX = (W - (btnW * 2 + btnGap)) / 2;
+        const btnY = dialogY + dialogH - 62;
+        const confirmBtn = { x: btnStartX, y: btnY, w: btnW, h: btnH };
+        const cancelBtn = { x: btnStartX + btnW + btnGap, y: btnY, w: btnW, h: btnH };
         if (this.isInButton(x, y, confirmBtn)) {
             this.soundManager.playButtonClick();
             this.gameState = 'level_select';
@@ -1587,7 +1603,8 @@ export class GameManager {
                 slot.occupied = true;
         }
         // ⑨ 根据存档限制可用塔位：前 N 个解锁，其余锁定
-        const unlockedCount = save.unlockedSlotCount ?? GAME_CONSTANTS.INITIAL_UNLOCKED_SLOTS;
+        // 限制 unlockedCount 不超过总塔位数（防止旧存档值过高导致全部解锁）
+        const unlockedCount = Math.min(save.unlockedSlotCount ?? GAME_CONSTANTS.INITIAL_UNLOCKED_SLOTS, TOWER_SLOTS.length);
         for (let i = 0; i < TOWER_SLOTS.length; i++) {
             const slot = TOWER_SLOTS[i];
             if (slot) {
@@ -1618,9 +1635,23 @@ export class GameManager {
         this.waveManager.reset();
         this.levelKillCount = 0;
         this.newlyUnlockedTowerType = null;
+        // 根据存档限制可用塔位：前 N 个解锁，其余锁定
+        // 必须在 setActiveLevel 之后（cloneSlots 会重置 locked: false）
+        const save = readCommanderSave();
+        const unlockedCount = Math.min(save?.unlockedSlotCount ?? GAME_CONSTANTS.INITIAL_UNLOCKED_SLOTS, TOWER_SLOTS.length);
+        for (let i = 0; i < TOWER_SLOTS.length; i++) {
+            const slot = TOWER_SLOTS[i];
+            if (slot) {
+                slot.locked = i >= unlockedCount;
+            }
+        }
         this.gameState = 'playing';
         // 按关卡档位选 BGM：L1-3 轻 / L4-7 中 / L8-10 重
         this.soundManager.setLevelTier(index);
+        // 设置 VFX 关卡索引（氛围粒子颜色）
+        this.vfx.setLevelIndex(index);
+        // 设置天气：每关不同天气
+        this.setWeatherForLevel(index);
         this.waveManager.startNextWave();
         this.resetWaveClock();
         this.updateTension();
@@ -1642,6 +1673,33 @@ export class GameManager {
         this.waveElapsed = 0;
         this.waveTimedOut = false;
         this.waveTimeLimit = getWaveTimeLimit(this.waveManager.getCurrentWave());
+    }
+    /**
+     * 设置关卡天气：每关不同天气效果
+     * L1: 无天气（教学关）
+     * L2: 雨
+     * L3: 雪
+     * L4: 雾
+     * L5: 沙尘暴
+     * L6: 极光
+     * L7: 糖果雨
+     * L8: 陨石雨
+     * L9: 雨（回归）
+     */
+    setWeatherForLevel(index) {
+        const weatherMap = [
+            WeatherType.NONE, // L1
+            WeatherType.RAIN, // L2
+            WeatherType.SNOW, // L3
+            WeatherType.FOG, // L4
+            WeatherType.SANDSTORM, // L5
+            WeatherType.AURORA, // L6
+            WeatherType.CANDY_RAIN, // L7
+            WeatherType.METEOR_RAIN, // L8
+            WeatherType.RAIN // L9
+        ];
+        const weather = weatherMap[index] ?? WeatherType.NONE;
+        this.weatherSystem.setWeather(weather);
     }
     /**
      * 关卡搬迁：把场上所有防御塔按价值降序塞进新地图的塔位。
@@ -1996,6 +2054,8 @@ export class GameManager {
             enemy.updateHitFeedback(scaledDelta);
         }
         this.vfx.update(scaledDelta, this.waveManager.getAliveEnemies());
+        // 更新天气系统
+        this.weatherSystem.update(scaledDelta);
         // 更新全局过载技能
         // 更新全局过载技能（已移除，过载按钮改为特级召唤）
         // 更新防御塔过载状态
@@ -3274,6 +3334,8 @@ export class GameManager {
             ctx.translate(sh.x, sh.y);
         this.vfx.renderOverlay(ctx);
         ctx.restore();
+        // 渲染天气效果（在世界层之上，UI 之下）
+        this.weatherSystem.render(ctx);
         this.renderUI();
         // 渲染Boss警告横幅
         if (this.bossWarningTimer > 0) {
@@ -5723,91 +5785,117 @@ export class GameManager {
         // 玩法教程：输了往往是没搞懂合成/技能，给个回头补课的入口
         this.renderTutorialLink(ctx, RESULT_TUTORIAL_BTN);
     }
-    renderConfirmUnlockSlotDialog() {
+    /**
+     * 通用确认对话框渲染（圆角 + 霓虹光晕 + 文字居中）。
+     * @param title   标题文字
+     * @param message 提示文字（可多行，用 \n 分隔）
+     * @param confirmText 确认按钮文字
+     * @param cancelText  取消按钮文字
+     * @param confirmColor 确认按钮颜色
+     * @param cancelColor  取消按钮颜色
+     * @param extraLine   可选额外信息行（如金币余额）
+     * @param extraColor  额外信息行颜色
+     */
+    renderConfirmDialog(title, message, confirmText, cancelText, confirmColor, cancelColor, extraLine, extraColor) {
         const ctx = this.ctx;
         const W = GAME_CONSTANTS.CANVAS_WIDTH;
         const H = GAME_CONSTANTS.CANVAS_HEIGHT;
-        const dialogW = 300;
-        const dialogH = 180;
+        // 对话框尺寸（比原来大一些，更舒展）
+        const dialogW = 320;
+        const dialogH = 220;
         const dialogX = (W - dialogW) / 2;
         const dialogY = (H - dialogH) / 2;
-        // 半透明背景遮罩
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        // ── 半透明背景遮罩 ──
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
         ctx.fillRect(0, 0, W, H);
-        // 对话框背景
-        ctx.fillStyle = '#1a1f3a';
-        ctx.fillRect(dialogX, dialogY, dialogW, dialogH);
-        ctx.strokeStyle = '#00f0ff';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(dialogX, dialogY, dialogW, dialogH);
-        // 标题
+        // ── 对话框阴影 ──
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 240, 255, 0.35)';
+        ctx.shadowBlur = 24;
+        ctx.shadowOffsetY = 4;
+        // ── 对话框背景（圆角） ──
+        this.roundRect(dialogX, dialogY, dialogW, dialogH, 14);
+        ctx.fillStyle = '#141830';
+        ctx.fill();
+        ctx.restore();
+        // ── 对话框边框（霓虹光） ──
+        ctx.save();
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 8;
+        this.roundRect(dialogX, dialogY, dialogW, dialogH, 14);
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+        // ── 标题 ──
+        ctx.save();
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 10;
         ctx.fillStyle = '#00f0ff';
-        ctx.font = 'bold 20px sans-serif';
+        ctx.font = 'bold 22px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('解锁塔位', W / 2, dialogY + 40);
-        // 提示信息
-        ctx.fillStyle = '#e8f6ff';
-        ctx.font = '16px sans-serif';
-        ctx.fillText(`花费 ${GAME_CONSTANTS.SLOT_UNLOCK_COST} 金币解锁此塔位？`, W / 2, dialogY + 80);
-        // 当前金币
-        ctx.fillStyle = '#ffd700';
-        ctx.font = '14px sans-serif';
-        ctx.fillText(`当前金币: ${this.resourceManager.getGold()}`, W / 2, dialogY + 105);
-        // 确认按钮
-        const confirmBtn = { x: dialogX + 30, y: dialogY + 120, w: 100, h: 40 };
-        ctx.fillStyle = '#39ff88';
-        ctx.fillRect(confirmBtn.x, confirmBtn.y, confirmBtn.w, confirmBtn.h);
-        ctx.fillStyle = '#1a1f3a';
-        ctx.font = 'bold 16px sans-serif';
-        ctx.fillText('确认', confirmBtn.x + confirmBtn.w / 2, confirmBtn.y + confirmBtn.h / 2 + 6);
-        // 取消按钮
-        const cancelBtn = { x: dialogX + 170, y: dialogY + 120, w: 100, h: 40 };
-        ctx.fillStyle = '#ff0033';
-        ctx.fillRect(cancelBtn.x, cancelBtn.y, cancelBtn.w, cancelBtn.h);
-        ctx.fillStyle = '#e8f6ff';
-        ctx.font = 'bold 16px sans-serif';
-        ctx.fillText('取消', cancelBtn.x + cancelBtn.w / 2, cancelBtn.y + cancelBtn.h / 2 + 6);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(title, W / 2, dialogY + 38);
+        ctx.restore();
+        // ── 提示文字 ──
+        ctx.fillStyle = '#d0dff0';
+        ctx.font = '15px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const lines = message.split('\n');
+        const lineH = 22;
+        const msgStartY = dialogY + 78;
+        for (let i = 0; i < lines.length; i++) {
+            ctx.fillText(lines[i], W / 2, msgStartY + i * lineH);
+        }
+        // ── 额外信息行（如金币） ──
+        if (extraLine) {
+            ctx.fillStyle = extraColor ?? '#ffd700';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(extraLine, W / 2, msgStartY + lines.length * lineH + 4);
+        }
+        // ── 按钮参数 ──
+        const btnW = 110;
+        const btnH = 44;
+        const btnGap = 20;
+        const totalBtnW = btnW * 2 + btnGap;
+        const btnStartX = (W - totalBtnW) / 2;
+        const btnY = dialogY + dialogH - 62;
+        // ── 确认按钮（圆角 + 渐变） ──
+        const cx = btnStartX;
+        this.drawDialogButton(cx, btnY, btnW, btnH, 10, confirmColor, confirmText);
+        // ── 取消按钮（圆角 + 渐变） ──
+        const cancelX = btnStartX + btnW + btnGap;
+        this.drawDialogButton(cancelX, btnY, btnW, btnH, 10, cancelColor, cancelText);
+    }
+    /** 画一个圆角按钮（渐变填充 + 居中文字） */
+    drawDialogButton(x, y, w, h, r, color, text) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 12;
+        // 渐变填充
+        const grad = ctx.createLinearGradient(x, y, x, y + h);
+        grad.addColorStop(0, color);
+        grad.addColorStop(1, this.darkenColor(color, 0.3));
+        this.roundRect(x, y, w, h, r);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.restore();
+        // 文字（水平+垂直居中）
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 17px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, x + w / 2, y + h / 2);
+    }
+    renderConfirmUnlockSlotDialog() {
+        this.renderConfirmDialog('🔓 解锁塔位', '花费 200 金币\n解锁此塔位？', '确认', '取消', '#39ff88', '#ff4466', `当前金币: ${this.resourceManager.getGold()}`, '#ffd700');
     }
     renderConfirmRestartDialog() {
-        const ctx = this.ctx;
-        const W = GAME_CONSTANTS.CANVAS_WIDTH;
-        const H = GAME_CONSTANTS.CANVAS_HEIGHT;
-        const dialogW = 300;
-        const dialogH = 180;
-        const dialogX = (W - dialogW) / 2;
-        const dialogY = (H - dialogH) / 2;
-        // 半透明背景遮罩
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(0, 0, W, H);
-        // 对话框背景
-        ctx.fillStyle = '#1a1f3a';
-        ctx.fillRect(dialogX, dialogY, dialogW, dialogH);
-        ctx.strokeStyle = '#00f0ff';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(dialogX, dialogY, dialogW, dialogH);
-        // 标题
-        ctx.fillStyle = '#00f0ff';
-        ctx.font = 'bold 20px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('返回关卡选择', W / 2, dialogY + 40);
-        // 提示信息
-        ctx.fillStyle = '#e8f6ff';
-        ctx.font = '16px sans-serif';
-        ctx.fillText('确定要返回关卡选择界面吗？', W / 2, dialogY + 80);
-        // 确认按钮
-        const confirmBtn = { x: dialogX + 30, y: dialogY + 120, w: 100, h: 40 };
-        ctx.fillStyle = '#39ff88';
-        ctx.fillRect(confirmBtn.x, confirmBtn.y, confirmBtn.w, confirmBtn.h);
-        ctx.fillStyle = '#1a1f3a';
-        ctx.font = 'bold 16px sans-serif';
-        ctx.fillText('确认', confirmBtn.x + confirmBtn.w / 2, confirmBtn.y + confirmBtn.h / 2 + 6);
-        // 取消按钮
-        const cancelBtn = { x: dialogX + 170, y: dialogY + 120, w: 100, h: 40 };
-        ctx.fillStyle = '#ff0033';
-        ctx.fillRect(cancelBtn.x, cancelBtn.y, cancelBtn.w, cancelBtn.h);
-        ctx.fillStyle = '#e8f6ff';
-        ctx.font = 'bold 16px sans-serif';
-        ctx.fillText('取消', cancelBtn.x + cancelBtn.w / 2, cancelBtn.y + cancelBtn.h / 2 + 6);
+        this.renderConfirmDialog('⚠️ 返回关卡选择', '确定要返回关卡选择界面吗？', '确认', '取消', '#39ff88', '#ff4466');
     }
     renderVictory() {
         const ctx = this.ctx;

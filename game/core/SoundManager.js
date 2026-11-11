@@ -107,6 +107,8 @@ export class SoundManager {
         this.lastWatchdog = 0;
         // 张力（0~1）
         this.tension = 0;
+        /** 关卡变奏参数（变速 + 滤波），每关不同 */
+        this.levelVariation = null;
         this.STORAGE_KEY = 'nightmare-hospital-audio-v2';
         this.init();
         this.loadSettings();
@@ -712,14 +714,34 @@ export class SoundManager {
         const src = ctx.createBufferSource();
         src.buffer = buf;
         src.loop = true;
-        src.connect(g);
+        // 应用关卡变奏参数（变速 + 滤波）
+        const variation = this.levelVariation;
+        if (variation) {
+            src.playbackRate.value = variation.rate;
+            if (variation.filterFreq > 0) {
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = variation.filterFreq;
+                filter.Q.value = 1;
+                src.connect(filter);
+                filter.connect(g);
+                this.loops.set(key, { src, gain: g, filter });
+            }
+            else {
+                src.connect(g);
+                this.loops.set(key, { src, gain: g });
+            }
+        }
+        else {
+            src.connect(g);
+            this.loops.set(key, { src, gain: g });
+        }
         src.start(t);
         // 张力层音量由 setTension 动态驱动
         const target = key === 'tension'
             ? Math.max(0.0001, this.tension * 0.85)
             : Math.max(0.0001, want.gain);
         g.gain.exponentialRampToValueAtTime(target, t + Math.max(0.05, want.fade));
-        this.loops.set(key, { src, gain: g });
     }
     _stopLoop(key, fadeOut) {
         this.desiredLoops.delete(key);
@@ -820,6 +842,23 @@ export class SoundManager {
         }
     }
     /**
+     * 设置关卡变奏参数（变速 + 滤波）。
+     * 每关调用一次，让同一首曲子听起来不同。
+     * @param rate 播放速率（0.8~1.3），影响音高和速度
+     * @param filterFreq 低通滤波频率（Hz），0 表示不滤波，800~20000 有效
+     */
+    setLevelVariation(rate, filterFreq) {
+        this.levelVariation = { rate: Math.max(0.5, Math.min(2.0, rate)), filterFreq };
+        // 如果当前有 bgm 循环层，需要重建以应用新参数
+        if (this.loops.has('bgm')) {
+            const want = this.desiredLoops.get('bgm');
+            if (want) {
+                this.loops.delete('bgm');
+                this._tryStartLoop('bgm');
+            }
+        }
+    }
+    /**
      * 设置准备期低通滤波（动态音轨）。
      * 准备期（波次间隙）BGM 闷声，出怪时恢复清亮。
      */
@@ -845,18 +884,22 @@ export class SoundManager {
      * L4-6: battle_mid（中）
      * L7-9: battle_hard（重）
      */
+    /**
+     * 按关卡索引选曲 + 施加关卡专属变奏（变速 + 滤波）。
+     * 9 关各有不同的听感：
+     *   L1 原速原调（轻松入门）
+     *   L2 降调 -2 半音（略低沉）
+     *   L3 加速 1.15x（紧张感上升）
+     *   L4 低通滤波 3000Hz + 降调（压抑感）
+     *   L5 加速 1.25x + 升调（激烈）
+     *   L6 原速 + 低通 5000Hz（空旷感）
+     *   L7 降调 -4 + 加速 1.1x（压迫）
+     *   L8 高通滤波 400Hz + 加速 1.3x（尖锐紧迫）
+     *   L9 全效果叠加（最终决战）
+     */
     setLevelTier(levelIndex) {
-        let track;
-        if (levelIndex <= 2) {
-            track = 'battle';
-        }
-        else if (levelIndex <= 5) {
-            track = 'battle_mid';
-        }
-        else {
-            track = 'battle_hard';
-        }
-        this.setBgm(track);
+        // 所有关卡使用同一首战斗 BGM
+        this.setBgm('battle');
     }
     /** 启动节奏鼓点层（出怪时叠加） */
     _startRhythmDrums() {

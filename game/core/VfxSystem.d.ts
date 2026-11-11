@@ -140,6 +140,10 @@ export declare class VfxSystem {
     private time;
     /** 场景氛围计时（手术灯闪烁/尘埃） */
     private ambientTimer;
+    /** 当前关卡索引（用于选择氛围粒子颜色） */
+    private levelIndex;
+    /** 每关氛围粒子颜色 */
+    private static readonly LEVEL_COLORS;
     clear(): void;
     private addParticle;
     private mkParticle;
@@ -188,8 +192,10 @@ export declare class VfxSystem {
     private spawnStatusParticles;
     /** 死亡检测：敌人这一帧死掉 → 爆散 */
     private trackDeaths;
-    /** 死亡爆散：按体型缩放的血肉爆开 + 地面残留 */
+    /** 死亡爆散：按体型缩放的血肉爆开 + 地面残留 + 扩散粒子环 */
     deathBurst(x: number, y: number, size: number, _type: unknown): void;
+    /** 设置当前关卡索引（用于氛围粒子颜色） */
+    setLevelIndex(index: number): void;
     /** 进入/退出镜头扰动（世界层调用，返回可直接 setTransform 的偏移） */
     getShakeOffset(): {
         x: number;

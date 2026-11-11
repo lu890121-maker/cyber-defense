@@ -51,6 +51,9 @@ export class TowerMergeSystem {
         const slot = TOWER_SLOTS[slotIndex];
         if (!slot)
             return null;
+        // 锁定塔位禁止放置（底层兜底，防止任何路径绕过 UI 层检查）
+        if (slot.locked)
+            return null;
         const tower = new Tower(type, slot.x, slot.y, slotIndex, 1, rarity);
         // 应用当前全局升级状态
         tower.applyGlobalUpgradeState(this.globalUpgradeState);
@@ -65,6 +68,9 @@ export class TowerMergeSystem {
         }
         const slot = TOWER_SLOTS[slotIndex];
         if (!slot)
+            return false;
+        // 锁定塔位禁止放置（底层兜底）
+        if (slot.locked)
             return false;
         // 更新防御塔位置
         tower.setPosition(slot.x, slot.y);

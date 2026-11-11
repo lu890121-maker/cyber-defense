@@ -79,6 +79,8 @@ export declare class SoundManager {
     private rateLimit;
     private lastWatchdog;
     private tension;
+    /** 关卡变奏参数（变速 + 滤波），每关不同 */
+    private levelVariation;
     private readonly STORAGE_KEY;
     constructor();
     private init;
@@ -194,6 +196,13 @@ export declare class SoundManager {
     /** 设置张力 0~1（随波次 / 生命值变化），控制张力层音量 */
     setTension(level: number): void;
     /**
+     * 设置关卡变奏参数（变速 + 滤波）。
+     * 每关调用一次，让同一首曲子听起来不同。
+     * @param rate 播放速率（0.8~1.3），影响音高和速度
+     * @param filterFreq 低通滤波频率（Hz），0 表示不滤波，800~20000 有效
+     */
+    setLevelVariation(rate: number, filterFreq: number): void;
+    /**
      * 设置准备期低通滤波（动态音轨）。
      * 准备期（波次间隙）BGM 闷声，出怪时恢复清亮。
      */
@@ -203,6 +212,19 @@ export declare class SoundManager {
      * L1-3: battle（轻）
      * L4-6: battle_mid（中）
      * L7-9: battle_hard（重）
+     */
+    /**
+     * 按关卡索引选曲 + 施加关卡专属变奏（变速 + 滤波）。
+     * 9 关各有不同的听感：
+     *   L1 原速原调（轻松入门）
+     *   L2 降调 -2 半音（略低沉）
+     *   L3 加速 1.15x（紧张感上升）
+     *   L4 低通滤波 3000Hz + 降调（压抑感）
+     *   L5 加速 1.25x + 升调（激烈）
+     *   L6 原速 + 低通 5000Hz（空旷感）
+     *   L7 降调 -4 + 加速 1.1x（压迫）
+     *   L8 高通滤波 400Hz + 加速 1.3x（尖锐紧迫）
+     *   L9 全效果叠加（最终决战）
      */
     setLevelTier(levelIndex: number): void;
     /** 启动节奏鼓点层（出怪时叠加） */

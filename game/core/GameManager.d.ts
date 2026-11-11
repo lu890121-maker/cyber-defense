@@ -102,6 +102,7 @@ export declare class GameManager {
     private vfx;
     /** 注入给所有防御塔的表现出口（Tower 只发事件，不知道 GameManager） */
     private vfxSink;
+    private weatherSystem;
     private draggingTower;
     private dragStartX;
     private dragStartY;
@@ -319,6 +320,19 @@ export declare class GameManager {
      * 那会让强制推进计时器**永远不累计**（它有个 `!nextWaveCountdownActive` 的前置条件）。
      */
     private resetWaveClock;
+    /**
+     * 设置关卡天气：每关不同天气效果
+     * L1: 无天气（教学关）
+     * L2: 雨
+     * L3: 雪
+     * L4: 雾
+     * L5: 沙尘暴
+     * L6: 极光
+     * L7: 糖果雨
+     * L8: 陨石雨
+     * L9: 雨（回归）
+     */
+    private setWeatherForLevel;
     /**
      * 关卡搬迁：把场上所有防御塔按价值降序塞进新地图的塔位。
      *
@@ -561,6 +575,20 @@ export declare class GameManager {
     private renderLevelClear;
     private renderTowerInfoPanel;
     private renderGameOver;
+    /**
+     * 通用确认对话框渲染（圆角 + 霓虹光晕 + 文字居中）。
+     * @param title   标题文字
+     * @param message 提示文字（可多行，用 \n 分隔）
+     * @param confirmText 确认按钮文字
+     * @param cancelText  取消按钮文字
+     * @param confirmColor 确认按钮颜色
+     * @param cancelColor  取消按钮颜色
+     * @param extraLine   可选额外信息行（如金币余额）
+     * @param extraColor  额外信息行颜色
+     */
+    private renderConfirmDialog;
+    /** 画一个圆角按钮（渐变填充 + 居中文字） */
+    private drawDialogButton;
     private renderConfirmUnlockSlotDialog;
     private renderConfirmRestartDialog;
     private renderVictory;
