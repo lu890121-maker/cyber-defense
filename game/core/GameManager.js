@@ -233,7 +233,10 @@ export class GameManager {
         this.taRenderer = new TechnicalArtRenderer(canvas);
         // 分层环境：地面/陈设烘焙缓存 + 每帧光效
         this.env = new EnvironmentRenderer(canvas);
-        // 天气系统：每关不同的视觉效果
+        // 先设置 canvas 尺寸，再初始化依赖尺寸的系统
+        canvas.width = GAME_CONSTANTS.CANVAS_WIDTH;
+        canvas.height = GAME_CONSTANTS.CANVAS_HEIGHT;
+        // 天气系统：每关不同的视觉效果（需要 canvas 尺寸）
         this.weatherSystem = new WeatherSystem(canvas.width, canvas.height);
         // 把特效中枢适配成 TowerVfxSink 注入给所有防御塔。
         // 显式绑定：把 VfxSystem 的方法拿出来包一层，Tower 侧只看接口。
@@ -248,8 +251,6 @@ export class GameManager {
             shake: (power) => v.shake(power),
             hitStop: (duration) => v.hitStop(duration)
         };
-        canvas.width = GAME_CONSTANTS.CANVAS_WIDTH;
-        canvas.height = GAME_CONSTANTS.CANVAS_HEIGHT;
         this.resourceManager = new ResourceManager();
         this.waveManager = new WaveManager();
         this.towerMergeSystem = new TowerMergeSystem();
@@ -1624,6 +1625,17 @@ export class GameManager {
         this.currentLevelIndex = index;
         // 关卡环境词缀：电磁干扰会拉长全场防御塔的攻击间隔
         Tower.envIntervalMult = lv.modifier?.towerIntervalMult ?? 1.0;
+        // 根据存档限制可用塔位：前 N 个解锁，其余锁定
+        // 必须在 setActiveLevel 之后（cloneSlots 会重置 locked: false）
+        // 必须在放置塔之前（让 relocateTowersForLevel 知道哪些塔位可用）
+        const save = readCommanderSave();
+        const unlockedCount = Math.min(save?.unlockedSlotCount ?? GAME_CONSTANTS.INITIAL_UNLOCKED_SLOTS, TOWER_SLOTS.length);
+        for (let i = 0; i < TOWER_SLOTS.length; i++) {
+            const slot = TOWER_SLOTS[i];
+            if (slot) {
+                slot.locked = i >= unlockedCount;
+            }
+        }
         // 从指挥官存档恢复时，塔已由 startLevelFromCommander() 按 slotIndex
         // 重建并落位，绝不能再走 relocate（否则刚恢复的塔会被清空 / 重排）。
         // 同一次会话内顺畅通关仍走原来的活对象搬迁路径。
@@ -1635,16 +1647,6 @@ export class GameManager {
         this.waveManager.reset();
         this.levelKillCount = 0;
         this.newlyUnlockedTowerType = null;
-        // 根据存档限制可用塔位：前 N 个解锁，其余锁定
-        // 必须在 setActiveLevel 之后（cloneSlots 会重置 locked: false）
-        const save = readCommanderSave();
-        const unlockedCount = Math.min(save?.unlockedSlotCount ?? GAME_CONSTANTS.INITIAL_UNLOCKED_SLOTS, TOWER_SLOTS.length);
-        for (let i = 0; i < TOWER_SLOTS.length; i++) {
-            const slot = TOWER_SLOTS[i];
-            if (slot) {
-                slot.locked = i >= unlockedCount;
-            }
-        }
         this.gameState = 'playing';
         // 按关卡档位选 BGM：L1-3 轻 / L4-7 中 / L8-10 重
         this.soundManager.setLevelTier(index);
@@ -1717,10 +1719,13 @@ export class GameManager {
             slot.tower = null;
         const owned = new Set([...fieldTowers, ...mergeTowers]);
         const carried = selectedTowers.slice(0, CARRY_TOWER_LIMIT).filter(tower => owned.has(tower));
-        // ① 先占场上塔位
+        // ① 先占场上塔位（跳过锁定的塔位）
         let cursor = 0;
         const overflow = [];
         for (const tower of carried) {
+            // 跳过锁定的塔位
+            while (cursor < TOWER_SLOTS.length && TOWER_SLOTS[cursor].locked)
+                cursor++;
             if (cursor < TOWER_SLOTS.length)
                 this.towerMergeSystem.forcePlace(tower, cursor++);
             else
