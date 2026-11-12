@@ -2169,6 +2169,13 @@ export const TOWER_SKILLS = [
         level: 3,
         skills: [
             {
+                id: 'flame3_fire_sea',
+                name: '火海',
+                icon: '🔥',
+                description: '周边形成火海，路过敌人持续灼烧',
+                effect: 'fire_sea'
+            },
+            {
                 id: 'flame3_storm',
                 name: '烈焰风暴',
                 icon: '🌋',
@@ -2181,13 +2188,6 @@ export const TOWER_SKILLS = [
                 icon: '🛡️',
                 description: '熔甲，护甲穿透+25%',
                 effect: 'armor_break;pierce+25%'
-            },
-            {
-                id: 'flame3_incinerate',
-                name: '焚化炉',
-                icon: '🔥',
-                description: '灼烧伤害+120%',
-                effect: 'burn+120%'
             }
         ]
     },
@@ -2416,18 +2416,18 @@ export const TOWER_SKILLS = [
         level: 4,
         skills: [
             {
+                id: 'flame4_ground_burn',
+                name: '焦土',
+                icon: '🔥',
+                description: '攻击地面灼烧3秒，路过敌人持续掉血',
+                effect: 'ground_burn'
+            },
+            {
                 id: 'flame4_hellfire',
                 name: '地狱火',
                 icon: '🌋',
                 description: '灼烧伤害+180%，射程+30%',
                 effect: 'burn+180%;range+30%'
-            },
-            {
-                id: 'flame4_fire_sea',
-                name: '火海',
-                icon: '🔥',
-                description: '在路径上形成火海，路过敌人持续灼烧',
-                effect: 'fire_sea'
             },
             {
                 id: 'flame4_melt',

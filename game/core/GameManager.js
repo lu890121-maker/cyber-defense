@@ -249,7 +249,8 @@ export class GameManager {
             flash: (x, y, r, color, life) => v.flash(x, y, r, color, life),
             floater: (x, y, text, color, size, crit) => v.floater(x, y, text, color, size, crit),
             shake: (power) => v.shake(power),
-            hitStop: (duration) => v.hitStop(duration)
+            hitStop: (duration) => v.hitStop(duration),
+            createGroundBurn: (x, y, radius, duration, damage) => v.createGroundBurn(x, y, radius, duration, damage)
         };
         this.resourceManager = new ResourceManager();
         this.waveManager = new WaveManager();
@@ -2082,6 +2083,22 @@ export class GameManager {
             // 火焰塔/毒液塔地面持续伤害效果
             if (tower.getType() === TowerType.FLAME || tower.getType() === TowerType.POISON) {
                 tower.applyGroundEffect(this.waveManager.getAliveEnemies(), scaledDelta, PATH_POINTS);
+            }
+        }
+        // 处理地面灼烧区域的伤害（焦土技能）
+        const groundBurns = this.vfx.getGroundBurns();
+        const enemiesForBurn = this.waveManager.getAliveEnemies();
+        for (const burn of groundBurns) {
+            for (const enemy of enemiesForBurn) {
+                if (!enemy.isAlive())
+                    continue;
+                const dx = enemy.getX() - burn.x;
+                const dy = enemy.getY() - burn.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist <= burn.radius) {
+                    // 每秒造成 burn.damage 伤害，按帧时间计算
+                    enemy.takeDamage(burn.damage * scaledDelta, { pierce: 0 });
+                }
             }
         }
         // 更新新怪物效果

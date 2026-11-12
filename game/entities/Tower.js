@@ -66,7 +66,8 @@ export const DEFAULT_SKILL_MODS = {
     vanishSpeed: false,
     vanishSpeedBonus: 0.5,
     fireSea: false,
-    poisonPool: false
+    poisonPool: false,
+    groundBurn: false
 };
 /**
  * 技能变体数量 —— 每档技能有 3 个候选，对应 3 种"变体"。
@@ -520,29 +521,26 @@ export class Tower {
     }
     /** 火焰塔/毒液塔地面持续伤害效果（每帧调用） */
     applyGroundEffect(enemies, deltaTime, pathPoints) {
-        // 火海效果
+        // 火海效果（Lv3）
         if (this.type === TowerType.FLAME && this.skillMods.fireSea) {
-            const burnDamage = this.getDamage() * 0.15 * this.skillMods.burnDamageMult; // 每秒15%伤害
-            const burnRadius = 80; // 火海半径
-            // 在塔周围的路径上形成火海
-            for (const point of pathPoints) {
-                const dx = point.x - this.x;
-                const dy = point.y - this.y;
+            const burnDamage = this.getDamage() * 0.12 * this.skillMods.burnDamageMult; // 每秒12%伤害
+            const burnRadius = 100; // 火海半径
+            // 在塔周围形成火海
+            for (const enemy of enemies) {
+                if (!enemy.isAlive())
+                    continue;
+                const dx = enemy.getX() - this.x;
+                const dy = enemy.getY() - this.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist <= this.getRange()) {
-                    // 对路径点附近的敌人施加灼烧
-                    for (const enemy of enemies) {
-                        if (!enemy.isAlive())
-                            continue;
-                        const ex = enemy.getX() - point.x;
-                        const ey = enemy.getY() - point.y;
-                        const eDist = Math.sqrt(ex * ex + ey * ey);
-                        if (eDist <= burnRadius) {
-                            enemy.applyBurn(burnDamage, 0.5); // 每秒造成burnDamage伤害，持续0.5秒
-                        }
-                    }
+                if (dist <= burnRadius) {
+                    enemy.applyBurn(burnDamage * deltaTime, 0.5); // 持续灼烧
                 }
             }
+        }
+        // 焦土效果（Lv4）- 攻击位置地面灼烧3秒
+        if (this.type === TowerType.FLAME && this.skillMods.groundBurn) {
+            // 这个逻辑需要在攻击时创建地面灼烧区域
+            // 在 VfxSystem 中管理灼烧区域
         }
         // 毒液池效果
         if (this.type === TowerType.POISON && this.skillMods.poisonPool) {
@@ -761,6 +759,13 @@ export class Tower {
                 // 光束残留时间也随等级延长 —— 高等级"扫过去"的余光更明显
                 0.14 + 0.02 * (this.level - 1));
             }
+            // 焦土效果：在弹着点创建地面灼烧区域（持续3秒）
+            if (this.type === TowerType.FLAME && this.skillMods.groundBurn && this.vfx) {
+                const burnRadius = 40 + this.level * 5; // 半径随等级增长
+                const burnDuration = 3.0; // 持续3秒
+                const burnDamage = this.getDamage() * 0.3 * this.skillMods.burnDamageMult; // 每秒30%伤害
+                this.vfx.createGroundBurn(primary.getX(), primary.getY(), burnRadius, burnDuration, burnDamage);
+            }
         });
         // 带爆炸的塔：炮弹出膛时先轻微震一下（大地震留给爆炸落地那一瞬）
         if (isBombType(this.type))
@@ -899,11 +904,13 @@ export class Tower {
             m.sniperPierce = patch.sniperPierce;
         if (patch.vanishSpeed !== undefined)
             m.vanishSpeed = patch.vanishSpeed;
-        // v1.9 地面持续伤害（火海 / 毒液池）—— 漏这两行会让 UI 能选、实战完全无效
+        // v1.9 地面持续伤害（火海 / 毒液池 / 焦土）—— 漏这几行会让 UI 能选、实战完全无效
         if (patch.fireSea !== undefined)
             m.fireSea = patch.fireSea;
         if (patch.poisonPool !== undefined)
             m.poisonPool = patch.poisonPool;
+        if (patch.groundBurn !== undefined)
+            m.groundBurn = patch.groundBurn;
     }
     /**
      * 开启「范围减速」（寒霜领域 / 磁力场）。

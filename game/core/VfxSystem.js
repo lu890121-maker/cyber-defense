@@ -143,6 +143,7 @@ export class VfxSystem {
         this.floaters = [];
         this.decals = [];
         this.flashes = [];
+        this.groundBurns = [];
         /** 上一帧还活着的敌人，用于检测死亡 */
         this.tracked = new Map();
         this.shakePower = 0;
@@ -165,6 +166,7 @@ export class VfxSystem {
         this.floaters = [];
         this.decals = [];
         this.flashes = [];
+        this.groundBurns = [];
         this.tracked.clear();
         this.shakePower = 0;
         this.hitStopTimer = 0;
@@ -360,6 +362,16 @@ export class VfxSystem {
     isFrozen() {
         return this.hitStopTimer > 0;
     }
+    /** 创建地面灼烧区域（焦土技能） */
+    createGroundBurn(x, y, radius, duration, damage) {
+        this.groundBurns.push({
+            x, y, radius, life: duration, maxLife: duration, damage
+        });
+    }
+    /** 获取所有地面灼烧区域（供 Tower 查询伤害） */
+    getGroundBurns() {
+        return this.groundBurns;
+    }
     // ── 每帧更新 ─────────────────────────────────────────────
     /**
      * @param enemies 当前存活敌人列表，用于状态粒子与死亡检测
@@ -444,6 +456,14 @@ export class VfxSystem {
             d.life -= deltaTime;
             if (d.life <= 0)
                 this.decals.splice(i, 1);
+        }
+        // 更新地面灼烧区域
+        for (let i = this.groundBurns.length - 1; i >= 0; i--) {
+            const gb = this.groundBurns[i];
+            gb.life -= deltaTime;
+            if (gb.life <= 0) {
+                this.groundBurns.splice(i, 1);
+            }
         }
         // 震动衰减
         this.shakePower = Math.max(0, this.shakePower - this.shakeDecay * this.shakePower * deltaTime - 2 * deltaTime);
@@ -606,7 +626,7 @@ export class VfxSystem {
     getShakeOffset() {
         return { x: this.shakeX, y: this.shakeY };
     }
-    /** 世界空间特效：焦痕（最底）→ 弹道 → 粒子 → 光束 → 冲击环 → 闪光 */
+    /** 世界空间特效：焦痕（最底）→ 地面灼烧 → 弹道 → 粒子 → 光束 → 冲击环 → 闪光 */
     renderWorld(ctx) {
         // 地面残留：焦痕 + 血泊
         for (const d of this.decals) {
@@ -633,6 +653,21 @@ export class VfxSystem {
             }
             ctx.restore();
         }
+        // 地面灼烧区域（焦土效果）
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (const gb of this.groundBurns) {
+            const alpha = 0.6 * (gb.life / gb.maxLife); // 随时间衰减
+            const gradient = ctx.createRadialGradient(gb.x, gb.y, 0, gb.x, gb.y, gb.radius);
+            gradient.addColorStop(0, `rgba(255, 180, 80, ${alpha})`); // 中心亮黄
+            gradient.addColorStop(0.4, `rgba(255, 100, 30, ${alpha * 0.8})`); // 中间橙红
+            gradient.addColorStop(1, `rgba(180, 40, 10, 0)`); // 边缘暗红透明
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(gb.x, gb.y, gb.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
         // 弹道
         for (const pr of this.projectiles)
             this.renderProjectile(ctx, pr);

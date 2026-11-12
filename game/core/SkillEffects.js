@@ -117,7 +117,8 @@ export const SKILL_EFFECT_HANDLERS = {
     pull: (t, p) => t.applySkillMod({ pullMult: 1 + p.value / 100 }),
     // ── 地面持续伤害 ──
     fire_sea: (t) => t.applySkillMod({ fireSea: true }),
-    poison_pool: (t) => t.applySkillMod({ poisonPool: true })
+    poison_pool: (t) => t.applySkillMod({ poisonPool: true }),
+    ground_burn: (t) => t.applySkillMod({ groundBurn: true })
 };
 /** 所有已注册的 kind（工具用） */
 export const REGISTERED_EFFECT_KINDS = Object.keys(SKILL_EFFECT_HANDLERS);

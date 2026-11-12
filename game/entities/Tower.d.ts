@@ -68,6 +68,7 @@ export interface TowerSkillMods {
     vanishSpeedBonus: number;
     fireSea: boolean;
     poisonPool: boolean;
+    groundBurn: boolean;
 }
 export declare const DEFAULT_SKILL_MODS: TowerSkillMods;
 /**

@@ -89,6 +89,7 @@ export interface TowerVfxSink {
     floater(x: number, y: number, text: string, color: string, size?: number, crit?: boolean): void;
     shake(power: number): void;
     hitStop(duration: number): void;
+    createGroundBurn(x: number, y: number, radius: number, duration: number, damage: number): void;
 }
 interface Beam {
     x1: number;
@@ -112,6 +113,14 @@ interface Shockwave {
     width: number;
     kind: 'ring' | 'shatter' | 'pulse';
 }
+interface GroundBurn {
+    x: number;
+    y: number;
+    radius: number;
+    life: number;
+    maxLife: number;
+    damage: number;
+}
 /**
  * 特效中枢。
  *
@@ -129,6 +138,7 @@ export declare class VfxSystem {
     private floaters;
     private decals;
     private flashes;
+    private groundBurns;
     /** 上一帧还活着的敌人，用于检测死亡 */
     private tracked;
     private shakePower;
@@ -178,6 +188,10 @@ export declare class VfxSystem {
     hitStop(duration: number): void;
     /** 是否处于顿帧中（调用方据此跳过游戏逻辑更新） */
     isFrozen(): boolean;
+    /** 创建地面灼烧区域（焦土技能） */
+    createGroundBurn(x: number, y: number, radius: number, duration: number, damage: number): void;
+    /** 获取所有地面灼烧区域（供 Tower 查询伤害） */
+    getGroundBurns(): GroundBurn[];
     /**
      * @param enemies 当前存活敌人列表，用于状态粒子与死亡检测
      * @param fast 顿帧时传 true，只推进表现层不推进逻辑
@@ -201,7 +215,7 @@ export declare class VfxSystem {
         x: number;
         y: number;
     };
-    /** 世界空间特效：焦痕（最底）→ 弹道 → 粒子 → 光束 → 冲击环 → 闪光 */
+    /** 世界空间特效：焦痕（最底）→ 地面灼烧 → 弹道 → 粒子 → 光束 → 冲击环 → 闪光 */
     renderWorld(ctx: CanvasRenderingContext2D): void;
     private drawParticleShape;
     private renderProjectile;
