@@ -430,7 +430,7 @@ export class GameManager {
         if (this.audioStarted)
             return;
         this.audioStarted = true;
-        this.soundManager.startAmbience();
+        // 已移除环境底噪（ambience_cyber），用户反馈背景音太繁杂
         this.soundManager.startMusic(track);
         this.soundManager.setTension(0.15);
     }
