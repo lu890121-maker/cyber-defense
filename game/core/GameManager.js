@@ -233,9 +233,14 @@ export class GameManager {
         this.taRenderer = new TechnicalArtRenderer(canvas);
         // 分层环境：地面/陈设烘焙缓存 + 每帧光效
         this.env = new EnvironmentRenderer(canvas);
-        // 先设置 canvas 尺寸，再初始化依赖尺寸的系统
-        canvas.width = GAME_CONSTANTS.CANVAS_WIDTH;
-        canvas.height = GAME_CONSTANTS.CANVAS_HEIGHT;
+        // 微信小游戏：canvas 尺寸已在适配器中设置，不要重新设置（会清空画布）
+        // 浏览器版本：需要在这里设置尺寸
+        // 用 __wxCanvas 判断是否为微信环境（适配器 install() 后已挂载到 globalThis）
+        // 不能用 typeof wx，因为 esbuild 不会替换 wx，运行时判断总是 true
+        if (!globalThis.__wxCanvas) {
+            canvas.width = GAME_CONSTANTS.CANVAS_WIDTH;
+            canvas.height = GAME_CONSTANTS.CANVAS_HEIGHT;
+        }
         // 天气系统：每关不同的视觉效果（需要 canvas 尺寸）
         this.weatherSystem = new WeatherSystem(canvas.width, canvas.height);
         // 把特效中枢适配成 TowerVfxSink 注入给所有防御塔。
