@@ -123,7 +123,18 @@ export declare class GameManager {
     private touchHandled;
     private audioStarted;
     private lastCountdownTick;
+    private lowPerformanceMode;
     constructor(canvas: HTMLCanvasElement);
+    /**
+     * 检测设备性能，自动优化渲染策略
+     * 低性能设备（手机/平板）禁用 shadowBlur 等耗性能特效
+     */
+    private detectPerformance;
+    /**
+     * 条件性设置 shadowBlur（性能优化）
+     * 低性能模式下跳过 shadowBlur 设置，大幅提升渲染性能
+     */
+    private setShadowBlur;
     private initBgParticles;
     private roundRect;
     /**

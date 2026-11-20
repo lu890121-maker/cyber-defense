@@ -198,6 +198,8 @@ export class GameManager {
         this.audioStarted = false;
         // 音频：上一秒的倒计时读数（避免重复播放滴答）
         this.lastCountdownTick = 99;
+        // 性能优化：低端设备自动禁用 shadowBlur
+        this.lowPerformanceMode = false;
         this.gameLoop = () => {
             const now = performance.now();
             let deltaTime = (now - this.lastTime) / 1000;
@@ -278,6 +280,31 @@ export class GameManager {
         this.spriteLoader.load().catch(err => {
             console.warn('[Sprite] 素材加载异常，将使用矢量兜底:', err);
         });
+        // 性能检测：根据设备能力自动启用低性能模式
+        this.detectPerformance();
+    }
+    /**
+     * 检测设备性能，自动优化渲染策略
+     * 低性能设备（手机/平板）禁用 shadowBlur 等耗性能特效
+     */
+    detectPerformance() {
+        const ua = navigator.userAgent.toLowerCase();
+        const isMobile = /mobile|android|iphone|ipad|ipod/.test(ua);
+        const isWechat = /micromessenger/.test(ua);
+        // 移动端或微信环境默认启用低性能模式
+        if (isMobile || isWechat) {
+            this.lowPerformanceMode = true;
+            console.log('[Performance] 低性能模式已启用（移动端/微信）');
+        }
+    }
+    /**
+     * 条件性设置 shadowBlur（性能优化）
+     * 低性能模式下跳过 shadowBlur 设置，大幅提升渲染性能
+     */
+    setShadowBlur(ctx, value) {
+        if (!this.lowPerformanceMode) {
+            ctx.shadowBlur = value;
+        }
     }
     initBgParticles() {
         for (let i = 0; i < 30; i++) {
@@ -2779,7 +2806,7 @@ export class GameManager {
             ctx.save();
             if (glow) {
                 ctx.shadowColor = color;
-                ctx.shadowBlur = 18 * breathe;
+                this.setShadowBlur(ctx, 18 * breathe);
             }
             ctx.fillStyle = 'rgba(0, 240, 255, 0.08)';
             cutRectPath(ctx, r.x, r.y, r.w, r.h, 14);
@@ -2921,7 +2948,7 @@ export class GameManager {
                     ctx.strokeStyle = CYBER.gold;
                     ctx.lineWidth = 3;
                     ctx.shadowColor = CYBER.gold;
-                    ctx.shadowBlur = 12;
+                    this.setShadowBlur(ctx, 12);
                 }
                 else {
                     ctx.strokeStyle = lv.accent;
@@ -3162,7 +3189,7 @@ export class GameManager {
         }
         // 核心六边形
         ctx.shadowColor = CYBER.cyan;
-        ctx.shadowBlur = 20 + pulse * 15;
+        this.setShadowBlur(ctx, 20 + pulse * 15);
         ctx.fillStyle = `rgba(0, 240, 255, ${0.6 + pulse * 0.3})`;
         ctx.beginPath();
         for (let i = 0; i < 6; i++) {
@@ -3177,7 +3204,7 @@ export class GameManager {
         ctx.closePath();
         ctx.fill();
         // 内部细节
-        ctx.shadowBlur = 0;
+        this.setShadowBlur(ctx, 0);
         ctx.strokeStyle = '#030710';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -3240,7 +3267,7 @@ export class GameManager {
         ctx.fillStyle = CYBER.purple;
         ctx.font = 'bold 16px sans-serif';
         ctx.shadowColor = CYBER.purple;
-        ctx.shadowBlur = 8;
+        this.setShadowBlur(ctx, 8);
         ctx.fillText('机 械 入 侵', cx, 275);
         ctx.restore();
         // 分隔线
@@ -3250,7 +3277,7 @@ export class GameManager {
         ctx.strokeStyle = CYBER.cyan;
         ctx.lineWidth = 1;
         ctx.shadowColor = CYBER.cyan;
-        ctx.shadowBlur = 6;
+        this.setShadowBlur(ctx, 6);
         ctx.beginPath();
         ctx.moveTo(cx - 80, 300);
         ctx.lineTo(cx + 80, 300);
@@ -3310,7 +3337,7 @@ export class GameManager {
         const barColor = t >= 2.2 && t < 3.0 ? CYBER.red : CYBER.cyan;
         ctx.save();
         ctx.shadowColor = barColor;
-        ctx.shadowBlur = 10;
+        this.setShadowBlur(ctx, 10);
         ctx.fillStyle = barColor;
         ctx.fillRect(cx - barW / 2, barY, barW * progress, barH);
         ctx.restore();
@@ -3629,13 +3656,13 @@ export class GameManager {
             if (tower.isOverloaded()) {
                 const pulse = Math.sin(this.gameTime * 10) * 0.3 + 0.7;
                 ctx.shadowColor = '#FF0033';
-                ctx.shadowBlur = 20 * pulse;
+                this.setShadowBlur(ctx, 20 * pulse);
                 ctx.strokeStyle = `rgba(255, 0, 0, ${pulse})`;
                 ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.arc(x, y, 26 * ts, 0, Math.PI * 2);
                 ctx.stroke();
-                ctx.shadowBlur = 0;
+                this.setShadowBlur(ctx, 0);
             }
             // 瘫痪状态效果
             if (tower.isParalyzed()) {
@@ -3657,7 +3684,7 @@ export class GameManager {
             }
             // 底座金属光圈 —— 固定不动：后坐的是炮身，不是底座
             ctx.shadowColor = config.color;
-            ctx.shadowBlur = 10 * ts;
+            this.setShadowBlur(ctx, 10 * ts);
             ctx.fillStyle = '#0B0E14';
             ctx.beginPath();
             ctx.arc(x, y, 22 * ts, 0, Math.PI * 2);
@@ -3665,7 +3692,7 @@ export class GameManager {
             ctx.strokeStyle = config.color;
             ctx.lineWidth = 2.5;
             ctx.stroke();
-            ctx.shadowBlur = 0;
+            this.setShadowBlur(ctx, 0);
             // ── 「消失」技能：攻击后短暂隐身 ──
             // 技能描述写着"攻击后短暂隐身"，但表现层以前**完全不读** isVanishing()
             // —— 玩家只会看到攻速数字变了、塔却好端端站在原处，
@@ -3782,7 +3809,7 @@ export class GameManager {
                     // 光球本体 - 黑色球体带紫色辉光
                     ctx.save();
                     ctx.shadowColor = '#C084FC';
-                    ctx.shadowBlur = 15;
+                    this.setShadowBlur(ctx, 15);
                     // 黑色球体
                     const gradient = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, 12);
                     gradient.addColorStop(0, '#1a1a2e');
@@ -3821,7 +3848,7 @@ export class GameManager {
                 ctx.strokeStyle = '#39FF88';
                 ctx.lineWidth = 3;
                 ctx.shadowColor = '#39FF88';
-                ctx.shadowBlur = 14;
+                this.setShadowBlur(ctx, 14);
                 ctx.beginPath();
                 ctx.arc(x, y, ringR, 0, Math.PI * 2);
                 ctx.stroke();
@@ -3949,7 +3976,7 @@ export class GameManager {
                 ctx.globalAlpha = 0.35 + empP * 0.6;
                 ctx.strokeStyle = '#FFAA00';
                 ctx.shadowColor = '#FFAA00';
-                ctx.shadowBlur = 8 * empP;
+                this.setShadowBlur(ctx, 8 * empP);
                 ctx.lineWidth = 1.4;
                 for (let k = 0; k < 3; k++) {
                     const ang = this.gameTime * 4 + k * (Math.PI * 2 / 3);
@@ -3975,12 +4002,12 @@ export class GameManager {
                 ctx.globalAlpha = 0.78 + Math.sin(this.gameTime * 4) * 0.12;
                 ctx.strokeStyle = identity.color;
                 ctx.shadowColor = identity.color;
-                ctx.shadowBlur = 10;
+                this.setShadowBlur(ctx, 10);
                 ctx.lineWidth = 2.5;
                 ctx.beginPath();
                 ctx.arc(x, y, size * 1.28, this.gameTime * 0.65, this.gameTime * 0.65 + Math.PI * 1.55);
                 ctx.stroke();
-                ctx.shadowBlur = 0;
+                this.setShadowBlur(ctx, 0);
                 const badgeY = Math.max(114, y - size * 1.48);
                 ctx.fillStyle = 'rgba(5, 12, 26, 0.9)';
                 ctx.strokeStyle = identity.color;
@@ -4110,13 +4137,13 @@ export class GameManager {
                 const trailSize = 4 - i * 0.6;
                 // 外发光
                 ctx.shadowColor = effect.color;
-                ctx.shadowBlur = 8;
+                this.setShadowBlur(ctx, 8);
                 ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${trailAlpha * 0.6})`;
                 ctx.beginPath();
                 ctx.arc(trailX, trailY, trailSize, 0, Math.PI * 2);
                 ctx.fill();
                 // 核心亮点
-                ctx.shadowBlur = 0;
+                this.setShadowBlur(ctx, 0);
                 ctx.fillStyle = `rgba(255, 255, 255, ${trailAlpha * 0.8})`;
                 ctx.beginPath();
                 ctx.arc(trailX, trailY, trailSize * 0.4, 0, Math.PI * 2);
@@ -4127,7 +4154,7 @@ export class GameManager {
                 const explodeAlpha = (progress - 0.8) / 0.2;
                 const explodeRadius = 8 + explodeAlpha * 12;
                 ctx.shadowColor = effect.color;
-                ctx.shadowBlur = 15;
+                this.setShadowBlur(ctx, 15);
                 ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${(1 - explodeAlpha) * 0.7})`;
                 ctx.beginPath();
                 ctx.arc(effect.targetX, effect.targetY, explodeRadius, 0, Math.PI * 2);
@@ -4144,7 +4171,7 @@ export class GameManager {
                     ctx.arc(px, py, particleSize, 0, Math.PI * 2);
                     ctx.fill();
                 }
-                ctx.shadowBlur = 0;
+                this.setShadowBlur(ctx, 0);
             }
         }
         // 合成特效（多层扩散光环）
@@ -4155,11 +4182,11 @@ export class GameManager {
             ctx.strokeStyle = `rgba(168, 85, 247, ${alpha * 0.8})`;
             ctx.lineWidth = 4;
             ctx.shadowColor = '#9D00FF';
-            ctx.shadowBlur = 15;
+            this.setShadowBlur(ctx, 15);
             ctx.beginPath();
             ctx.arc(effect.x, effect.y, radius1, 0, Math.PI * 2);
             ctx.stroke();
-            ctx.shadowBlur = 0;
+            this.setShadowBlur(ctx, 0);
             // 第二层（慢速扩散）
             const radius2 = 20 + effect.time * 50;
             ctx.strokeStyle = `rgba(139, 92, 246, ${alpha * 0.6})`;
@@ -4235,7 +4262,7 @@ export class GameManager {
                 // Boss 波：没有"该收尾了"这回事，只有"打完才放你走"
                 ctx.fillStyle = '#FFD700';
                 ctx.shadowColor = '#FFD700';
-                ctx.shadowBlur = 6;
+                this.setShadowBlur(ctx, 6);
                 // ⚠️ 图标必须用 drawCrossedSwords() 矢量画，不能写字面量 U+2694（交叉双剑）：
                 // 该码位在本机 Chrome 下会回退到文本字体并渲染成"一横杠 + 三竖条"的残字
                 // （已用离屏掩码 + 颜色探针实测：同页 66 个 emoji 全是彩色字形，只有它是残字）。
@@ -4243,7 +4270,7 @@ export class GameManager {
                 // 和左边的单色 '⏱' 语言不一致。矢量画法与项目「零 PNG 依赖、全程序化」的美术铁律同源。
                 this.drawCrossedSwords(191, HUD_TOP + 7, 16, '#FFD700');
                 ctx.fillText('清场解锁', 204, HUD_TOP + 1);
-                ctx.shadowBlur = 0;
+                this.setShadowBlur(ctx, 0);
             }
             else {
                 const left = Math.max(0, this.waveTimeLimit - this.waveElapsed);
@@ -4251,10 +4278,10 @@ export class GameManager {
                 ctx.fillStyle = urgent ? '#FF334F' : '#00F0FF';
                 if (urgent) {
                     ctx.shadowColor = '#FF334F';
-                    ctx.shadowBlur = 10;
+                    this.setShadowBlur(ctx, 10);
                 }
                 ctx.fillText(`⏱ ${Math.ceil(left)}s`, 183, HUD_TOP + 1);
-                ctx.shadowBlur = 0;
+                this.setShadowBlur(ctx, 0);
             }
         }
         // 本波词缀常驻显示 —— 旧设计里变异是战斗中才发现的黑箱，
@@ -4263,17 +4290,17 @@ export class GameManager {
         this.renderModifierChip(CAPSULE_LEFT - 92, HUD_TOP, 90);
         // 金币（带图标光晕）
         ctx.shadowColor = '#fbbf24';
-        ctx.shadowBlur = 8;
+        this.setShadowBlur(ctx, 8);
         ctx.fillStyle = '#fbbf24';
         ctx.font = 'bold 16px sans-serif';
         ctx.fillText(`💰 ${this.resourceManager.getGold()}`, 20, HUD_TOP + 24);
-        ctx.shadowBlur = 0;
+        this.setShadowBlur(ctx, 0);
         // 生命值（带图标光晕）
         ctx.shadowColor = '#FF0033';
-        ctx.shadowBlur = 8;
+        this.setShadowBlur(ctx, 8);
         ctx.fillStyle = '#FF0033';
         ctx.fillText(`❤️ ${this.resourceManager.getLives()}`, 100, HUD_TOP + 24);
-        ctx.shadowBlur = 0;
+        this.setShadowBlur(ctx, 0);
         // 速度显示
         ctx.fillStyle = '#9D00FF';
         ctx.font = '14px sans-serif';
@@ -4288,14 +4315,14 @@ export class GameManager {
             if (left === 0) {
                 ctx.fillStyle = '#fbbf24';
                 ctx.shadowColor = '#fbbf24';
-                ctx.shadowBlur = 8;
+                this.setShadowBlur(ctx, 8);
             }
             else {
                 ctx.fillStyle = '#5A6B85';
             }
             // 右上角被胶囊占住，这里必须收在 x=338 以内，所以文案压成短版
             ctx.fillText(left === 0 ? '⚡强化就绪' : `⚡再${left}波`, 280, HUD_TOP + 24, 58);
-            ctx.shadowBlur = 0;
+            this.setShadowBlur(ctx, 0);
         }
         // 下一波摘要放在HUD第三行，并独立预留倒计时栏位。
         this.renderNextWavePreview();
@@ -4383,7 +4410,7 @@ export class GameManager {
             const config = tower.getConfig();
             const rarity = RARITY_CONFIGS[tower.getRarity()];
             ctx.shadowColor = tower.getRarity() === Rarity.N ? config.color : rarity.color;
-            ctx.shadowBlur = tower.getRarity() === Rarity.N ? 8 : 14;
+            this.setShadowBlur(ctx, tower.getRarity() === Rarity.N ? 8 : 14);
             ctx.fillStyle = '#0B0E14';
             ctx.beginPath();
             ctx.arc(slot.x, slot.y, 18, 0, Math.PI * 2);
@@ -4391,7 +4418,7 @@ export class GameManager {
             ctx.strokeStyle = tower.getRarity() === Rarity.N ? config.color : rarity.color;
             ctx.lineWidth = tower.getRarity() === Rarity.N ? 2 : 3;
             ctx.stroke();
-            ctx.shadowBlur = 0;
+            this.setShadowBlur(ctx, 0);
             this.spriteLoader.drawTower(ctx, slot.x, slot.y - 6, tower.getType(), 27, 'center', undefined, tower.getLevel());
             ctx.save();
             ctx.font = 'bold 9px sans-serif';
@@ -4399,7 +4426,7 @@ export class GameManager {
             ctx.textBaseline = 'middle';
             ctx.fillStyle = config.color;
             ctx.shadowColor = config.color;
-            ctx.shadowBlur = 4;
+            this.setShadowBlur(ctx, 4);
             ctx.fillText(`${config.name} ${toRoman(tower.getLevel())}`, slot.x, slot.y + 26, 54);
             ctx.restore();
             ctx.save();
@@ -4433,7 +4460,7 @@ export class GameManager {
         // Q版：边框（柔和的粉色外发光）
         ctx.save();
         ctx.shadowColor = CYBER.red;
-        ctx.shadowBlur = 12;
+        this.setShadowBlur(ctx, 12);
         ctx.strokeStyle = 'rgba(255, 102, 136, 0.70)';
         ctx.lineWidth = 1.8;
         cutRectPath(ctx, sellArea.x, sellArea.y, sellArea.w, sellArea.h, CYBER.panelRadius);
@@ -4762,7 +4789,7 @@ export class GameManager {
             ctx.fillStyle = countdownUrgent ? '#FF334F' : '#00F0FF';
             if (countdownUrgent) {
                 ctx.shadowColor = '#FF334F';
-                ctx.shadowBlur = 10;
+                this.setShadowBlur(ctx, 10);
             }
             ctx.fillText(`⏱ ${seconds}s`, 348, 108.5);
         }
@@ -4791,7 +4818,7 @@ export class GameManager {
             ctx.strokeStyle = '#fbbf24';
             ctx.lineWidth = 5;
             ctx.shadowColor = '#fbbf24';
-            ctx.shadowBlur = 22;
+            this.setShadowBlur(ctx, 22);
             ctx.beginPath();
             ctx.arc(fx.x, fx.y, 16 + t * 78, 0, Math.PI * 2);
             ctx.stroke();
@@ -4799,7 +4826,7 @@ export class GameManager {
             ctx.strokeStyle = '#6BF6FF';
             ctx.lineWidth = 3;
             ctx.shadowColor = '#6BF6FF';
-            ctx.shadowBlur = 14;
+            this.setShadowBlur(ctx, 14);
             ctx.beginPath();
             ctx.arc(fx.x, fx.y, 8 + Math.max(0, t - 0.12) * 62, 0, Math.PI * 2);
             ctx.stroke();
@@ -4815,7 +4842,7 @@ export class GameManager {
             }
             // ④ 放射火花
             ctx.shadowColor = '#FFD700';
-            ctx.shadowBlur = 10;
+            this.setShadowBlur(ctx, 10);
             ctx.fillStyle = `rgba(255, 246, 200, ${0.9 * fade})`;
             for (let k = 0; k < 8; k++) {
                 const ang = (Math.PI * 2 * k) / 8 + t * 1.2;
@@ -4842,7 +4869,7 @@ export class GameManager {
             this.roundRect(fx.x - tw / 2 - 10, ty - 15, tw + 20, 30, 8);
             ctx.stroke();
             ctx.shadowColor = '#fbbf24';
-            ctx.shadowBlur = 12;
+            this.setShadowBlur(ctx, 12);
             ctx.fillStyle = '#FFD700';
             ctx.fillText(label, fx.x, ty + 1);
             ctx.restore();
@@ -4884,7 +4911,7 @@ export class GameManager {
             this.roundRect(toast.x - tw / 2 - 9, ty - 12, tw + 18, 24, 7);
             ctx.stroke();
             ctx.shadowColor = '#9D00FF';
-            ctx.shadowBlur = 10;
+            this.setShadowBlur(ctx, 10);
             ctx.fillStyle = '#E8D9FF';
             ctx.fillText(label, toast.x, ty + 1);
             ctx.restore();
@@ -4920,12 +4947,12 @@ export class GameManager {
         ctx.strokeStyle = '#FF0033';
         ctx.lineWidth = 2;
         ctx.shadowColor = '#FF0033';
-        ctx.shadowBlur = 18;
+        this.setShadowBlur(ctx, 18);
         this.roundRect(-bw / 2, -bh / 2, bw, bh, 10);
         ctx.stroke();
         // 主标题
         ctx.shadowColor = '#FF0033';
-        ctx.shadowBlur = 14;
+        this.setShadowBlur(ctx, 14);
         ctx.fillStyle = '#FF2D4F';
         ctx.font = 'bold 34px sans-serif';
         ctx.textAlign = 'center';
@@ -4934,7 +4961,7 @@ export class GameManager {
         // 副标题：Boss 名称
         const bossEnemy = this.waveManager.getAliveEnemies().find(e => isBossType(e.getType()));
         const bossName = bossEnemy ? ENEMY_CONFIGS[bossEnemy.getType()].name : '机械军团首领';
-        ctx.shadowBlur = 8;
+        this.setShadowBlur(ctx, 8);
         ctx.fillStyle = '#FFD700';
         ctx.font = 'bold 16px sans-serif';
         ctx.fillText(bossName, 0, 22);
@@ -4951,7 +4978,7 @@ export class GameManager {
         // Q版：柔和外发光底（带阴影偏移增强立体感）
         ctx.save();
         ctx.shadowColor = color;
-        ctx.shadowBlur = 14;
+        this.setShadowBlur(ctx, 14);
         ctx.shadowOffsetY = 3;
         ctx.fillStyle = 'rgba(18, 16, 42, 0.90)';
         cutRectPath(ctx, btn.x, btn.y, btn.w, btn.h, radius);
@@ -4976,7 +5003,7 @@ export class GameManager {
         // Q版：文字（更清晰）
         ctx.save();
         ctx.shadowColor = color;
-        ctx.shadowBlur = 6;
+        this.setShadowBlur(ctx, 6);
         ctx.fillStyle = '#F0F8FF';
         ctx.font = 'bold 13px sans-serif';
         ctx.textAlign = 'center';
@@ -4995,7 +5022,7 @@ export class GameManager {
         // Q版：柔和外发光底（带阴影）
         ctx.save();
         ctx.shadowColor = accent;
-        ctx.shadowBlur = canAfford ? 18 : 10;
+        this.setShadowBlur(ctx, canAfford ? 18 : 10);
         ctx.shadowOffsetY = 3;
         ctx.fillStyle = canAfford
             ? 'rgba(255, 228, 77, 0.20)'
@@ -5253,9 +5280,9 @@ export class GameManager {
                 ctx.fillStyle = '#00F0FF';
                 ctx.font = 'bold 10px sans-serif';
                 ctx.shadowColor = 'rgba(0, 240, 255, 0.45)';
-                ctx.shadowBlur = 5;
+                this.setShadowBlur(ctx, 5);
                 this.drawWrappedText(option.targetLabel, x + optionWidth / 2, startY + 99, optionWidth - 12, 11, 'center', 3);
-                ctx.shadowBlur = 0;
+                this.setShadowBlur(ctx, 0);
             }
             // 实际效果用更醒目的浅色粗体，最多三行且裁剪边界与卡片一致。
             ctx.fillStyle = '#E7F7FF';
@@ -5417,7 +5444,7 @@ export class GameManager {
                 ctx.strokeStyle = markColor;
                 ctx.lineWidth = 3;
                 ctx.shadowColor = markColor;
-                ctx.shadowBlur = 16;
+                this.setShadowBlur(ctx, 16);
                 ctx.strokeRect(x - 1, startY - 1, optionWidth + 2, optionHeight + 2);
                 ctx.restore();
                 // 顶部色带 + 文案
@@ -5838,7 +5865,7 @@ export class GameManager {
         // ── 对话框阴影 ──
         ctx.save();
         ctx.shadowColor = 'rgba(0, 240, 255, 0.35)';
-        ctx.shadowBlur = 24;
+        this.setShadowBlur(ctx, 24);
         ctx.shadowOffsetY = 4;
         // ── 对话框背景（圆角） ──
         this.roundRect(dialogX, dialogY, dialogW, dialogH, 14);
@@ -5848,7 +5875,7 @@ export class GameManager {
         // ── 对话框边框（霓虹光） ──
         ctx.save();
         ctx.shadowColor = '#00f0ff';
-        ctx.shadowBlur = 8;
+        this.setShadowBlur(ctx, 8);
         this.roundRect(dialogX, dialogY, dialogW, dialogH, 14);
         ctx.strokeStyle = 'rgba(0, 240, 255, 0.6)';
         ctx.lineWidth = 1.5;
@@ -5857,7 +5884,7 @@ export class GameManager {
         // ── 标题 ──
         ctx.save();
         ctx.shadowColor = '#00f0ff';
-        ctx.shadowBlur = 10;
+        this.setShadowBlur(ctx, 10);
         ctx.fillStyle = '#00f0ff';
         ctx.font = 'bold 22px sans-serif';
         ctx.textAlign = 'center';
@@ -5902,7 +5929,7 @@ export class GameManager {
         const ctx = this.ctx;
         ctx.save();
         ctx.shadowColor = color;
-        ctx.shadowBlur = 12;
+        this.setShadowBlur(ctx, 12);
         // 渐变填充
         const grad = ctx.createLinearGradient(x, y, x, y + h);
         grad.addColorStop(0, color);
