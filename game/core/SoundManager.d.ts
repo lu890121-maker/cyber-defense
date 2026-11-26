@@ -144,13 +144,13 @@ export declare class SoundManager {
     playSingularityShot(pan?: number): void;
     /** 按防御塔类型分发音效（供游戏逻辑统一调用） */
     playTowerShot(type: string, pan?: number): void;
-    /** 命中反馈：短促金属撞击 */
+    /** 命中反馈：星际争霸风格的清晰金属撞击 */
     playEnemyHit(pan?: number, size?: number): void;
-    /** 普通怪物死亡：简洁的金属碎裂 + 低频冲击 */
+    /** 普通怪物死亡：星际争霸风格的干脆爆裂 */
     playEnemyDeath(pan?: number): void;
-    /** 大型怪物死亡：更重的金属撞击 + 低频轰鸣 */
+    /** 大型怪物死亡：星际争霸风格的重型爆裂 */
     playEnemyDeathBig(pan?: number): void;
-    /** Boss 死亡：重型爆炸 + 低频余震 */
+    /** Boss 死亡：星际争霸风格的史诗级爆裂 */
     playBossDeath(): void;
     /** 怪物逃脱：低沉警告音 */
     playEnemyEscape(pan?: number): void;
