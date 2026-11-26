@@ -144,11 +144,15 @@ export declare class SoundManager {
     playSingularityShot(pan?: number): void;
     /** 按防御塔类型分发音效（供游戏逻辑统一调用） */
     playTowerShot(type: string, pan?: number): void;
-    /** 命中反馈（体型越大音高越低，增强打击感） */
+    /** 命中反馈：短促金属撞击 */
     playEnemyHit(pan?: number, size?: number): void;
+    /** 普通怪物死亡：简洁的金属碎裂 + 低频冲击 */
     playEnemyDeath(pan?: number): void;
+    /** 大型怪物死亡：更重的金属撞击 + 低频轰鸣 */
     playEnemyDeathBig(pan?: number): void;
+    /** Boss 死亡：重型爆炸 + 低频余震 */
     playBossDeath(): void;
+    /** 怪物逃脱：低沉警告音 */
     playEnemyEscape(pan?: number): void;
     playButtonClick(): void;
     playButtonHover(): void;

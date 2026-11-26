@@ -991,34 +991,183 @@ export class SoundManager {
         }
     }
     // ══════════════════════════════════════════════════════
-    //  命中 / 死亡 / 逃脱
+    //  命中 / 死亡 / 逃脱（实时合成，简洁有力）
     // ══════════════════════════════════════════════════════
-    /** 命中反馈（体型越大音高越低，增强打击感） */
+    /** 命中反馈：短促金属撞击 */
     playEnemyHit(pan = 0, size = 15) {
-        if (!this._rateOk('hit', 50))
-            return; // 提高频率限制，避免过于密集
-        const pitch = Math.max(0.6, Math.min(1.25, 1.25 - size / 60));
-        this._playAsset('enemy_hit', { pan, volume: 0.7, priority: SoundPriority.NORMAL, pitch, pitchJitter: 0.08 });
+        if (!this._rateOk('hit', 80) || !this.ctx)
+            return;
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(pan, 0.06);
+        if (!v)
+            return;
+        // 金属撞击：短促方波 + 快速衰减
+        const osc = ctx.createOscillator();
+        osc.type = 'square';
+        const baseFreq = Math.max(120, Math.min(280, 280 - size * 8));
+        osc.frequency.setValueAtTime(baseFreq, t);
+        osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.3, t + 0.04);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.5, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+        osc.connect(g);
+        g.connect(v.gain);
+        osc.start(t);
+        osc.stop(t + 0.06);
     }
+    /** 普通怪物死亡：简洁的金属碎裂 + 低频冲击 */
     playEnemyDeath(pan = 0) {
-        if (!this._rateOk('death', 70))
+        if (!this._rateOk('death', 120) || !this.ctx)
             return;
-        this._playAsset('enemy_death', { pan, volume: 0.95, priority: SoundPriority.HIGH, pitchJitter: 0.08 });
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(pan, 0.12);
+        if (!v)
+            return;
+        // 金属碎裂：高频噪声短脉冲
+        const noise = this._noiseBuf(0.08);
+        const hp = ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = 2000;
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(0.4, t);
+        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+        noise.connect(hp);
+        hp.connect(ng);
+        ng.connect(v.gain);
+        noise.start(t);
+        noise.stop(t + 0.08);
+        // 低频冲击：短促正弦波
+        const boom = ctx.createOscillator();
+        boom.type = 'sine';
+        boom.frequency.setValueAtTime(150, t);
+        boom.frequency.exponentialRampToValueAtTime(50, t + 0.08);
+        const bg = ctx.createGain();
+        bg.gain.setValueAtTime(0.5, t);
+        bg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        boom.connect(bg);
+        bg.connect(v.gain);
+        boom.start(t);
+        boom.stop(t + 0.1);
     }
+    /** 大型怪物死亡：更重的金属撞击 + 低频轰鸣 */
     playEnemyDeathBig(pan = 0) {
-        if (!this._rateOk('death_big', 100))
+        if (!this._rateOk('death_big', 180) || !this.ctx)
             return;
-        this._playAsset('enemy_death_big', { pan, volume: 1.15, priority: SoundPriority.CRITICAL, pitchJitter: 0.04 });
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(pan, 0.2, SoundPriority.HIGH);
+        if (!v)
+            return;
+        // 重型金属撞击：三角波 + 快速衰减
+        const impact = ctx.createOscillator();
+        impact.type = 'triangle';
+        impact.frequency.setValueAtTime(200, t);
+        impact.frequency.exponentialRampToValueAtTime(60, t + 0.12);
+        const ig = ctx.createGain();
+        ig.gain.setValueAtTime(0.6, t);
+        ig.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        impact.connect(ig);
+        ig.connect(v.gain);
+        impact.start(t);
+        impact.stop(t + 0.15);
+        // 低频轰鸣：深沉正弦波
+        const rumble = ctx.createOscillator();
+        rumble.type = 'sine';
+        rumble.frequency.setValueAtTime(80, t + 0.02);
+        rumble.frequency.exponentialRampToValueAtTime(30, t + 0.18);
+        const rg = ctx.createGain();
+        rg.gain.setValueAtTime(0.5, t + 0.02);
+        rg.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+        rumble.connect(rg);
+        rg.connect(v.gain);
+        rumble.start(t + 0.02);
+        rumble.stop(t + 0.18);
+        // 碎裂噪声：短促高频
+        const crack = this._noiseBuf(0.06);
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.value = 3000;
+        bp.Q.value = 2;
+        const cg = ctx.createGain();
+        cg.gain.setValueAtTime(0.35, t);
+        cg.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+        crack.connect(bp);
+        bp.connect(cg);
+        cg.connect(v.gain);
+        crack.start(t);
+        crack.stop(t + 0.06);
     }
+    /** Boss 死亡：重型爆炸 + 低频余震 */
     playBossDeath() {
-        if (!this._rateOk('boss_death', 200))
+        if (!this._rateOk('boss_death', 300) || !this.ctx)
             return;
-        this._playAsset('boss_death', { volume: 1.2, priority: SoundPriority.CRITICAL, pitchJitter: 0 });
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(0, 0.35, SoundPriority.CRITICAL);
+        if (!v)
+            return;
+        // 主爆炸：重型三角波冲击
+        const blast = ctx.createOscillator();
+        blast.type = 'triangle';
+        blast.frequency.setValueAtTime(250, t);
+        blast.frequency.exponentialRampToValueAtTime(40, t + 0.25);
+        const bg = ctx.createGain();
+        bg.gain.setValueAtTime(0.7, t);
+        bg.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        blast.connect(bg);
+        bg.connect(v.gain);
+        blast.start(t);
+        blast.stop(t + 0.3);
+        // 低频余震：深沉正弦波
+        const aftershock = ctx.createOscillator();
+        aftershock.type = 'sine';
+        aftershock.frequency.setValueAtTime(60, t + 0.05);
+        aftershock.frequency.exponentialRampToValueAtTime(25, t + 0.3);
+        const ag = ctx.createGain();
+        ag.gain.setValueAtTime(0.6, t + 0.05);
+        ag.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+        aftershock.connect(ag);
+        ag.connect(v.gain);
+        aftershock.start(t + 0.05);
+        aftershock.stop(t + 0.32);
+        // 碎裂噪声：宽频短脉冲
+        const debris = this._noiseBuf(0.15);
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(4000, t);
+        lp.frequency.exponentialRampToValueAtTime(500, t + 0.12);
+        const dg = ctx.createGain();
+        dg.gain.setValueAtTime(0.5, t);
+        dg.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        debris.connect(lp);
+        lp.connect(dg);
+        dg.connect(v.gain);
+        debris.start(t);
+        debris.stop(t + 0.15);
     }
+    /** 怪物逃脱：低沉警告音 */
     playEnemyEscape(pan = 0) {
-        if (!this._rateOk('escape', 80))
+        if (!this._rateOk('escape', 120) || !this.ctx)
             return;
-        this._playAsset('enemy_escape', { pan, volume: 0.85, priority: SoundPriority.NORMAL, pitchJitter: 0.03 });
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(pan, 0.15);
+        if (!v)
+            return;
+        // 警告音：低频正弦波下坠
+        const warn = ctx.createOscillator();
+        warn.type = 'sine';
+        warn.frequency.setValueAtTime(180, t);
+        warn.frequency.exponentialRampToValueAtTime(80, t + 0.12);
+        const wg = ctx.createGain();
+        wg.gain.setValueAtTime(0.5, t);
+        wg.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
+        warn.connect(wg);
+        wg.connect(v.gain);
+        warn.start(t);
+        warn.stop(t + 0.15);
     }
     // ══════════════════════════════════════════════════════
     //  UI 音效
