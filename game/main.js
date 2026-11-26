@@ -29,7 +29,7 @@ window.addEventListener('DOMContentLoaded', () => {
     };
     window.addEventListener('touchstart', unlockAudio, { passive: true });
     window.addEventListener('click', unlockAudio);
-    console.log('赛博防线：机械入侵 - 游戏已启动');
+    console.log('霓虹壁垒 - 游戏已启动');
     console.log('操作说明：');
     console.log('- 点击"召唤"按钮消耗金币获得随机防御塔（品阶 N / R / SR / SSR）');
     console.log('- 点击空格子放置防御塔');

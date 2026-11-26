@@ -1,6 +1,6 @@
 /**
  * 游戏音频系统（Game Audio System）v2 —— 真实音源素材版
- * 赛博防线：机械入侵
+ * 霓虹壁垒
  *
  * ── 与 v1 的区别 ─────────────────────────────────────────
  *  v1：运行时用振荡器实时合成音效（零素材，但音色单薄）
@@ -72,7 +72,7 @@ export class SoundManager {
         this.limiter = null;
         // 声部池
         this.voices = [];
-        this.MAX_VOICES = 28;
+        this.MAX_VOICES = 18; // 降低并发数，减少混音混乱
         // 素材
         this.buffers = new Map();
         this.loadPromise = null;
@@ -92,14 +92,13 @@ export class SoundManager {
         // 回退合成用的噪声缓冲
         this.noiseBuffer = null;
         // 总线音量
-        // ⚠️ 音乐不能低于 SFX 太多：战斗时枪声密集，音乐一低就被彻底淹没
-        //    （用户反馈"背景音乐好像没了"的成因之一）。这里音乐 0.92 / 音效 0.88。
+        // 优化：降低音乐和环境音，让音效更突出，增强打击感
         this.busVolumes = {
-            [AudioBus.MASTER]: 1.0,
-            [AudioBus.MUSIC]: 0.92,
-            [AudioBus.SFX]: 0.88,
-            [AudioBus.UI]: 0.80,
-            [AudioBus.AMBIENCE]: 0.30
+            [AudioBus.MASTER]: 0.9,
+            [AudioBus.MUSIC]: 0.65, // 降低音乐音量，避免掩盖音效
+            [AudioBus.SFX]: 0.95, // 提高音效音量，增强打击感
+            [AudioBus.UI]: 0.75,
+            [AudioBus.AMBIENCE]: 0.20 // 降低环境音，减少背景噪音
         };
         // 频率限制
         this.rateLimit = {};
@@ -495,54 +494,54 @@ export class SoundManager {
     //  防御塔攻击音效
     // ══════════════════════════════════════════════════════
     playMachineGunShot(pan = 0) {
-        if (!this._rateOk('mg', 45))
-            return;
-        this._playAsset('tower_machine_gun', { pan, volume: 1.0, priority: SoundPriority.NORMAL, pitchJitter: 0.06 });
+        if (!this._rateOk('mg', 80))
+            return; // 提高频率限制，避免过于密集
+        this._playAsset('tower_machine_gun', { pan, volume: 1.1, priority: SoundPriority.HIGH, pitchJitter: 0.06 });
     }
     playFrostShot(pan = 0) {
-        if (!this._rateOk('frost', 90))
+        if (!this._rateOk('frost', 120))
             return;
-        this._playAsset('tower_frost', { pan, volume: 0.85, priority: SoundPriority.NORMAL, pitchJitter: 0.05 });
+        this._playAsset('tower_frost', { pan, volume: 1.0, priority: SoundPriority.HIGH, pitchJitter: 0.05 });
     }
     playElectricShot(pan = 0) {
-        if (!this._rateOk('elec', 80))
+        if (!this._rateOk('elec', 100))
             return;
-        this._playAsset('tower_electric', { pan, volume: 0.9, priority: SoundPriority.NORMAL, pitchJitter: 0.06 });
+        this._playAsset('tower_electric', { pan, volume: 1.05, priority: SoundPriority.HIGH, pitchJitter: 0.06 });
     }
     playPoisonShot(pan = 0) {
-        if (!this._rateOk('poison', 110))
+        if (!this._rateOk('poison', 140))
             return;
-        this._playAsset('tower_poison', { pan, volume: 0.9, priority: SoundPriority.NORMAL, pitchJitter: 0.05 });
+        this._playAsset('tower_poison', { pan, volume: 1.0, priority: SoundPriority.HIGH, pitchJitter: 0.05 });
     }
     playBombExplosion(pan = 0) {
-        if (!this._rateOk('bomb', 130))
+        if (!this._rateOk('bomb', 180))
             return;
-        this._playAsset('tower_bomb', { pan, volume: 1.0, priority: SoundPriority.HIGH, pitchJitter: 0.04 });
+        this._playAsset('tower_bomb', { pan, volume: 1.2, priority: SoundPriority.CRITICAL, pitchJitter: 0.04 });
     }
     playLaserShot(pan = 0) {
-        if (!this._rateOk('laser', 80))
+        if (!this._rateOk('laser', 100))
             return;
-        this._playAsset('tower_laser', { pan, volume: 0.85, priority: SoundPriority.NORMAL, pitchJitter: 0.04 });
+        this._playAsset('tower_laser', { pan, volume: 1.0, priority: SoundPriority.HIGH, pitchJitter: 0.04 });
     }
     playSniperShot(pan = 0) {
-        if (!this._rateOk('sniper', 150))
+        if (!this._rateOk('sniper', 200))
             return;
-        this._playAsset('tower_sniper', { pan, volume: 1.0, priority: SoundPriority.HIGH, pitchJitter: 0.03 });
+        this._playAsset('tower_sniper', { pan, volume: 1.15, priority: SoundPriority.CRITICAL, pitchJitter: 0.03 });
     }
     playFlameShot(pan = 0) {
-        if (!this._rateOk('flame', 60))
+        if (!this._rateOk('flame', 90))
             return;
-        this._playAsset('tower_flame', { pan, volume: 0.7, priority: SoundPriority.LOW, pitchJitter: 0.07 });
+        this._playAsset('tower_flame', { pan, volume: 0.85, priority: SoundPriority.NORMAL, pitchJitter: 0.07 });
     }
     playMagneticShot(pan = 0) {
-        if (!this._rateOk('mag', 130))
+        if (!this._rateOk('mag', 160))
             return;
-        this._playAsset('tower_magnetic', { pan, volume: 0.8, priority: SoundPriority.NORMAL, pitchJitter: 0.05 });
+        this._playAsset('tower_magnetic', { pan, volume: 0.95, priority: SoundPriority.HIGH, pitchJitter: 0.05 });
     }
     playSingularityShot(pan = 0) {
-        if (!this._rateOk('sing', 220))
+        if (!this._rateOk('sing', 260))
             return;
-        this._playAsset('tower_singularity', { pan, volume: 0.95, priority: SoundPriority.HIGH, pitchJitter: 0.03 });
+        this._playAsset('tower_singularity', { pan, volume: 1.1, priority: SoundPriority.CRITICAL, pitchJitter: 0.03 });
     }
     /** 按防御塔类型分发音效（供游戏逻辑统一调用） */
     playTowerShot(type, pan = 0) {
@@ -585,68 +584,90 @@ export class SoundManager {
     // ══════════════════════════════════════════════════════
     //  命中 / 死亡 / 逃脱
     // ══════════════════════════════════════════════════════
-    /** 命中反馈（体型越大音高越低） */
+    /** 命中反馈（体型越大音高越低，增强打击感） */
     playEnemyHit(pan = 0, size = 15) {
-        if (!this._rateOk('hit', 30))
-            return;
+        if (!this._rateOk('hit', 50))
+            return; // 提高频率限制，避免过于密集
         const pitch = Math.max(0.6, Math.min(1.25, 1.25 - size / 60));
-        this._playAsset('enemy_hit', { pan, volume: 0.55, priority: SoundPriority.LOW, pitch, pitchJitter: 0.08 });
+        this._playAsset('enemy_hit', { pan, volume: 0.7, priority: SoundPriority.NORMAL, pitch, pitchJitter: 0.08 });
     }
     playEnemyDeath(pan = 0) {
-        if (!this._rateOk('death', 45))
+        if (!this._rateOk('death', 70))
             return;
-        this._playAsset('enemy_death', { pan, volume: 0.8, priority: SoundPriority.NORMAL, pitchJitter: 0.08 });
+        this._playAsset('enemy_death', { pan, volume: 0.95, priority: SoundPriority.HIGH, pitchJitter: 0.08 });
     }
     playEnemyDeathBig(pan = 0) {
-        this._playAsset('enemy_death_big', { pan, volume: 1.0, priority: SoundPriority.HIGH, pitchJitter: 0.04 });
+        if (!this._rateOk('death_big', 100))
+            return;
+        this._playAsset('enemy_death_big', { pan, volume: 1.15, priority: SoundPriority.CRITICAL, pitchJitter: 0.04 });
     }
     playBossDeath() {
-        this._playAsset('boss_death', { volume: 1.0, priority: SoundPriority.CRITICAL, pitchJitter: 0 });
+        if (!this._rateOk('boss_death', 200))
+            return;
+        this._playAsset('boss_death', { volume: 1.2, priority: SoundPriority.CRITICAL, pitchJitter: 0 });
     }
     playEnemyEscape(pan = 0) {
-        this._playAsset('enemy_escape', { pan, volume: 0.9, priority: SoundPriority.HIGH, pitchJitter: 0.03 });
+        if (!this._rateOk('escape', 80))
+            return;
+        this._playAsset('enemy_escape', { pan, volume: 0.85, priority: SoundPriority.NORMAL, pitchJitter: 0.03 });
     }
     // ══════════════════════════════════════════════════════
     //  UI 音效
     // ══════════════════════════════════════════════════════
     playButtonClick() {
-        if (!this._rateOk('click', 55))
+        if (!this._rateOk('click', 80))
             return;
-        this._playAsset('ui_click', { volume: 0.85, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.05 });
+        this._playAsset('ui_click', { volume: 0.75, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.05 });
     }
     playButtonHover() {
-        if (!this._rateOk('hover', 120))
+        if (!this._rateOk('hover', 150))
             return;
-        this._playAsset('ui_hover', { volume: 0.35, priority: SoundPriority.LOW, bus: AudioBus.UI, pitchJitter: 0.05 });
+        this._playAsset('ui_hover', { volume: 0.3, priority: SoundPriority.LOW, bus: AudioBus.UI, pitchJitter: 0.05 });
     }
     playSummon() {
-        this._playAsset('ui_summon', { volume: 0.9, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.03 });
+        if (!this._rateOk('summon', 100))
+            return;
+        this._playAsset('ui_summon', { volume: 0.85, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.03 });
     }
     playPlaceTower() {
-        this._playAsset('ui_place', { volume: 0.95, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.05 });
+        if (!this._rateOk('place', 80))
+            return;
+        this._playAsset('ui_place', { volume: 0.9, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.05 });
     }
     playSellTower() {
-        this._playAsset('ui_sell', { volume: 0.85, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.04 });
+        if (!this._rateOk('sell', 100))
+            return;
+        this._playAsset('ui_sell', { volume: 0.8, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.04 });
     }
     playDenied() {
-        this._playAsset('ui_denied', { volume: 0.85, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.03 });
+        if (!this._rateOk('denied', 100))
+            return;
+        this._playAsset('ui_denied', { volume: 0.8, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.03 });
     }
     playGoldGain() {
-        if (!this._rateOk('gold', 50))
+        if (!this._rateOk('gold', 80))
             return;
-        this._playAsset('ui_gold', { volume: 0.5, priority: SoundPriority.LOW, bus: AudioBus.UI, pitchJitter: 0.06 });
+        this._playAsset('ui_gold', { volume: 0.45, priority: SoundPriority.LOW, bus: AudioBus.UI, pitchJitter: 0.06 });
     }
     playMergeSuccess() {
-        this._playAsset('ui_merge', { volume: 0.9, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.03 });
+        if (!this._rateOk('merge', 120))
+            return;
+        this._playAsset('ui_merge', { volume: 0.85, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.03 });
     }
     playFusionSuccess() {
-        this._playAsset('ui_fusion', { volume: 1.0, priority: SoundPriority.CRITICAL, bus: AudioBus.UI, pitchJitter: 0 });
+        if (!this._rateOk('fusion', 150))
+            return;
+        this._playAsset('ui_fusion', { volume: 0.95, priority: SoundPriority.CRITICAL, bus: AudioBus.UI, pitchJitter: 0 });
     }
     playUpgradeSelect() {
-        this._playAsset('ui_upgrade', { volume: 0.9, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.03 });
+        if (!this._rateOk('upgrade', 120))
+            return;
+        this._playAsset('ui_upgrade', { volume: 0.85, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.03 });
     }
     playSkillReady() {
-        this._playAsset('ui_skill_ready', { volume: 0.8, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.03 });
+        if (!this._rateOk('skill', 150))
+            return;
+        this._playAsset('ui_skill_ready', { volume: 0.75, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.03 });
     }
     // ══════════════════════════════════════════════════════
     //  游戏流程音效

@@ -2774,14 +2774,14 @@ export class GameManager {
         // 品红残影
         ctx.globalAlpha = 0.5;
         ctx.fillStyle = CYBER.red;
-        ctx.fillText('赛博防线', cx + 2 + glitch, 182);
+        ctx.fillText('霓虹壁垒', cx + 2 + glitch, 182);
         // 青色残影
         ctx.globalAlpha = 0.5;
         ctx.fillStyle = CYBER.cyan;
-        ctx.fillText('赛博防线', cx - 2 - glitch, 182);
+        ctx.fillText('霓虹壁垒', cx - 2 - glitch, 182);
         ctx.globalAlpha = 1;
         ctx.restore();
-        neonText(ctx, '赛博防线', cx, 182, CYBER.cyan, { blur: 16, font: 'bold 34px sans-serif' });
+        neonText(ctx, '霓虹壁垒', cx, 182, CYBER.cyan, { blur: 16, font: 'bold 34px sans-serif' });
         neonText(ctx, '机械入侵', cx, 226, CYBER.purple, { blur: 16, font: 'bold 34px sans-serif' });
         // ── 副标题 ──
         ctx.fillStyle = CYBER.textMid;
@@ -3110,7 +3110,7 @@ export class GameManager {
         // 右上角静音开关
         this.renderMuteButton();
     }
-    /** 赛博防线启动序幕：扫描网格、核心点亮、敌方入侵警报，最后自动进入第一波。 */
+    /** 霓虹壁垒启动序幕：扫描网格、核心点亮、敌方入侵警报，最后自动进入第一波。 */
     renderOpening() {
         const ctx = this.ctx;
         const W = this.canvas.width, H = this.canvas.height;
@@ -3253,12 +3253,12 @@ export class GameManager {
         // 红色偏移层
         ctx.fillStyle = `rgba(255, 50, 100, ${0.3 * titleAlpha})`;
         ctx.font = 'bold 38px sans-serif';
-        ctx.fillText('赛博防线', cx - chromaOffset + glitchOffset, 230);
+        ctx.fillText('霓虹壁垒', cx - chromaOffset + glitchOffset, 230);
         // 蓝色偏移层
         ctx.fillStyle = `rgba(0, 200, 255, ${0.3 * titleAlpha})`;
-        ctx.fillText('赛博防线', cx + chromaOffset + glitchOffset, 230);
+        ctx.fillText('霓虹壁垒', cx + chromaOffset + glitchOffset, 230);
         // 主层
-        neonText(ctx, '赛博防线', cx + glitchOffset, 230, CYBER.cyan, { blur: 20, font: 'bold 38px sans-serif' });
+        neonText(ctx, '霓虹壁垒', cx + glitchOffset, 230, CYBER.cyan, { blur: 20, font: 'bold 38px sans-serif' });
         ctx.restore();
         // 副标题
         const sub2Alpha = Math.max(0, Math.min(1, (t - 0.9) / 0.5));

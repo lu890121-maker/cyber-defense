@@ -1,6 +1,6 @@
 /**
  * 游戏音频系统（Game Audio System）v2 —— 真实音源素材版
- * 赛博防线：机械入侵
+ * 霓虹壁垒
  *
  * ── 与 v1 的区别 ─────────────────────────────────────────
  *  v1：运行时用振荡器实时合成音效（零素材，但音色单薄）
@@ -130,7 +130,7 @@ export declare class SoundManager {
     playSingularityShot(pan?: number): void;
     /** 按防御塔类型分发音效（供游戏逻辑统一调用） */
     playTowerShot(type: string, pan?: number): void;
-    /** 命中反馈（体型越大音高越低） */
+    /** 命中反馈（体型越大音高越低，增强打击感） */
     playEnemyHit(pan?: number, size?: number): void;
     playEnemyDeath(pan?: number): void;
     playEnemyDeathBig(pan?: number): void;

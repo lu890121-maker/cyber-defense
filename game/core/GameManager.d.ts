@@ -424,7 +424,7 @@ export declare class GameManager {
      * 顶部显示指挥官资产（金币、生命），底部展示拥有的塔。
      */
     private renderLevelSelect;
-    /** 赛博防线启动序幕：扫描网格、核心点亮、敌方入侵警报，最后自动进入第一波。 */
+    /** 霓虹壁垒启动序幕：扫描网格、核心点亮、敌方入侵警报，最后自动进入第一波。 */
     private renderOpening;
     private renderGame;
     private renderMap;
