@@ -72,7 +72,7 @@ export class SoundManager {
         this.limiter = null;
         // 声部池
         this.voices = [];
-        this.MAX_VOICES = 18; // 降低并发数，减少混音混乱
+        this.MAX_VOICES = 24; // 提高并发数，支持更密集的战斗音效
         // 素材
         this.buffers = new Map();
         this.loadPromise = null;
@@ -512,10 +512,10 @@ export class SoundManager {
             return null;
         return { gain: v.gain, pan: v.pan };
     }
-    /** 脉冲炮：气动活塞冲击 + 金属撞击 */
+    /** 脉冲炮：快速连射，短促金属撞击 */
     playMachineGunShot(pan = 0) {
-        if (!this._rateOk('mg', 150) || !this.ctx)
-            return;
+        if (!this._rateOk('mg', 60) || !this.ctx)
+            return; // 降低冷却，支持快速连射
         const ctx = this.ctx;
         const t = ctx.currentTime;
         const v = this._synthVoice(pan, 0.08);
@@ -548,10 +548,10 @@ export class SoundManager {
         noise.start(t);
         noise.stop(t + 0.04);
     }
-    /** 冷冻炮：低温气体释放 + 冰晶碎裂 */
+    /** 冰霜炮：嘶嘶声 + 结晶叮当 */
     playFrostShot(pan = 0) {
-        if (!this._rateOk('frost', 180) || !this.ctx)
-            return;
+        if (!this._rateOk('frost', 100) || !this.ctx)
+            return; // 降低冷却
         const ctx = this.ctx;
         const t = ctx.currentTime;
         const v = this._synthVoice(pan, 0.15);
@@ -585,10 +585,10 @@ export class SoundManager {
         cry.start(t + 0.02);
         cry.stop(t + 0.12);
     }
-    /** 电磁炮：特斯拉线圈放电 + 电弧噼啪 */
+    /** 电磁炮：电弧噼啪 + 嗡鸣 */
     playElectricShot(pan = 0) {
-        if (!this._rateOk('elec', 150) || !this.ctx)
-            return;
+        if (!this._rateOk('elec', 80) || !this.ctx)
+            return; // 降低冷却
         const ctx = this.ctx;
         const t = ctx.currentTime;
         const v = this._synthVoice(pan, 0.12);
@@ -635,10 +635,10 @@ export class SoundManager {
         noise.start(t);
         noise.stop(t + 0.06);
     }
-    /** 毒蚀炮：高压化学注射 + 腐蚀冒泡 */
+    /** 毒液炮：黏液声 + 气泡 */
     playPoisonShot(pan = 0) {
-        if (!this._rateOk('poison', 200) || !this.ctx)
-            return;
+        if (!this._rateOk('poison', 120) || !this.ctx)
+            return; // 降低冷却
         const ctx = this.ctx;
         const t = ctx.currentTime;
         const v = this._synthVoice(pan, 0.18);
@@ -673,10 +673,10 @@ export class SoundManager {
         noise.start(t);
         noise.stop(t + 0.15);
     }
-    /** 导弹台：火箭点火 + 机械导轨释放 */
+    /** 导弹台：发射呼啸 + 撞击 */
     playBombExplosion(pan = 0) {
-        if (!this._rateOk('bomb', 250) || !this.ctx)
-            return;
+        if (!this._rateOk('bomb', 180) || !this.ctx)
+            return; // 降低冷却
         const ctx = this.ctx;
         const t = ctx.currentTime;
         const v = this._synthVoice(pan, 0.25, SoundPriority.HIGH);
@@ -724,10 +724,10 @@ export class SoundManager {
         rumble.start(t);
         rumble.stop(t + 0.22);
     }
-    /** 激光炮：电容充放电 + 精确谐波扫频 */
+    /** 激光炮：充能 + 光束嗡鸣 */
     playLaserShot(pan = 0) {
-        if (!this._rateOk('laser', 150) || !this.ctx)
-            return;
+        if (!this._rateOk('laser', 80) || !this.ctx)
+            return; // 降低冷却
         const ctx = this.ctx;
         const t = ctx.currentTime;
         const v = this._synthVoice(pan, 0.14);
@@ -762,10 +762,10 @@ export class SoundManager {
         harm.start(t + 0.02);
         harm.stop(t + 0.12);
     }
-    /** 磁轨炮：电磁加速嗡鸣 + 超音速音爆 */
+    /** 磁轨炮：低频脉冲 + 金属共鸣 */
     playSniperShot(pan = 0) {
-        if (!this._rateOk('sniper', 300) || !this.ctx)
-            return;
+        if (!this._rateOk('sniper', 200) || !this.ctx)
+            return; // 降低冷却
         const ctx = this.ctx;
         const t = ctx.currentTime;
         const v = this._synthVoice(pan, 0.3, SoundPriority.HIGH);
@@ -816,10 +816,10 @@ export class SoundManager {
         recoil.start(t + 0.12);
         recoil.stop(t + 0.28);
     }
-    /** 焚化器：等离子点火 + 持续喷射 */
+    /** 焚化器：点火 + 咆哮 */
     playFlameShot(pan = 0) {
-        if (!this._rateOk('flame', 140) || !this.ctx)
-            return;
+        if (!this._rateOk('flame', 70) || !this.ctx)
+            return; // 降低冷却
         const ctx = this.ctx;
         const t = ctx.currentTime;
         const v = this._synthVoice(pan, 0.12, SoundPriority.LOW);
@@ -856,10 +856,10 @@ export class SoundManager {
         jet.start(t + 0.02);
         jet.stop(t + 0.1);
     }
-    /** 引力场：低频引力脉冲 + 金属共振 */
+    /** 引力场：低频脉冲 + 共鸣 */
     playMagneticShot(pan = 0) {
-        if (!this._rateOk('mag', 220) || !this.ctx)
-            return;
+        if (!this._rateOk('mag', 150) || !this.ctx)
+            return; // 降低冷却
         const ctx = this.ctx;
         const t = ctx.currentTime;
         const v = this._synthVoice(pan, 0.2);
@@ -895,10 +895,10 @@ export class SoundManager {
         noise.start(t);
         noise.stop(t + 0.15);
     }
-    /** 奇点炮：空间撕裂扭曲 + 内爆压缩 */
+    /** 奇点炮：扭曲 + 内爆 */
     playSingularityShot(pan = 0) {
-        if (!this._rateOk('sing', 350) || !this.ctx)
-            return;
+        if (!this._rateOk('sing', 250) || !this.ctx)
+            return; // 降低冷却
         const ctx = this.ctx;
         const t = ctx.currentTime;
         const v = this._synthVoice(pan, 0.35, SoundPriority.HIGH);
@@ -995,8 +995,8 @@ export class SoundManager {
     // ══════════════════════════════════════════════════════
     /** 命中反馈：星际争霸风格的清晰金属撞击 */
     playEnemyHit(pan = 0, size = 15) {
-        if (!this._rateOk('hit', 80) || !this.ctx)
-            return;
+        if (!this._rateOk('hit', 50) || !this.ctx)
+            return; // 降低冷却，支持密集火力
         const ctx = this.ctx;
         const t = ctx.currentTime;
         const v = this._synthVoice(pan, 0.08);
@@ -1040,6 +1040,67 @@ export class SoundManager {
         ng.connect(v.gain);
         noise.start(t);
         noise.stop(t + 0.02);
+    }
+    /** 暴击命中：明亮叮当 + 轻微混响 */
+    playCritHit(pan = 0) {
+        if (!this._rateOk('crit', 100) || !this.ctx)
+            return;
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(pan, 0.15);
+        if (!v)
+            return;
+        // 明亮叮当：高频正弦波
+        const ding = ctx.createOscillator();
+        ding.type = 'sine';
+        ding.frequency.setValueAtTime(1200, t);
+        ding.frequency.exponentialRampToValueAtTime(800, t + 0.1);
+        const dg = ctx.createGain();
+        dg.gain.setValueAtTime(0.5, t);
+        dg.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        ding.connect(dg);
+        dg.connect(v.gain);
+        ding.start(t);
+        ding.stop(t + 0.12);
+        // 泛音层
+        const harm = ctx.createOscillator();
+        harm.type = 'sine';
+        harm.frequency.setValueAtTime(2400, t);
+        const hg = ctx.createGain();
+        hg.gain.setValueAtTime(0.2, t);
+        hg.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+        harm.connect(hg);
+        hg.connect(v.gain);
+        harm.start(t);
+        harm.stop(t + 0.08);
+    }
+    /** 基地受击：警告号角 */
+    playBaseHit() {
+        if (!this._rateOk('base_hit', 300) || !this.ctx)
+            return;
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(0, 0.3, SoundPriority.CRITICAL);
+        if (!v)
+            return;
+        // 警告号角：低频锯齿波
+        const horn = ctx.createOscillator();
+        horn.type = 'sawtooth';
+        horn.frequency.setValueAtTime(150, t);
+        horn.frequency.setValueAtTime(120, t + 0.1);
+        horn.frequency.setValueAtTime(150, t + 0.2);
+        const hg = ctx.createGain();
+        hg.gain.setValueAtTime(0.001, t);
+        hg.gain.exponentialRampToValueAtTime(0.6, t + 0.05);
+        hg.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 800;
+        horn.connect(lp);
+        lp.connect(hg);
+        hg.connect(v.gain);
+        horn.start(t);
+        horn.stop(t + 0.3);
     }
     /** 普通怪物死亡：星际争霸风格的干脆爆裂 */
     playEnemyDeath(pan = 0) {

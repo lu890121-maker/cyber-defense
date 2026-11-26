@@ -122,30 +122,34 @@ export declare class SoundManager {
     private _noiseBuf;
     /** 通用：创建声部并连接到 pan */
     private _synthVoice;
-    /** 脉冲炮：气动活塞冲击 + 金属撞击 */
+    /** 脉冲炮：快速连射，短促金属撞击 */
     playMachineGunShot(pan?: number): void;
-    /** 冷冻炮：低温气体释放 + 冰晶碎裂 */
+    /** 冰霜炮：嘶嘶声 + 结晶叮当 */
     playFrostShot(pan?: number): void;
-    /** 电磁炮：特斯拉线圈放电 + 电弧噼啪 */
+    /** 电磁炮：电弧噼啪 + 嗡鸣 */
     playElectricShot(pan?: number): void;
-    /** 毒蚀炮：高压化学注射 + 腐蚀冒泡 */
+    /** 毒液炮：黏液声 + 气泡 */
     playPoisonShot(pan?: number): void;
-    /** 导弹台：火箭点火 + 机械导轨释放 */
+    /** 导弹台：发射呼啸 + 撞击 */
     playBombExplosion(pan?: number): void;
-    /** 激光炮：电容充放电 + 精确谐波扫频 */
+    /** 激光炮：充能 + 光束嗡鸣 */
     playLaserShot(pan?: number): void;
-    /** 磁轨炮：电磁加速嗡鸣 + 超音速音爆 */
+    /** 磁轨炮：低频脉冲 + 金属共鸣 */
     playSniperShot(pan?: number): void;
-    /** 焚化器：等离子点火 + 持续喷射 */
+    /** 焚化器：点火 + 咆哮 */
     playFlameShot(pan?: number): void;
-    /** 引力场：低频引力脉冲 + 金属共振 */
+    /** 引力场：低频脉冲 + 共鸣 */
     playMagneticShot(pan?: number): void;
-    /** 奇点炮：空间撕裂扭曲 + 内爆压缩 */
+    /** 奇点炮：扭曲 + 内爆 */
     playSingularityShot(pan?: number): void;
     /** 按防御塔类型分发音效（供游戏逻辑统一调用） */
     playTowerShot(type: string, pan?: number): void;
     /** 命中反馈：星际争霸风格的清晰金属撞击 */
     playEnemyHit(pan?: number, size?: number): void;
+    /** 暴击命中：明亮叮当 + 轻微混响 */
+    playCritHit(pan?: number): void;
+    /** 基地受击：警告号角 */
+    playBaseHit(): void;
     /** 普通怪物死亡：星际争霸风格的干脆爆裂 */
     playEnemyDeath(pan?: number): void;
     /** 大型怪物死亡：星际争霸风格的重型爆裂 */
