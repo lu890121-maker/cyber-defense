@@ -118,15 +118,29 @@ export declare class SoundManager {
     private _noiseBuffer;
     /** 素材缺失时的兜底合成音（短促噪声+音调） */
     private _fallback;
+    /** 通用：创建噪声 buffer */
+    private _noiseBuf;
+    /** 通用：创建声部并连接到 pan */
+    private _synthVoice;
+    /** 脉冲炮：气动活塞冲击 + 金属撞击 */
     playMachineGunShot(pan?: number): void;
+    /** 冷冻炮：低温气体释放 + 冰晶碎裂 */
     playFrostShot(pan?: number): void;
+    /** 电磁炮：特斯拉线圈放电 + 电弧噼啪 */
     playElectricShot(pan?: number): void;
+    /** 毒蚀炮：高压化学注射 + 腐蚀冒泡 */
     playPoisonShot(pan?: number): void;
+    /** 导弹台：火箭点火 + 机械导轨释放 */
     playBombExplosion(pan?: number): void;
+    /** 激光炮：电容充放电 + 精确谐波扫频 */
     playLaserShot(pan?: number): void;
+    /** 磁轨炮：电磁加速嗡鸣 + 超音速音爆 */
     playSniperShot(pan?: number): void;
+    /** 焚化器：等离子点火 + 持续喷射 */
     playFlameShot(pan?: number): void;
+    /** 引力场：低频引力脉冲 + 金属共振 */
     playMagneticShot(pan?: number): void;
+    /** 奇点炮：空间撕裂扭曲 + 内爆压缩 */
     playSingularityShot(pan?: number): void;
     /** 按防御塔类型分发音效（供游戏逻辑统一调用） */
     playTowerShot(type: string, pan?: number): void;

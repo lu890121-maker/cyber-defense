@@ -491,57 +491,466 @@ export class SoundManager {
         v.sources.push(n);
     }
     // ══════════════════════════════════════════════════════
-    //  防御塔攻击音效
+    //  防御塔攻击音效（纯合成机械质感）
     // ══════════════════════════════════════════════════════
+    /** 通用：创建噪声 buffer */
+    _noiseBuf(duration) {
+        const ctx = this.ctx;
+        const len = Math.floor(ctx.sampleRate * duration);
+        const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < len; i++)
+            d[i] = Math.random() * 2 - 1;
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        return src;
+    }
+    /** 通用：创建声部并连接到 pan */
+    _synthVoice(pan, duration, priority = SoundPriority.NORMAL) {
+        const v = this._voice(AudioBus.SFX, priority, duration, { pan });
+        if (!v)
+            return null;
+        return { gain: v.gain, pan: v.pan };
+    }
+    /** 脉冲炮：气动活塞冲击 + 金属撞击 */
     playMachineGunShot(pan = 0) {
-        if (!this._rateOk('mg', 150))
-            return; // 大幅增加频率限制
-        this._playAsset('tower_machine_gun', { pan, volume: 0.9, priority: SoundPriority.NORMAL, pitchJitter: 0.06 });
+        if (!this._rateOk('mg', 150) || !this.ctx)
+            return;
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(pan, 0.08);
+        if (!v)
+            return;
+        // 金属撞击：短促方波 + 快速衰减
+        const osc = ctx.createOscillator();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(180 + Math.random() * 40, t);
+        osc.frequency.exponentialRampToValueAtTime(60, t + 0.04);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.7, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+        osc.connect(g);
+        g.connect(v.gain);
+        osc.start(t);
+        osc.stop(t + 0.06);
+        // 气动释放：高频噪声短脉冲
+        const noise = this._noiseBuf(0.04);
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.value = 3500;
+        bp.Q.value = 2;
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(0.4, t);
+        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+        noise.connect(bp);
+        bp.connect(ng);
+        ng.connect(v.gain);
+        noise.start(t);
+        noise.stop(t + 0.04);
     }
+    /** 冷冻炮：低温气体释放 + 冰晶碎裂 */
     playFrostShot(pan = 0) {
-        if (!this._rateOk('frost', 180))
+        if (!this._rateOk('frost', 180) || !this.ctx)
             return;
-        this._playAsset('tower_frost', { pan, volume: 0.85, priority: SoundPriority.NORMAL, pitchJitter: 0.05 });
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(pan, 0.15);
+        if (!v)
+            return;
+        // 高压气体释放：高频噪声扫频
+        const noise = this._noiseBuf(0.12);
+        const hp = ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.setValueAtTime(2000, t);
+        hp.frequency.exponentialRampToValueAtTime(6000, t + 0.08);
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(0.001, t);
+        ng.gain.exponentialRampToValueAtTime(0.5, t + 0.01);
+        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        noise.connect(hp);
+        hp.connect(ng);
+        ng.connect(v.gain);
+        noise.start(t);
+        noise.stop(t + 0.12);
+        // 冰晶碎裂：高频正弦短脉冲
+        const cry = ctx.createOscillator();
+        cry.type = 'sine';
+        cry.frequency.setValueAtTime(4200, t + 0.02);
+        cry.frequency.exponentialRampToValueAtTime(1800, t + 0.1);
+        const cg = ctx.createGain();
+        cg.gain.setValueAtTime(0.3, t + 0.02);
+        cg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        cry.connect(cg);
+        cg.connect(v.gain);
+        cry.start(t + 0.02);
+        cry.stop(t + 0.12);
     }
+    /** 电磁炮：特斯拉线圈放电 + 电弧噼啪 */
     playElectricShot(pan = 0) {
-        if (!this._rateOk('elec', 150))
+        if (!this._rateOk('elec', 150) || !this.ctx)
             return;
-        this._playAsset('tower_electric', { pan, volume: 0.9, priority: SoundPriority.NORMAL, pitchJitter: 0.06 });
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(pan, 0.12);
+        if (!v)
+            return;
+        // 电弧噼啪：锯齿波快速频率跳变
+        const arc = ctx.createOscillator();
+        arc.type = 'sawtooth';
+        arc.frequency.setValueAtTime(120, t);
+        arc.frequency.setValueAtTime(800, t + 0.01);
+        arc.frequency.setValueAtTime(200, t + 0.02);
+        arc.frequency.setValueAtTime(1200, t + 0.03);
+        arc.frequency.setValueAtTime(150, t + 0.05);
+        const ag = ctx.createGain();
+        ag.gain.setValueAtTime(0.5, t);
+        ag.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+        arc.connect(ag);
+        ag.connect(v.gain);
+        arc.start(t);
+        arc.stop(t + 0.1);
+        // 变压器嗡鸣：低频正弦
+        const hum = ctx.createOscillator();
+        hum.type = 'sine';
+        hum.frequency.value = 60;
+        const hg = ctx.createGain();
+        hg.gain.setValueAtTime(0.3, t);
+        hg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        hum.connect(hg);
+        hg.connect(v.gain);
+        hum.start(t);
+        hum.stop(t + 0.1);
+        // 放电噪声
+        const noise = this._noiseBuf(0.06);
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.value = 5000;
+        bp.Q.value = 3;
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(0.35, t);
+        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+        noise.connect(bp);
+        bp.connect(ng);
+        ng.connect(v.gain);
+        noise.start(t);
+        noise.stop(t + 0.06);
     }
+    /** 毒蚀炮：高压化学注射 + 腐蚀冒泡 */
     playPoisonShot(pan = 0) {
-        if (!this._rateOk('poison', 200))
+        if (!this._rateOk('poison', 200) || !this.ctx)
             return;
-        this._playAsset('tower_poison', { pan, volume: 0.85, priority: SoundPriority.NORMAL, pitchJitter: 0.05 });
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(pan, 0.18);
+        if (!v)
+            return;
+        // 高压注射：短促低频冲击
+        const inj = ctx.createOscillator();
+        inj.type = 'sine';
+        inj.frequency.setValueAtTime(250, t);
+        inj.frequency.exponentialRampToValueAtTime(80, t + 0.06);
+        const ig = ctx.createGain();
+        ig.gain.setValueAtTime(0.6, t);
+        ig.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+        inj.connect(ig);
+        ig.connect(v.gain);
+        inj.start(t);
+        inj.stop(t + 0.08);
+        // 腐蚀冒泡：噪声 + 低通滤波 + 颤音
+        const noise = this._noiseBuf(0.15);
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(600, t + 0.03);
+        lp.frequency.linearRampToValueAtTime(300, t + 0.15);
+        lp.Q.value = 5;
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(0.001, t);
+        ng.gain.exponentialRampToValueAtTime(0.4, t + 0.04);
+        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        noise.connect(lp);
+        lp.connect(ng);
+        ng.connect(v.gain);
+        noise.start(t);
+        noise.stop(t + 0.15);
     }
+    /** 导弹台：火箭点火 + 机械导轨释放 */
     playBombExplosion(pan = 0) {
-        if (!this._rateOk('bomb', 250))
+        if (!this._rateOk('bomb', 250) || !this.ctx)
             return;
-        this._playAsset('tower_bomb', { pan, volume: 1.0, priority: SoundPriority.HIGH, pitchJitter: 0.04 });
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(pan, 0.25, SoundPriority.HIGH);
+        if (!v)
+            return;
+        // 机械导轨释放：金属撞击
+        const rail = ctx.createOscillator();
+        rail.type = 'triangle';
+        rail.frequency.setValueAtTime(400, t);
+        rail.frequency.exponentialRampToValueAtTime(100, t + 0.05);
+        const rg = ctx.createGain();
+        rg.gain.setValueAtTime(0.5, t);
+        rg.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+        rail.connect(rg);
+        rg.connect(v.gain);
+        rail.start(t);
+        rail.stop(t + 0.06);
+        // 火箭点火：噪声扫频（低频→高频）
+        const noise = this._noiseBuf(0.2);
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(300, t + 0.02);
+        bp.frequency.exponentialRampToValueAtTime(2000, t + 0.15);
+        bp.Q.value = 1.5;
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(0.001, t);
+        ng.gain.exponentialRampToValueAtTime(0.7, t + 0.04);
+        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        noise.connect(bp);
+        bp.connect(ng);
+        ng.connect(v.gain);
+        noise.start(t);
+        noise.stop(t + 0.2);
+        // 低频轰鸣
+        const rumble = ctx.createOscillator();
+        rumble.type = 'sine';
+        rumble.frequency.setValueAtTime(50, t + 0.03);
+        rumble.frequency.exponentialRampToValueAtTime(30, t + 0.2);
+        const rmg = ctx.createGain();
+        rmg.gain.setValueAtTime(0.001, t);
+        rmg.gain.exponentialRampToValueAtTime(0.5, t + 0.05);
+        rmg.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+        rumble.connect(rmg);
+        rmg.connect(v.gain);
+        rumble.start(t);
+        rumble.stop(t + 0.22);
     }
+    /** 激光炮：电容充放电 + 精确谐波扫频 */
     playLaserShot(pan = 0) {
-        if (!this._rateOk('laser', 150))
+        if (!this._rateOk('laser', 150) || !this.ctx)
             return;
-        this._playAsset('tower_laser', { pan, volume: 0.85, priority: SoundPriority.NORMAL, pitchJitter: 0.04 });
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(pan, 0.14);
+        if (!v)
+            return;
+        // 充电嗡鸣：快速上升的正弦
+        const charge = ctx.createOscillator();
+        charge.type = 'sine';
+        charge.frequency.setValueAtTime(800, t);
+        charge.frequency.exponentialRampToValueAtTime(3200, t + 0.04);
+        charge.frequency.exponentialRampToValueAtTime(400, t + 0.12);
+        const cg = ctx.createGain();
+        cg.gain.setValueAtTime(0.001, t);
+        cg.gain.exponentialRampToValueAtTime(0.45, t + 0.03);
+        cg.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        charge.connect(cg);
+        cg.connect(v.gain);
+        charge.start(t);
+        charge.stop(t + 0.12);
+        // 谐波层：五度叠加
+        const harm = ctx.createOscillator();
+        harm.type = 'sine';
+        harm.frequency.setValueAtTime(1200, t + 0.02);
+        harm.frequency.exponentialRampToValueAtTime(4800, t + 0.05);
+        harm.frequency.exponentialRampToValueAtTime(600, t + 0.1);
+        const hg = ctx.createGain();
+        hg.gain.setValueAtTime(0.001, t);
+        hg.gain.exponentialRampToValueAtTime(0.25, t + 0.04);
+        hg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        harm.connect(hg);
+        hg.connect(v.gain);
+        harm.start(t + 0.02);
+        harm.stop(t + 0.12);
     }
+    /** 磁轨炮：电磁加速嗡鸣 + 超音速音爆 */
     playSniperShot(pan = 0) {
-        if (!this._rateOk('sniper', 300))
+        if (!this._rateOk('sniper', 300) || !this.ctx)
             return;
-        this._playAsset('tower_sniper', { pan, volume: 1.0, priority: SoundPriority.HIGH, pitchJitter: 0.03 });
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(pan, 0.3, SoundPriority.HIGH);
+        if (!v)
+            return;
+        // 电磁加速：锯齿波频率上升
+        const accel = ctx.createOscillator();
+        accel.type = 'sawtooth';
+        accel.frequency.setValueAtTime(60, t);
+        accel.frequency.exponentialRampToValueAtTime(600, t + 0.12);
+        const ag = ctx.createGain();
+        ag.gain.setValueAtTime(0.001, t);
+        ag.gain.exponentialRampToValueAtTime(0.35, t + 0.1);
+        ag.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(400, t);
+        lp.frequency.exponentialRampToValueAtTime(2000, t + 0.12);
+        accel.connect(lp);
+        lp.connect(ag);
+        ag.connect(v.gain);
+        accel.start(t);
+        accel.stop(t + 0.15);
+        // 超音速音爆：短促噪声冲击
+        const crack = this._noiseBuf(0.05);
+        const hp = ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = 3000;
+        const cg = ctx.createGain();
+        cg.gain.setValueAtTime(0.001, t + 0.1);
+        cg.gain.exponentialRampToValueAtTime(0.8, t + 0.12);
+        cg.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+        crack.connect(hp);
+        hp.connect(cg);
+        cg.connect(v.gain);
+        crack.start(t + 0.1);
+        crack.stop(t + 0.18);
+        // 机械后坐：低频冲击
+        const recoil = ctx.createOscillator();
+        recoil.type = 'sine';
+        recoil.frequency.setValueAtTime(120, t + 0.12);
+        recoil.frequency.exponentialRampToValueAtTime(40, t + 0.25);
+        const rg = ctx.createGain();
+        rg.gain.setValueAtTime(0.5, t + 0.12);
+        rg.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+        recoil.connect(rg);
+        rg.connect(v.gain);
+        recoil.start(t + 0.12);
+        recoil.stop(t + 0.28);
     }
+    /** 焚化器：等离子点火 + 持续喷射 */
     playFlameShot(pan = 0) {
-        if (!this._rateOk('flame', 140))
+        if (!this._rateOk('flame', 140) || !this.ctx)
             return;
-        this._playAsset('tower_flame', { pan, volume: 0.75, priority: SoundPriority.LOW, pitchJitter: 0.07 });
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(pan, 0.12, SoundPriority.LOW);
+        if (!v)
+            return;
+        // 点火爆燃：短促噪声冲击
+        const ign = this._noiseBuf(0.03);
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.value = 1500;
+        bp.Q.value = 1;
+        const ig = ctx.createGain();
+        ig.gain.setValueAtTime(0.6, t);
+        ig.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+        ign.connect(bp);
+        bp.connect(ig);
+        ig.connect(v.gain);
+        ign.start(t);
+        ign.stop(t + 0.03);
+        // 持续喷射：低通噪声
+        const jet = this._noiseBuf(0.1);
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(800, t + 0.02);
+        lp.frequency.linearRampToValueAtTime(400, t + 0.1);
+        lp.Q.value = 2;
+        const jg = ctx.createGain();
+        jg.gain.setValueAtTime(0.001, t);
+        jg.gain.exponentialRampToValueAtTime(0.45, t + 0.03);
+        jg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        jet.connect(lp);
+        lp.connect(jg);
+        jg.connect(v.gain);
+        jet.start(t + 0.02);
+        jet.stop(t + 0.1);
     }
+    /** 引力场：低频引力脉冲 + 金属共振 */
     playMagneticShot(pan = 0) {
-        if (!this._rateOk('mag', 220))
+        if (!this._rateOk('mag', 220) || !this.ctx)
             return;
-        this._playAsset('tower_magnetic', { pan, volume: 0.8, priority: SoundPriority.NORMAL, pitchJitter: 0.05 });
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(pan, 0.2);
+        if (!v)
+            return;
+        // 引力脉冲：深沉低频
+        const pulse = ctx.createOscillator();
+        pulse.type = 'sine';
+        pulse.frequency.setValueAtTime(45, t);
+        pulse.frequency.exponentialRampToValueAtTime(30, t + 0.15);
+        const pg = ctx.createGain();
+        pg.gain.setValueAtTime(0.6, t);
+        pg.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+        pulse.connect(pg);
+        pg.connect(v.gain);
+        pulse.start(t);
+        pulse.stop(t + 0.18);
+        // 金属共振：带通滤波噪声
+        const noise = this._noiseBuf(0.15);
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(200, t);
+        bp.frequency.exponentialRampToValueAtTime(800, t + 0.08);
+        bp.frequency.exponentialRampToValueAtTime(150, t + 0.15);
+        bp.Q.value = 8;
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(0.001, t);
+        ng.gain.exponentialRampToValueAtTime(0.4, t + 0.04);
+        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        noise.connect(bp);
+        bp.connect(ng);
+        ng.connect(v.gain);
+        noise.start(t);
+        noise.stop(t + 0.15);
     }
+    /** 奇点炮：空间撕裂扭曲 + 内爆压缩 */
     playSingularityShot(pan = 0) {
-        if (!this._rateOk('sing', 350))
+        if (!this._rateOk('sing', 350) || !this.ctx)
             return;
-        this._playAsset('tower_singularity', { pan, volume: 0.95, priority: SoundPriority.HIGH, pitchJitter: 0.03 });
+        const ctx = this.ctx;
+        const t = ctx.currentTime;
+        const v = this._synthVoice(pan, 0.35, SoundPriority.HIGH);
+        if (!v)
+            return;
+        // 空间撕裂：锯齿波频率下坠
+        const tear = ctx.createOscillator();
+        tear.type = 'sawtooth';
+        tear.frequency.setValueAtTime(2000, t);
+        tear.frequency.exponentialRampToValueAtTime(40, t + 0.25);
+        const tg = ctx.createGain();
+        tg.gain.setValueAtTime(0.001, t);
+        tg.gain.exponentialRampToValueAtTime(0.4, t + 0.05);
+        tg.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(3000, t);
+        lp.frequency.exponentialRampToValueAtTime(200, t + 0.25);
+        tear.connect(lp);
+        lp.connect(tg);
+        tg.connect(v.gain);
+        tear.start(t);
+        tear.stop(t + 0.3);
+        // 内爆压缩：反向包络噪声
+        const imp = this._noiseBuf(0.15);
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(4000, t + 0.15);
+        bp.frequency.exponentialRampToValueAtTime(100, t + 0.3);
+        bp.Q.value = 4;
+        const ig = ctx.createGain();
+        ig.gain.setValueAtTime(0.001, t + 0.1);
+        ig.gain.exponentialRampToValueAtTime(0.6, t + 0.2);
+        ig.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+        imp.connect(bp);
+        bp.connect(ig);
+        ig.connect(v.gain);
+        imp.start(t + 0.1);
+        imp.stop(t + 0.32);
+        // 低频余震
+        const aftershock = ctx.createOscillator();
+        aftershock.type = 'sine';
+        aftershock.frequency.setValueAtTime(35, t + 0.2);
+        aftershock.frequency.exponentialRampToValueAtTime(20, t + 0.35);
+        const ag = ctx.createGain();
+        ag.gain.setValueAtTime(0.001, t);
+        ag.gain.exponentialRampToValueAtTime(0.45, t + 0.22);
+        ag.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+        aftershock.connect(ag);
+        ag.connect(v.gain);
+        aftershock.start(t + 0.2);
+        aftershock.stop(t + 0.35);
     }
     /** 按防御塔类型分发音效（供游戏逻辑统一调用） */
     playTowerShot(type, pan = 0) {
