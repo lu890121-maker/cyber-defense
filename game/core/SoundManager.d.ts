@@ -126,15 +126,15 @@ export declare class SoundManager {
     playMachineGunShot(pan?: number): void;
     /** 冰霜炮：嘶嘶声 + 结晶叮当 */
     playFrostShot(pan?: number): void;
-    /** 电磁炮：电弧噼啪 + 嗡鸣 */
+    /** 电磁炮：电弧噼啪 + 放电噪声 */
     playElectricShot(pan?: number): void;
-    /** 毒液炮：黏液声 + 气泡 */
+    /** 毒液炮：黏液声 */
     playPoisonShot(pan?: number): void;
     /** 导弹台：发射呼啸 + 撞击 */
     playBombExplosion(pan?: number): void;
-    /** 激光炮：充能 + 光束嗡鸣 */
+    /** 激光炮：充能嗡鸣 */
     playLaserShot(pan?: number): void;
-    /** 磁轨炮：低频脉冲 + 金属共鸣 */
+    /** 磁轨炮：加速嗡鸣 + 音爆 */
     playSniperShot(pan?: number): void;
     /** 焚化器：点火 + 咆哮 */
     playFlameShot(pan?: number): void;

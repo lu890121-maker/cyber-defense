@@ -585,7 +585,7 @@ export class SoundManager {
         cry.start(t + 0.02);
         cry.stop(t + 0.12);
     }
-    /** 电磁炮：电弧噼啪 + 嗡鸣 */
+    /** 电磁炮：电弧噼啪 + 放电噪声 */
     playElectricShot(pan = 0) {
         if (!this._rateOk('elec', 80) || !this.ctx)
             return; // 降低冷却
@@ -609,17 +609,6 @@ export class SoundManager {
         ag.connect(v.gain);
         arc.start(t);
         arc.stop(t + 0.1);
-        // 变压器嗡鸣：低频正弦
-        const hum = ctx.createOscillator();
-        hum.type = 'sine';
-        hum.frequency.value = 60;
-        const hg = ctx.createGain();
-        hg.gain.setValueAtTime(0.3, t);
-        hg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-        hum.connect(hg);
-        hg.connect(v.gain);
-        hum.start(t);
-        hum.stop(t + 0.1);
         // 放电噪声
         const noise = this._noiseBuf(0.06);
         const bp = ctx.createBiquadFilter();
@@ -635,7 +624,7 @@ export class SoundManager {
         noise.start(t);
         noise.stop(t + 0.06);
     }
-    /** 毒液炮：黏液声 + 气泡 */
+    /** 毒液炮：黏液声 */
     playPoisonShot(pan = 0) {
         if (!this._rateOk('poison', 120) || !this.ctx)
             return; // 降低冷却
@@ -644,18 +633,6 @@ export class SoundManager {
         const v = this._synthVoice(pan, 0.18);
         if (!v)
             return;
-        // 高压注射：短促低频冲击
-        const inj = ctx.createOscillator();
-        inj.type = 'sine';
-        inj.frequency.setValueAtTime(250, t);
-        inj.frequency.exponentialRampToValueAtTime(80, t + 0.06);
-        const ig = ctx.createGain();
-        ig.gain.setValueAtTime(0.6, t);
-        ig.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-        inj.connect(ig);
-        ig.connect(v.gain);
-        inj.start(t);
-        inj.stop(t + 0.08);
         // 腐蚀冒泡：噪声 + 低通滤波 + 颤音
         const noise = this._noiseBuf(0.15);
         const lp = ctx.createBiquadFilter();
@@ -682,19 +659,7 @@ export class SoundManager {
         const v = this._synthVoice(pan, 0.25, SoundPriority.HIGH);
         if (!v)
             return;
-        // 机械导轨释放：金属撞击
-        const rail = ctx.createOscillator();
-        rail.type = 'triangle';
-        rail.frequency.setValueAtTime(400, t);
-        rail.frequency.exponentialRampToValueAtTime(100, t + 0.05);
-        const rg = ctx.createGain();
-        rg.gain.setValueAtTime(0.5, t);
-        rg.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
-        rail.connect(rg);
-        rg.connect(v.gain);
-        rail.start(t);
-        rail.stop(t + 0.06);
-        // 火箭点火：噪声扫频（低频→高频）
+        // 发射呼啸：噪声扫频（低频→高频）
         const noise = this._noiseBuf(0.2);
         const bp = ctx.createBiquadFilter();
         bp.type = 'bandpass';
@@ -710,21 +675,20 @@ export class SoundManager {
         ng.connect(v.gain);
         noise.start(t);
         noise.stop(t + 0.2);
-        // 低频轰鸣
-        const rumble = ctx.createOscillator();
-        rumble.type = 'sine';
-        rumble.frequency.setValueAtTime(50, t + 0.03);
-        rumble.frequency.exponentialRampToValueAtTime(30, t + 0.2);
-        const rmg = ctx.createGain();
-        rmg.gain.setValueAtTime(0.001, t);
-        rmg.gain.exponentialRampToValueAtTime(0.5, t + 0.05);
-        rmg.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
-        rumble.connect(rmg);
-        rmg.connect(v.gain);
-        rumble.start(t);
-        rumble.stop(t + 0.22);
+        // 撞击：低频爆发
+        const impact = ctx.createOscillator();
+        impact.type = 'sine';
+        impact.frequency.setValueAtTime(50, t + 0.15);
+        impact.frequency.exponentialRampToValueAtTime(30, t + 0.22);
+        const ig = ctx.createGain();
+        ig.gain.setValueAtTime(0.6, t + 0.15);
+        ig.gain.exponentialRampToValueAtTime(0.001, t + 0.24);
+        impact.connect(ig);
+        ig.connect(v.gain);
+        impact.start(t + 0.15);
+        impact.stop(t + 0.24);
     }
-    /** 激光炮：充能 + 光束嗡鸣 */
+    /** 激光炮：充能嗡鸣 */
     playLaserShot(pan = 0) {
         if (!this._rateOk('laser', 80) || !this.ctx)
             return; // 降低冷却
@@ -733,7 +697,7 @@ export class SoundManager {
         const v = this._synthVoice(pan, 0.14);
         if (!v)
             return;
-        // 充电嗡鸣：快速上升的正弦
+        // 充能嗡鸣：快速上升的正弦
         const charge = ctx.createOscillator();
         charge.type = 'sine';
         charge.frequency.setValueAtTime(800, t);
@@ -747,22 +711,8 @@ export class SoundManager {
         cg.connect(v.gain);
         charge.start(t);
         charge.stop(t + 0.12);
-        // 谐波层：五度叠加
-        const harm = ctx.createOscillator();
-        harm.type = 'sine';
-        harm.frequency.setValueAtTime(1200, t + 0.02);
-        harm.frequency.exponentialRampToValueAtTime(4800, t + 0.05);
-        harm.frequency.exponentialRampToValueAtTime(600, t + 0.1);
-        const hg = ctx.createGain();
-        hg.gain.setValueAtTime(0.001, t);
-        hg.gain.exponentialRampToValueAtTime(0.25, t + 0.04);
-        hg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-        harm.connect(hg);
-        hg.connect(v.gain);
-        harm.start(t + 0.02);
-        harm.stop(t + 0.12);
     }
-    /** 磁轨炮：低频脉冲 + 金属共鸣 */
+    /** 磁轨炮：加速嗡鸣 + 音爆 */
     playSniperShot(pan = 0) {
         if (!this._rateOk('sniper', 200) || !this.ctx)
             return; // 降低冷却
@@ -803,18 +753,6 @@ export class SoundManager {
         cg.connect(v.gain);
         crack.start(t + 0.1);
         crack.stop(t + 0.18);
-        // 机械后坐：低频冲击
-        const recoil = ctx.createOscillator();
-        recoil.type = 'sine';
-        recoil.frequency.setValueAtTime(120, t + 0.12);
-        recoil.frequency.exponentialRampToValueAtTime(40, t + 0.25);
-        const rg = ctx.createGain();
-        rg.gain.setValueAtTime(0.5, t + 0.12);
-        rg.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
-        recoil.connect(rg);
-        rg.connect(v.gain);
-        recoil.start(t + 0.12);
-        recoil.stop(t + 0.28);
     }
     /** 焚化器：点火 + 咆哮 */
     playFlameShot(pan = 0) {
@@ -938,19 +876,6 @@ export class SoundManager {
         ig.connect(v.gain);
         imp.start(t + 0.1);
         imp.stop(t + 0.32);
-        // 低频余震
-        const aftershock = ctx.createOscillator();
-        aftershock.type = 'sine';
-        aftershock.frequency.setValueAtTime(35, t + 0.2);
-        aftershock.frequency.exponentialRampToValueAtTime(20, t + 0.35);
-        const ag = ctx.createGain();
-        ag.gain.setValueAtTime(0.001, t);
-        ag.gain.exponentialRampToValueAtTime(0.45, t + 0.22);
-        ag.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-        aftershock.connect(ag);
-        ag.connect(v.gain);
-        aftershock.start(t + 0.2);
-        aftershock.stop(t + 0.35);
     }
     /** 按防御塔类型分发音效（供游戏逻辑统一调用） */
     playTowerShot(type, pan = 0) {
