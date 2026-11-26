@@ -494,54 +494,54 @@ export class SoundManager {
     //  防御塔攻击音效
     // ══════════════════════════════════════════════════════
     playMachineGunShot(pan = 0) {
-        if (!this._rateOk('mg', 80))
-            return; // 提高频率限制，避免过于密集
-        this._playAsset('tower_machine_gun', { pan, volume: 1.1, priority: SoundPriority.HIGH, pitchJitter: 0.06 });
+        if (!this._rateOk('mg', 150))
+            return; // 大幅增加频率限制
+        this._playAsset('tower_machine_gun', { pan, volume: 0.9, priority: SoundPriority.NORMAL, pitchJitter: 0.06 });
     }
     playFrostShot(pan = 0) {
-        if (!this._rateOk('frost', 120))
+        if (!this._rateOk('frost', 180))
             return;
-        this._playAsset('tower_frost', { pan, volume: 1.0, priority: SoundPriority.HIGH, pitchJitter: 0.05 });
+        this._playAsset('tower_frost', { pan, volume: 0.85, priority: SoundPriority.NORMAL, pitchJitter: 0.05 });
     }
     playElectricShot(pan = 0) {
-        if (!this._rateOk('elec', 100))
+        if (!this._rateOk('elec', 150))
             return;
-        this._playAsset('tower_electric', { pan, volume: 1.05, priority: SoundPriority.HIGH, pitchJitter: 0.06 });
+        this._playAsset('tower_electric', { pan, volume: 0.9, priority: SoundPriority.NORMAL, pitchJitter: 0.06 });
     }
     playPoisonShot(pan = 0) {
-        if (!this._rateOk('poison', 140))
+        if (!this._rateOk('poison', 200))
             return;
-        this._playAsset('tower_poison', { pan, volume: 1.0, priority: SoundPriority.HIGH, pitchJitter: 0.05 });
+        this._playAsset('tower_poison', { pan, volume: 0.85, priority: SoundPriority.NORMAL, pitchJitter: 0.05 });
     }
     playBombExplosion(pan = 0) {
-        if (!this._rateOk('bomb', 180))
+        if (!this._rateOk('bomb', 250))
             return;
-        this._playAsset('tower_bomb', { pan, volume: 1.2, priority: SoundPriority.CRITICAL, pitchJitter: 0.04 });
+        this._playAsset('tower_bomb', { pan, volume: 1.0, priority: SoundPriority.HIGH, pitchJitter: 0.04 });
     }
     playLaserShot(pan = 0) {
-        if (!this._rateOk('laser', 100))
+        if (!this._rateOk('laser', 150))
             return;
-        this._playAsset('tower_laser', { pan, volume: 1.0, priority: SoundPriority.HIGH, pitchJitter: 0.04 });
+        this._playAsset('tower_laser', { pan, volume: 0.85, priority: SoundPriority.NORMAL, pitchJitter: 0.04 });
     }
     playSniperShot(pan = 0) {
-        if (!this._rateOk('sniper', 200))
+        if (!this._rateOk('sniper', 300))
             return;
-        this._playAsset('tower_sniper', { pan, volume: 1.15, priority: SoundPriority.CRITICAL, pitchJitter: 0.03 });
+        this._playAsset('tower_sniper', { pan, volume: 1.0, priority: SoundPriority.HIGH, pitchJitter: 0.03 });
     }
     playFlameShot(pan = 0) {
-        if (!this._rateOk('flame', 90))
+        if (!this._rateOk('flame', 140))
             return;
-        this._playAsset('tower_flame', { pan, volume: 0.85, priority: SoundPriority.NORMAL, pitchJitter: 0.07 });
+        this._playAsset('tower_flame', { pan, volume: 0.75, priority: SoundPriority.LOW, pitchJitter: 0.07 });
     }
     playMagneticShot(pan = 0) {
-        if (!this._rateOk('mag', 160))
+        if (!this._rateOk('mag', 220))
             return;
-        this._playAsset('tower_magnetic', { pan, volume: 0.95, priority: SoundPriority.HIGH, pitchJitter: 0.05 });
+        this._playAsset('tower_magnetic', { pan, volume: 0.8, priority: SoundPriority.NORMAL, pitchJitter: 0.05 });
     }
     playSingularityShot(pan = 0) {
-        if (!this._rateOk('sing', 260))
+        if (!this._rateOk('sing', 350))
             return;
-        this._playAsset('tower_singularity', { pan, volume: 1.1, priority: SoundPriority.CRITICAL, pitchJitter: 0.03 });
+        this._playAsset('tower_singularity', { pan, volume: 0.95, priority: SoundPriority.HIGH, pitchJitter: 0.03 });
     }
     /** 按防御塔类型分发音效（供游戏逻辑统一调用） */
     playTowerShot(type, pan = 0) {
