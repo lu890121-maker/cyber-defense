@@ -1,12 +1,14 @@
 /**
- * 游戏音频系统 v3 —— 卡通赛博朋克风格
+ * 游戏音频系统 v4 —— 专业级音频管理
  * 霓虹壁垒
  *
  * 设计理念：
- * - 全合成音效，零外部依赖
- * - 明快Q弹的卡通感 + 赛博电子质感
- * - 长时间游玩不累耳（控制音量、避免刺耳高频）
- * - 完整的状态管理和性能优化
+ * - 音乐与音效完全分离，独立控制
+ * - 支持外部音频文件加载（MP3/OGG/WAV）
+ * - 完整的淡入淡出和交叉淡化
+ * - 多层音效叠加（冲击+主体+余波）
+ * - 智能并发控制和防堆积
+ * - 本地存储音量设置
  */
 /** 音频总线 */
 export declare enum AudioBus {
@@ -33,8 +35,10 @@ export interface SoundOptions {
     priority?: SoundPriority;
     bus?: AudioBus;
 }
-/** BGM 曲目 */
-export type BgmTrack = 'menu' | 'battle' | 'boss';
+/** 音乐曲目 */
+export type MusicTrack = 'menu' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5' | 'L6' | 'L7' | 'L8' | 'L9' | 'victory' | 'boss';
+/** 兼容旧代码的类型别名 */
+export type BgmTrack = MusicTrack;
 export declare class SoundManager {
     private ctx;
     private enabled;
@@ -44,27 +48,100 @@ export declare class SoundManager {
     private compressor;
     private voices;
     private readonly MAX_VOICES;
-    private loops;
-    private currentBgm;
+    private musicBuffers;
+    private currentMusicSource;
+    private currentMusicGain;
+    private currentTrack;
+    private musicLoading;
+    private sfxBuffers;
     private busVolumes;
     private cooldowns;
     private readonly STORAGE_KEY;
+    private readonly basePath;
     constructor();
     private init;
-    /** 加载音频资源（兼容性方法） */
-    load(onProgress?: (loaded: number, total: number) => void): Promise<void>;
-    /** 启动音乐（兼容性方法） */
-    startMusic(track?: BgmTrack): void;
-    /** 设置张力（兼容性方法） */
-    setTension(level: number): void;
-    /** 设置关卡层级（兼容性方法） */
-    setLevelTier(levelIndex: number): void;
-    /** 每帧更新（兼容性方法） */
-    tick(): void;
-    /** 设置准备期滤镜（兼容性方法） */
-    setPrepFilter(on: boolean): void;
-    /** 解锁音频上下文（用户交互后调用） */
-    unlock(): void;
+    /** 加载音乐文件 */
+    loadMusic(track: MusicTrack): Promise<void>;
+    /** 预加载所有音乐 */
+    preloadAllMusic(): Promise<void>;
+    /** 播放音乐（带淡入） */
+    playMusic(track: MusicTrack, fadeDuration?: number): void;
+    private _startMusicInternal;
+    /** 淡出音乐 */
+    fadeOutMusic(duration?: number): void;
+    /** 停止音乐 */
+    stopMusic(): void;
+    /** 暂停音乐 */
+    pauseMusic(): void;
+    /** 恢复音乐 */
+    resumeMusic(): void;
+    /** 获取当前音乐 */
+    getCurrentMusic(): MusicTrack | null;
+    /** 加载音效文件 */
+    loadSfx(name: string): Promise<void>;
+    /** 预加载所有音效 */
+    preloadAllSfx(): Promise<void>;
+    /** 播放音效 */
+    playSfx(name: string, opts?: SoundOptions): void;
+    /** 合成音效兜底（当音频文件不存在时） */
+    private playSynthSfx;
+    /** 连射塔：快速"哒哒" */
+    playMachineGunShot(pan?: number): void;
+    /** 霜寒塔：冰冻"嘶嘶" */
+    playFrostShot(pan?: number): void;
+    /** 雷弧塔：电弧"噼啪" */
+    playElectricShot(pan?: number): void;
+    /** 瘴毒塔：毒液"咕噜" */
+    playPoisonShot(pan?: number): void;
+    /** 爆裂塔：爆炸"嘭"（三层：冲击+主体+余波） */
+    playBombExplosion(pan?: number): void;
+    /** 光束塔：激光"嗞" */
+    playLaserShot(pan?: number): void;
+    /** 鹰眼塔：狙击"砰" */
+    playSniperShot(pan?: number): void;
+    /** 焚焰塔：火焰"呼呼" */
+    playFlameShot(pan?: number): void;
+    /** 磁引塔：磁力"嗡" */
+    playMagneticShot(pan?: number): void;
+    /** 奇点塔：奇点"咻" */
+    playSingularityShot(pan?: number): void;
+    /** 按塔类型分发 */
+    playTowerShot(type: string, pan?: number): void;
+    /** 敌人受击（根据体型分层） */
+    playEnemyHit(pan?: number, size?: number): void;
+    /** 暴击命中 */
+    playCritHit(pan?: number): void;
+    /** 基地受击 */
+    playBaseHit(): void;
+    /** 小怪死亡 */
+    playEnemyDeath(pan?: number): void;
+    /** 精英死亡 */
+    playEnemyDeathBig(pan?: number): void;
+    /** Boss死亡 */
+    playBossDeath(): void;
+    /** 怪物逃脱 */
+    playEnemyEscape(pan?: number): void;
+    playButtonClick(): void;
+    playButtonHover(): void;
+    playSummon(): void;
+    playPlaceTower(): void;
+    playSellTower(): void;
+    playDenied(): void;
+    playGoldGain(): void;
+    playMergeSuccess(): void;
+    playFusionSuccess(): void;
+    playUpgradeSelect(): void;
+    playSkillReady(): void;
+    playWaveStart(): void;
+    playWaveClear(): void;
+    playBossSpawn(): void;
+    playCountdownTick(urgent?: boolean): void;
+    playOverloadActivate(): void;
+    playOverloadEnd(): void;
+    playParalyze(): void;
+    playMenuStart(): void;
+    playGameOver(): void;
+    playVictory(): void;
     setEnabled(enabled: boolean): void;
     isEnabled(): boolean;
     setMuted(muted: boolean): void;
@@ -78,107 +155,18 @@ export declare class SoundManager {
     private _saveSettings;
     private loadSettings;
     private _voice;
-    /** 冷却检查 */
     private _canPlay;
-    /** 脉冲炮：快速连射，清脆"哒哒" */
-    playMachineGunShot(pan?: number): void;
-    /** 冰霜炮：冷冽"嘶嘶" */
-    playFrostShot(pan?: number): void;
-    /** 电磁炮：电弧"噼啪" */
-    playElectricShot(pan?: number): void;
-    /** 毒液炮：黏稠"咕噜" */
-    playPoisonShot(pan?: number): void;
-    /** 炸弹台：Q弹"嘭" */
-    playBombExplosion(pan?: number): void;
-    /** 激光炮：锐利"嗞" */
-    playLaserShot(pan?: number): void;
-    /** 磁轨炮：有力"砰" */
-    playSniperShot(pan?: number): void;
-    /** 焚化器：持续"呼呼" */
-    playFlameShot(pan?: number): void;
-    /** 引力场：深沉"嗡" */
-    playMagneticShot(pan?: number): void;
-    /** 奇点炮：科幻"咻" */
-    playSingularityShot(pan?: number): void;
-    /** 按塔类型分发 */
-    playTowerShot(type: string, pan?: number): void;
-    /** 命中：清脆"叮" */
-    playEnemyHit(pan?: number, size?: number): void;
-    /** 暴击：明亮"叮当" */
-    playCritHit(pan?: number): void;
-    /** 基地受击：警告"嗡" */
-    playBaseHit(): void;
-    /** 小怪死亡：短促"噗" */
-    playEnemyDeath(pan?: number): void;
-    /** 大怪死亡：重型"嘭" */
-    playEnemyDeathBig(pan?: number): void;
-    /** Boss死亡：史诗"轰" */
-    playBossDeath(): void;
-    /** 怪物逃脱：低沉"呜" */
-    playEnemyEscape(pan?: number): void;
-    /** 按钮点击：柔和"哒" */
-    playButtonClick(): void;
-    /** 按钮悬停：极微妙"嗒" */
-    playButtonHover(): void;
-    /** 召唤：明亮"叮" */
-    playSummon(): void;
-    /** 建造：上行"叮叮" */
-    playPlaceTower(): void;
-    /** 出售：柔和"沙" */
-    playSellTower(): void;
-    /** 拒绝：低沉"嗡" */
-    playDenied(): void;
-    /** 金币获取：清脆"叮" */
-    playGoldGain(): void;
-    /** 合成成功：明亮"叮叮" */
-    playMergeSuccess(): void;
-    /** 融合成功：更亮"叮叮叮" */
-    playFusionSuccess(): void;
-    /** 升级选择：上行音阶 */
-    playUpgradeSelect(): void;
-    /** 技能就绪：明亮提示 */
-    playSkillReady(): void;
-    /** 波次开始：警报"嘟嘟" */
-    playWaveStart(): void;
-    /** 波次结束：胜利号角 */
-    playWaveClear(): void;
-    /** Boss出现：深沉警告 */
-    playBossSpawn(): void;
-    /** 倒计时滴答 */
-    playCountdownTick(urgent?: boolean): void;
-    /** 过载激活 */
-    playOverloadActivate(): void;
-    /** 过载结束 */
-    playOverloadEnd(): void;
-    /** 麻痹效果 */
-    playParalyze(): void;
-    /** 菜单开始 */
-    playMenuStart(): void;
-    /** 游戏结束：下行音阶 */
-    playGameOver(): void;
-    /** 胜利：上行大调和弦 */
-    playVictory(): void;
-    /** 启动菜单背景音 */
-    startMenuAmbience(): void;
-    /** 启动战斗背景音 */
-    startBattleMusic(): void;
-    /** 启动Boss战音乐 */
-    startBossMusic(): void;
-    /** 停止菜单背景音 */
-    stopMenuAmbience(): void;
-    /** 停止战斗音乐 */
-    stopBattleMusic(): void;
-    /** 停止Boss音乐 */
-    stopBossMusic(): void;
-    /** 设置BGM */
-    setBgm(track: BgmTrack | null): void;
-    /** 获取当前BGM */
-    getBgm(): BgmTrack | null;
-    private _noiseBuf;
-    /** 全局暂停 */
+    /** 解锁音频上下文 */
+    unlock(): void;
+    /** 兼容性方法 */
+    load(onProgress?: (loaded: number, total: number) => void): Promise<void>;
+    startMusic(track?: MusicTrack): void;
+    setBgm(track: MusicTrack | null): void;
+    setTension(level: number): void;
+    setLevelTier(levelIndex: number): void;
+    tick(): void;
+    setPrepFilter(on: boolean): void;
     suspend(): void;
-    /** 全局恢复 */
     resume(): void;
-    /** 诊断状态 */
     getDebugState(): Record<string, unknown>;
 }
