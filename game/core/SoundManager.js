@@ -414,31 +414,10 @@ export class SoundManager {
         this.voices.push(voice);
         return voice;
     }
-    /** 播放一个音频素材 */
+    /** 播放一个音频素材（当前静音模式） */
     _playAsset(name, opts = {}) {
-        if (!this.enabled || !this.ctx)
-            return;
-        const buf = this.buffers.get(name);
-        if (!buf) {
-            // 素材尚未就绪 → 用轻量合成音兜底，保证有反馈
-            this._fallback(opts);
-            return;
-        }
-        const rate = Math.max(0.25, Math.min(4.0, (opts.pitch ?? 1) * this._jitter(1, opts.pitchJitter ?? 0.04)));
-        const dur = buf.duration / rate;
-        const bus = opts.bus ?? AudioBus.SFX;
-        const v = this._voice(bus, opts.priority ?? SoundPriority.NORMAL, dur, opts);
-        if (!v)
-            return;
-        const ctx = this.ctx;
-        const src = ctx.createBufferSource();
-        src.buffer = buf;
-        src.playbackRate.value = rate;
-        src.connect(v.gain);
-        src.start();
-        v.sources.push(src);
-        // 按实际播放速率修正声部结束时间
-        v.end = ctx.currentTime + dur + 0.1;
+        // 静音模式：不播放任何素材
+        return;
     }
     /** 频率限制：同一 key 在 minMs 内只播放一次 */
     _rateOk(key, minMs) {
@@ -512,371 +491,26 @@ export class SoundManager {
             return null;
         return { gain: v.gain, pan: v.pan };
     }
-    /** 脉冲炮：快速连射，短促金属撞击 */
-    playMachineGunShot(pan = 0) {
-        if (!this._rateOk('mg', 60) || !this.ctx)
-            return; // 降低冷却，支持快速连射
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(pan, 0.08);
-        if (!v)
-            return;
-        // 金属撞击：短促方波 + 快速衰减
-        const osc = ctx.createOscillator();
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(180 + Math.random() * 40, t);
-        osc.frequency.exponentialRampToValueAtTime(60, t + 0.04);
-        const g = ctx.createGain();
-        g.gain.setValueAtTime(0.7, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-        osc.connect(g);
-        g.connect(v.gain);
-        osc.start(t);
-        osc.stop(t + 0.06);
-        // 气动释放：高频噪声短脉冲
-        const noise = this._noiseBuf(0.04);
-        const bp = ctx.createBiquadFilter();
-        bp.type = 'bandpass';
-        bp.frequency.value = 3500;
-        bp.Q.value = 2;
-        const ng = ctx.createGain();
-        ng.gain.setValueAtTime(0.4, t);
-        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
-        noise.connect(bp);
-        bp.connect(ng);
-        ng.connect(v.gain);
-        noise.start(t);
-        noise.stop(t + 0.04);
-    }
-    /** 冰霜炮：嘶嘶声 + 结晶叮当 */
-    playFrostShot(pan = 0) {
-        if (!this._rateOk('frost', 100) || !this.ctx)
-            return; // 降低冷却
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(pan, 0.15);
-        if (!v)
-            return;
-        // 高压气体释放：高频噪声扫频
-        const noise = this._noiseBuf(0.12);
-        const hp = ctx.createBiquadFilter();
-        hp.type = 'highpass';
-        hp.frequency.setValueAtTime(2000, t);
-        hp.frequency.exponentialRampToValueAtTime(6000, t + 0.08);
-        const ng = ctx.createGain();
-        ng.gain.setValueAtTime(0.001, t);
-        ng.gain.exponentialRampToValueAtTime(0.5, t + 0.01);
-        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-        noise.connect(hp);
-        hp.connect(ng);
-        ng.connect(v.gain);
-        noise.start(t);
-        noise.stop(t + 0.12);
-        // 冰晶碎裂：高频正弦短脉冲
-        const cry = ctx.createOscillator();
-        cry.type = 'sine';
-        cry.frequency.setValueAtTime(4200, t + 0.02);
-        cry.frequency.exponentialRampToValueAtTime(1800, t + 0.1);
-        const cg = ctx.createGain();
-        cg.gain.setValueAtTime(0.3, t + 0.02);
-        cg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-        cry.connect(cg);
-        cg.connect(v.gain);
-        cry.start(t + 0.02);
-        cry.stop(t + 0.12);
-    }
-    /** 电磁炮：电弧噼啪 + 放电噪声 */
-    playElectricShot(pan = 0) {
-        if (!this._rateOk('elec', 80) || !this.ctx)
-            return; // 降低冷却
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(pan, 0.12);
-        if (!v)
-            return;
-        // 电弧噼啪：锯齿波快速频率跳变
-        const arc = ctx.createOscillator();
-        arc.type = 'sawtooth';
-        arc.frequency.setValueAtTime(120, t);
-        arc.frequency.setValueAtTime(800, t + 0.01);
-        arc.frequency.setValueAtTime(200, t + 0.02);
-        arc.frequency.setValueAtTime(1200, t + 0.03);
-        arc.frequency.setValueAtTime(150, t + 0.05);
-        const ag = ctx.createGain();
-        ag.gain.setValueAtTime(0.5, t);
-        ag.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-        arc.connect(ag);
-        ag.connect(v.gain);
-        arc.start(t);
-        arc.stop(t + 0.1);
-        // 放电噪声
-        const noise = this._noiseBuf(0.06);
-        const bp = ctx.createBiquadFilter();
-        bp.type = 'bandpass';
-        bp.frequency.value = 5000;
-        bp.Q.value = 3;
-        const ng = ctx.createGain();
-        ng.gain.setValueAtTime(0.35, t);
-        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-        noise.connect(bp);
-        bp.connect(ng);
-        ng.connect(v.gain);
-        noise.start(t);
-        noise.stop(t + 0.06);
-    }
-    /** 毒液炮：黏液声 */
-    playPoisonShot(pan = 0) {
-        if (!this._rateOk('poison', 120) || !this.ctx)
-            return; // 降低冷却
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(pan, 0.18);
-        if (!v)
-            return;
-        // 腐蚀冒泡：噪声 + 低通滤波 + 颤音
-        const noise = this._noiseBuf(0.15);
-        const lp = ctx.createBiquadFilter();
-        lp.type = 'lowpass';
-        lp.frequency.setValueAtTime(600, t + 0.03);
-        lp.frequency.linearRampToValueAtTime(300, t + 0.15);
-        lp.Q.value = 5;
-        const ng = ctx.createGain();
-        ng.gain.setValueAtTime(0.001, t);
-        ng.gain.exponentialRampToValueAtTime(0.4, t + 0.04);
-        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-        noise.connect(lp);
-        lp.connect(ng);
-        ng.connect(v.gain);
-        noise.start(t);
-        noise.stop(t + 0.15);
-    }
-    /** 导弹台：发射呼啸 + 撞击 */
-    playBombExplosion(pan = 0) {
-        if (!this._rateOk('bomb', 180) || !this.ctx)
-            return; // 降低冷却
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(pan, 0.25, SoundPriority.HIGH);
-        if (!v)
-            return;
-        // 发射呼啸：噪声扫频（低频→高频）
-        const noise = this._noiseBuf(0.2);
-        const bp = ctx.createBiquadFilter();
-        bp.type = 'bandpass';
-        bp.frequency.setValueAtTime(300, t + 0.02);
-        bp.frequency.exponentialRampToValueAtTime(2000, t + 0.15);
-        bp.Q.value = 1.5;
-        const ng = ctx.createGain();
-        ng.gain.setValueAtTime(0.001, t);
-        ng.gain.exponentialRampToValueAtTime(0.7, t + 0.04);
-        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-        noise.connect(bp);
-        bp.connect(ng);
-        ng.connect(v.gain);
-        noise.start(t);
-        noise.stop(t + 0.2);
-        // 撞击：低频爆发
-        const impact = ctx.createOscillator();
-        impact.type = 'sine';
-        impact.frequency.setValueAtTime(50, t + 0.15);
-        impact.frequency.exponentialRampToValueAtTime(30, t + 0.22);
-        const ig = ctx.createGain();
-        ig.gain.setValueAtTime(0.6, t + 0.15);
-        ig.gain.exponentialRampToValueAtTime(0.001, t + 0.24);
-        impact.connect(ig);
-        ig.connect(v.gain);
-        impact.start(t + 0.15);
-        impact.stop(t + 0.24);
-    }
-    /** 激光炮：充能嗡鸣 */
-    playLaserShot(pan = 0) {
-        if (!this._rateOk('laser', 80) || !this.ctx)
-            return; // 降低冷却
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(pan, 0.14);
-        if (!v)
-            return;
-        // 充能嗡鸣：快速上升的正弦
-        const charge = ctx.createOscillator();
-        charge.type = 'sine';
-        charge.frequency.setValueAtTime(800, t);
-        charge.frequency.exponentialRampToValueAtTime(3200, t + 0.04);
-        charge.frequency.exponentialRampToValueAtTime(400, t + 0.12);
-        const cg = ctx.createGain();
-        cg.gain.setValueAtTime(0.001, t);
-        cg.gain.exponentialRampToValueAtTime(0.45, t + 0.03);
-        cg.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-        charge.connect(cg);
-        cg.connect(v.gain);
-        charge.start(t);
-        charge.stop(t + 0.12);
-    }
-    /** 磁轨炮：加速嗡鸣 + 音爆 */
-    playSniperShot(pan = 0) {
-        if (!this._rateOk('sniper', 200) || !this.ctx)
-            return; // 降低冷却
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(pan, 0.3, SoundPriority.HIGH);
-        if (!v)
-            return;
-        // 电磁加速：锯齿波频率上升
-        const accel = ctx.createOscillator();
-        accel.type = 'sawtooth';
-        accel.frequency.setValueAtTime(60, t);
-        accel.frequency.exponentialRampToValueAtTime(600, t + 0.12);
-        const ag = ctx.createGain();
-        ag.gain.setValueAtTime(0.001, t);
-        ag.gain.exponentialRampToValueAtTime(0.35, t + 0.1);
-        ag.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-        const lp = ctx.createBiquadFilter();
-        lp.type = 'lowpass';
-        lp.frequency.setValueAtTime(400, t);
-        lp.frequency.exponentialRampToValueAtTime(2000, t + 0.12);
-        accel.connect(lp);
-        lp.connect(ag);
-        ag.connect(v.gain);
-        accel.start(t);
-        accel.stop(t + 0.15);
-        // 超音速音爆：短促噪声冲击
-        const crack = this._noiseBuf(0.05);
-        const hp = ctx.createBiquadFilter();
-        hp.type = 'highpass';
-        hp.frequency.value = 3000;
-        const cg = ctx.createGain();
-        cg.gain.setValueAtTime(0.001, t + 0.1);
-        cg.gain.exponentialRampToValueAtTime(0.8, t + 0.12);
-        cg.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-        crack.connect(hp);
-        hp.connect(cg);
-        cg.connect(v.gain);
-        crack.start(t + 0.1);
-        crack.stop(t + 0.18);
-    }
-    /** 焚化器：点火 + 咆哮 */
-    playFlameShot(pan = 0) {
-        if (!this._rateOk('flame', 70) || !this.ctx)
-            return; // 降低冷却
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(pan, 0.12, SoundPriority.LOW);
-        if (!v)
-            return;
-        // 点火爆燃：短促噪声冲击
-        const ign = this._noiseBuf(0.03);
-        const bp = ctx.createBiquadFilter();
-        bp.type = 'bandpass';
-        bp.frequency.value = 1500;
-        bp.Q.value = 1;
-        const ig = ctx.createGain();
-        ig.gain.setValueAtTime(0.6, t);
-        ig.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
-        ign.connect(bp);
-        bp.connect(ig);
-        ig.connect(v.gain);
-        ign.start(t);
-        ign.stop(t + 0.03);
-        // 持续喷射：低通噪声
-        const jet = this._noiseBuf(0.1);
-        const lp = ctx.createBiquadFilter();
-        lp.type = 'lowpass';
-        lp.frequency.setValueAtTime(800, t + 0.02);
-        lp.frequency.linearRampToValueAtTime(400, t + 0.1);
-        lp.Q.value = 2;
-        const jg = ctx.createGain();
-        jg.gain.setValueAtTime(0.001, t);
-        jg.gain.exponentialRampToValueAtTime(0.45, t + 0.03);
-        jg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-        jet.connect(lp);
-        lp.connect(jg);
-        jg.connect(v.gain);
-        jet.start(t + 0.02);
-        jet.stop(t + 0.1);
-    }
-    /** 引力场：低频脉冲 + 共鸣 */
-    playMagneticShot(pan = 0) {
-        if (!this._rateOk('mag', 150) || !this.ctx)
-            return; // 降低冷却
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(pan, 0.2);
-        if (!v)
-            return;
-        // 引力脉冲：深沉低频
-        const pulse = ctx.createOscillator();
-        pulse.type = 'sine';
-        pulse.frequency.setValueAtTime(45, t);
-        pulse.frequency.exponentialRampToValueAtTime(30, t + 0.15);
-        const pg = ctx.createGain();
-        pg.gain.setValueAtTime(0.6, t);
-        pg.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-        pulse.connect(pg);
-        pg.connect(v.gain);
-        pulse.start(t);
-        pulse.stop(t + 0.18);
-        // 金属共振：带通滤波噪声
-        const noise = this._noiseBuf(0.15);
-        const bp = ctx.createBiquadFilter();
-        bp.type = 'bandpass';
-        bp.frequency.setValueAtTime(200, t);
-        bp.frequency.exponentialRampToValueAtTime(800, t + 0.08);
-        bp.frequency.exponentialRampToValueAtTime(150, t + 0.15);
-        bp.Q.value = 8;
-        const ng = ctx.createGain();
-        ng.gain.setValueAtTime(0.001, t);
-        ng.gain.exponentialRampToValueAtTime(0.4, t + 0.04);
-        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-        noise.connect(bp);
-        bp.connect(ng);
-        ng.connect(v.gain);
-        noise.start(t);
-        noise.stop(t + 0.15);
-    }
-    /** 奇点炮：扭曲 + 内爆 */
-    playSingularityShot(pan = 0) {
-        if (!this._rateOk('sing', 250) || !this.ctx)
-            return; // 降低冷却
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(pan, 0.35, SoundPriority.HIGH);
-        if (!v)
-            return;
-        // 空间撕裂：锯齿波频率下坠
-        const tear = ctx.createOscillator();
-        tear.type = 'sawtooth';
-        tear.frequency.setValueAtTime(2000, t);
-        tear.frequency.exponentialRampToValueAtTime(40, t + 0.25);
-        const tg = ctx.createGain();
-        tg.gain.setValueAtTime(0.001, t);
-        tg.gain.exponentialRampToValueAtTime(0.4, t + 0.05);
-        tg.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-        const lp = ctx.createBiquadFilter();
-        lp.type = 'lowpass';
-        lp.frequency.setValueAtTime(3000, t);
-        lp.frequency.exponentialRampToValueAtTime(200, t + 0.25);
-        tear.connect(lp);
-        lp.connect(tg);
-        tg.connect(v.gain);
-        tear.start(t);
-        tear.stop(t + 0.3);
-        // 内爆压缩：反向包络噪声
-        const imp = this._noiseBuf(0.15);
-        const bp = ctx.createBiquadFilter();
-        bp.type = 'bandpass';
-        bp.frequency.setValueAtTime(4000, t + 0.15);
-        bp.frequency.exponentialRampToValueAtTime(100, t + 0.3);
-        bp.Q.value = 4;
-        const ig = ctx.createGain();
-        ig.gain.setValueAtTime(0.001, t + 0.1);
-        ig.gain.exponentialRampToValueAtTime(0.6, t + 0.2);
-        ig.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
-        imp.connect(bp);
-        bp.connect(ig);
-        ig.connect(v.gain);
-        imp.start(t + 0.1);
-        imp.stop(t + 0.32);
-    }
+    /** 脉冲炮（静音模式） */
+    playMachineGunShot(pan = 0) { return; }
+    /** 冰霜炮（静音模式） */
+    playFrostShot(pan = 0) { return; }
+    /** 电磁炮（静音模式） */
+    playElectricShot(pan = 0) { return; }
+    /** 毒液炮（静音模式） */
+    playPoisonShot(pan = 0) { return; }
+    /** 导弹台（静音模式） */
+    playBombExplosion(pan = 0) { return; }
+    /** 激光炮（静音模式） */
+    playLaserShot(pan = 0) { return; }
+    /** 磁轨炮（静音模式） */
+    playSniperShot(pan = 0) { return; }
+    /** 焚化器（静音模式） */
+    playFlameShot(pan = 0) { return; }
+    /** 引力场（静音模式） */
+    playMagneticShot(pan = 0) { return; }
+    /** 奇点炮（静音模式） */
+    playSingularityShot(pan = 0) { return; }
     /** 按防御塔类型分发音效（供游戏逻辑统一调用） */
     playTowerShot(type, pan = 0) {
         switch (type) {
@@ -916,391 +550,49 @@ export class SoundManager {
         }
     }
     // ══════════════════════════════════════════════════════
-    //  命中 / 死亡 / 逃脱（实时合成，简洁有力）
+    //  命中 / 死亡 / 逃脱（静音模式）
     // ══════════════════════════════════════════════════════
-    /** 命中反馈：星际争霸风格的清晰金属撞击 */
-    playEnemyHit(pan = 0, size = 15) {
-        if (!this._rateOk('hit', 50) || !this.ctx)
-            return; // 降低冷却，支持密集火力
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(pan, 0.08);
-        if (!v)
-            return;
-        // 主音：清晰的金属撞击（类似星际机枪兵命中）
-        const osc1 = ctx.createOscillator();
-        osc1.type = 'triangle';
-        const baseFreq = Math.max(180, Math.min(320, 320 - size * 6));
-        osc1.frequency.setValueAtTime(baseFreq, t);
-        osc1.frequency.exponentialRampToValueAtTime(baseFreq * 0.4, t + 0.05);
-        const g1 = ctx.createGain();
-        g1.gain.setValueAtTime(0.6, t);
-        g1.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
-        osc1.connect(g1);
-        g1.connect(v.gain);
-        osc1.start(t);
-        osc1.stop(t + 0.07);
-        // 高频泛音：增加清晰度
-        const osc2 = ctx.createOscillator();
-        osc2.type = 'square';
-        osc2.frequency.setValueAtTime(baseFreq * 2.5, t);
-        osc2.frequency.exponentialRampToValueAtTime(baseFreq * 1.2, t + 0.03);
-        const g2 = ctx.createGain();
-        g2.gain.setValueAtTime(0.25, t);
-        g2.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
-        osc2.connect(g2);
-        g2.connect(v.gain);
-        osc2.start(t);
-        osc2.stop(t + 0.05);
-        // 瞬态噪声：增加打击感
-        const noise = this._noiseBuf(0.02);
-        const hp = ctx.createBiquadFilter();
-        hp.type = 'highpass';
-        hp.frequency.value = 3000;
-        const ng = ctx.createGain();
-        ng.gain.setValueAtTime(0.3, t);
-        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.015);
-        noise.connect(hp);
-        hp.connect(ng);
-        ng.connect(v.gain);
-        noise.start(t);
-        noise.stop(t + 0.02);
-    }
-    /** 暴击命中：明亮叮当 + 轻微混响 */
-    playCritHit(pan = 0) {
-        if (!this._rateOk('crit', 100) || !this.ctx)
-            return;
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(pan, 0.15);
-        if (!v)
-            return;
-        // 明亮叮当：高频正弦波
-        const ding = ctx.createOscillator();
-        ding.type = 'sine';
-        ding.frequency.setValueAtTime(1200, t);
-        ding.frequency.exponentialRampToValueAtTime(800, t + 0.1);
-        const dg = ctx.createGain();
-        dg.gain.setValueAtTime(0.5, t);
-        dg.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-        ding.connect(dg);
-        dg.connect(v.gain);
-        ding.start(t);
-        ding.stop(t + 0.12);
-        // 泛音层
-        const harm = ctx.createOscillator();
-        harm.type = 'sine';
-        harm.frequency.setValueAtTime(2400, t);
-        const hg = ctx.createGain();
-        hg.gain.setValueAtTime(0.2, t);
-        hg.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-        harm.connect(hg);
-        hg.connect(v.gain);
-        harm.start(t);
-        harm.stop(t + 0.08);
-    }
-    /** 基地受击：警告号角 */
-    playBaseHit() {
-        if (!this._rateOk('base_hit', 300) || !this.ctx)
-            return;
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(0, 0.3, SoundPriority.CRITICAL);
-        if (!v)
-            return;
-        // 警告号角：低频锯齿波
-        const horn = ctx.createOscillator();
-        horn.type = 'sawtooth';
-        horn.frequency.setValueAtTime(150, t);
-        horn.frequency.setValueAtTime(120, t + 0.1);
-        horn.frequency.setValueAtTime(150, t + 0.2);
-        const hg = ctx.createGain();
-        hg.gain.setValueAtTime(0.001, t);
-        hg.gain.exponentialRampToValueAtTime(0.6, t + 0.05);
-        hg.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
-        const lp = ctx.createBiquadFilter();
-        lp.type = 'lowpass';
-        lp.frequency.value = 800;
-        horn.connect(lp);
-        lp.connect(hg);
-        hg.connect(v.gain);
-        horn.start(t);
-        horn.stop(t + 0.3);
-    }
-    /** 普通怪物死亡：星际争霸风格的干脆爆裂 */
-    playEnemyDeath(pan = 0) {
-        if (!this._rateOk('death', 120) || !this.ctx)
-            return;
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(pan, 0.18);
-        if (!v)
-            return;
-        // 爆裂主音：快速频率下坠（类似星际虫族死亡）
-        const burst = ctx.createOscillator();
-        burst.type = 'sawtooth';
-        burst.frequency.setValueAtTime(400, t);
-        burst.frequency.exponentialRampToValueAtTime(80, t + 0.12);
-        const bg = ctx.createGain();
-        bg.gain.setValueAtTime(0.5, t);
-        bg.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-        const lp = ctx.createBiquadFilter();
-        lp.type = 'lowpass';
-        lp.frequency.setValueAtTime(2000, t);
-        lp.frequency.exponentialRampToValueAtTime(400, t + 0.12);
-        burst.connect(lp);
-        lp.connect(bg);
-        bg.connect(v.gain);
-        burst.start(t);
-        burst.stop(t + 0.14);
-        // 碎裂噪声：短促高频（增加质感）
-        const crack = this._noiseBuf(0.06);
-        const hp = ctx.createBiquadFilter();
-        hp.type = 'highpass';
-        hp.frequency.value = 2500;
-        const cg = ctx.createGain();
-        cg.gain.setValueAtTime(0.4, t);
-        cg.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-        crack.connect(hp);
-        hp.connect(cg);
-        cg.connect(v.gain);
-        crack.start(t);
-        crack.stop(t + 0.06);
-        // 低频余震：增加重量感
-        const sub = ctx.createOscillator();
-        sub.type = 'sine';
-        sub.frequency.setValueAtTime(100, t + 0.02);
-        sub.frequency.exponentialRampToValueAtTime(40, t + 0.15);
-        const sg = ctx.createGain();
-        sg.gain.setValueAtTime(0.35, t + 0.02);
-        sg.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-        sub.connect(sg);
-        sg.connect(v.gain);
-        sub.start(t + 0.02);
-        sub.stop(t + 0.16);
-    }
-    /** 大型怪物死亡：星际争霸风格的重型爆裂 */
-    playEnemyDeathBig(pan = 0) {
-        if (!this._rateOk('death_big', 180) || !this.ctx)
-            return;
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(pan, 0.28);
-        if (!v)
-            return;
-        // 重型爆裂：多层频率下坠（类似星际重型单位死亡）
-        const heavy = ctx.createOscillator();
-        heavy.type = 'sawtooth';
-        heavy.frequency.setValueAtTime(500, t);
-        heavy.frequency.exponentialRampToValueAtTime(60, t + 0.2);
-        const hg = ctx.createGain();
-        hg.gain.setValueAtTime(0.6, t);
-        hg.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
-        const lp = ctx.createBiquadFilter();
-        lp.type = 'lowpass';
-        lp.frequency.setValueAtTime(3000, t);
-        lp.frequency.exponentialRampToValueAtTime(300, t + 0.2);
-        heavy.connect(lp);
-        lp.connect(hg);
-        hg.connect(v.gain);
-        heavy.start(t);
-        heavy.stop(t + 0.22);
-        // 金属碎裂：宽频噪声（增加质感）
-        const debris = this._noiseBuf(0.12);
-        const bp = ctx.createBiquadFilter();
-        bp.type = 'bandpass';
-        bp.frequency.setValueAtTime(4000, t);
-        bp.frequency.exponentialRampToValueAtTime(800, t + 0.1);
-        bp.Q.value = 2;
-        const dg = ctx.createGain();
-        dg.gain.setValueAtTime(0.5, t);
-        dg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-        debris.connect(bp);
-        bp.connect(dg);
-        dg.connect(v.gain);
-        debris.start(t);
-        debris.stop(t + 0.12);
-        // 深层低频：增加重量感（类似星际爆炸余震）
-        const sub = ctx.createOscillator();
-        sub.type = 'sine';
-        sub.frequency.setValueAtTime(120, t + 0.03);
-        sub.frequency.exponentialRampToValueAtTime(30, t + 0.25);
-        const sg = ctx.createGain();
-        sg.gain.setValueAtTime(0.5, t + 0.03);
-        sg.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
-        sub.connect(sg);
-        sg.connect(v.gain);
-        sub.start(t + 0.03);
-        sub.stop(t + 0.26);
-    }
-    /** Boss 死亡：星际争霸风格的史诗级爆裂 */
-    playBossDeath() {
-        if (!this._rateOk('boss_death', 300) || !this.ctx)
-            return;
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(0, 0.45, SoundPriority.CRITICAL);
-        if (!v)
-            return;
-        // 主爆裂：多层锯齿波下坠（类似星际Boss死亡）
-        const main = ctx.createOscillator();
-        main.type = 'sawtooth';
-        main.frequency.setValueAtTime(600, t);
-        main.frequency.exponentialRampToValueAtTime(50, t + 0.35);
-        const mg = ctx.createGain();
-        mg.gain.setValueAtTime(0.7, t);
-        mg.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
-        const lp = ctx.createBiquadFilter();
-        lp.type = 'lowpass';
-        lp.frequency.setValueAtTime(4000, t);
-        lp.frequency.exponentialRampToValueAtTime(200, t + 0.35);
-        main.connect(lp);
-        lp.connect(mg);
-        mg.connect(v.gain);
-        main.start(t);
-        main.stop(t + 0.38);
-        // 高频瞬态：增加爆裂感
-        const crack = this._noiseBuf(0.15);
-        const hp = ctx.createBiquadFilter();
-        hp.type = 'highpass';
-        hp.frequency.setValueAtTime(5000, t);
-        hp.frequency.exponentialRampToValueAtTime(1000, t + 0.12);
-        const cg = ctx.createGain();
-        cg.gain.setValueAtTime(0.6, t);
-        cg.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-        crack.connect(hp);
-        hp.connect(cg);
-        cg.connect(v.gain);
-        crack.start(t);
-        crack.stop(t + 0.15);
-        // 深层低频：史诗级余震
-        const sub = ctx.createOscillator();
-        sub.type = 'sine';
-        sub.frequency.setValueAtTime(150, t + 0.05);
-        sub.frequency.exponentialRampToValueAtTime(25, t + 0.4);
-        const sg = ctx.createGain();
-        sg.gain.setValueAtTime(0.6, t + 0.05);
-        sg.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
-        sub.connect(sg);
-        sg.connect(v.gain);
-        sub.start(t + 0.05);
-        sub.stop(t + 0.42);
-    }
-    /** 怪物逃脱：低沉警告音 */
-    playEnemyEscape(pan = 0) {
-        if (!this._rateOk('escape', 120) || !this.ctx)
-            return;
-        const ctx = this.ctx;
-        const t = ctx.currentTime;
-        const v = this._synthVoice(pan, 0.15);
-        if (!v)
-            return;
-        // 警告音：低频正弦波下坠
-        const warn = ctx.createOscillator();
-        warn.type = 'sine';
-        warn.frequency.setValueAtTime(180, t);
-        warn.frequency.exponentialRampToValueAtTime(80, t + 0.12);
-        const wg = ctx.createGain();
-        wg.gain.setValueAtTime(0.5, t);
-        wg.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
-        warn.connect(wg);
-        wg.connect(v.gain);
-        warn.start(t);
-        warn.stop(t + 0.15);
-    }
+    /** 命中反馈（静音模式） */
+    playEnemyHit(pan = 0, size = 15) { return; }
+    /** 暴击命中（静音模式） */
+    playCritHit(pan = 0) { return; }
+    /** 基地受击（静音模式） */
+    playBaseHit() { return; }
+    /** 普通怪物死亡（静音模式） */
+    playEnemyDeath(pan = 0) { return; }
+    /** 大型怪物死亡（静音模式） */
+    playEnemyDeathBig(pan = 0) { return; }
+    /** Boss 死亡（静音模式） */
+    playBossDeath() { return; }
+    /** 怪物逃脱（静音模式） */
+    playEnemyEscape(pan = 0) { return; }
     // ══════════════════════════════════════════════════════
-    //  UI 音效
+    //  UI 音效（静音模式）
     // ══════════════════════════════════════════════════════
-    playButtonClick() {
-        if (!this._rateOk('click', 80))
-            return;
-        this._playAsset('ui_click', { volume: 0.75, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.05 });
-    }
-    playButtonHover() {
-        if (!this._rateOk('hover', 150))
-            return;
-        this._playAsset('ui_hover', { volume: 0.3, priority: SoundPriority.LOW, bus: AudioBus.UI, pitchJitter: 0.05 });
-    }
-    playSummon() {
-        if (!this._rateOk('summon', 100))
-            return;
-        this._playAsset('ui_summon', { volume: 0.85, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.03 });
-    }
-    playPlaceTower() {
-        if (!this._rateOk('place', 80))
-            return;
-        this._playAsset('ui_place', { volume: 0.9, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.05 });
-    }
-    playSellTower() {
-        if (!this._rateOk('sell', 100))
-            return;
-        this._playAsset('ui_sell', { volume: 0.8, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.04 });
-    }
-    playDenied() {
-        if (!this._rateOk('denied', 100))
-            return;
-        this._playAsset('ui_denied', { volume: 0.8, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.03 });
-    }
-    playGoldGain() {
-        if (!this._rateOk('gold', 80))
-            return;
-        this._playAsset('ui_gold', { volume: 0.45, priority: SoundPriority.LOW, bus: AudioBus.UI, pitchJitter: 0.06 });
-    }
-    playMergeSuccess() {
-        if (!this._rateOk('merge', 120))
-            return;
-        this._playAsset('ui_merge', { volume: 0.85, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.03 });
-    }
-    playFusionSuccess() {
-        if (!this._rateOk('fusion', 150))
-            return;
-        this._playAsset('ui_fusion', { volume: 0.95, priority: SoundPriority.CRITICAL, bus: AudioBus.UI, pitchJitter: 0 });
-    }
-    playUpgradeSelect() {
-        if (!this._rateOk('upgrade', 120))
-            return;
-        this._playAsset('ui_upgrade', { volume: 0.85, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.03 });
-    }
-    playSkillReady() {
-        if (!this._rateOk('skill', 150))
-            return;
-        this._playAsset('ui_skill_ready', { volume: 0.75, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0.03 });
-    }
+    playButtonClick() { return; }
+    playButtonHover() { return; }
+    playSummon() { return; }
+    playPlaceTower() { return; }
+    playSellTower() { return; }
+    playDenied() { return; }
+    playGoldGain() { return; }
+    playMergeSuccess() { return; }
+    playFusionSuccess() { return; }
+    playUpgradeSelect() { return; }
+    playSkillReady() { return; }
     // ══════════════════════════════════════════════════════
-    //  游戏流程音效
+    //  游戏流程音效（静音模式）
     // ══════════════════════════════════════════════════════
-    playWaveStart() {
-        this._playAsset('flow_wave_start', { volume: 0.95, priority: SoundPriority.CRITICAL, bus: AudioBus.UI, pitchJitter: 0 });
-    }
-    playWaveClear() {
-        this._playAsset('flow_wave_clear', { volume: 0.9, priority: SoundPriority.HIGH, bus: AudioBus.UI, pitchJitter: 0 });
-    }
-    playBossSpawn() {
-        this._playAsset('flow_boss_spawn', { volume: 1.0, priority: SoundPriority.CRITICAL, pitchJitter: 0 });
-    }
-    playCountdownTick(urgent = false) {
-        if (!this._rateOk('tick', 100))
-            return;
-        this._playAsset(urgent ? 'flow_countdown_urgent' : 'flow_countdown', { volume: urgent ? 0.85 : 0.6, priority: SoundPriority.NORMAL, bus: AudioBus.UI, pitchJitter: 0.02 });
-    }
-    playOverloadActivate() {
-        this._playAsset('flow_paralyze', { volume: 1.0, priority: SoundPriority.CRITICAL, pitchJitter: 0, pitch: 1.22 });
-    }
-    playOverloadEnd() {
-        this._playAsset('flow_countdown', { volume: 0.7, priority: SoundPriority.NORMAL, bus: AudioBus.UI, pitch: 0.7 });
-    }
-    playParalyze() {
-        this._playAsset('flow_paralyze', { volume: 0.8, priority: SoundPriority.HIGH, pitchJitter: 0.05 });
-    }
-    playMenuStart() {
-        this._playAsset('flow_menu_start', { volume: 0.95, priority: SoundPriority.CRITICAL, bus: AudioBus.UI, pitchJitter: 0 });
-    }
-    playGameOver() {
-        this._playAsset('flow_game_over', { volume: 1.0, priority: SoundPriority.CRITICAL, bus: AudioBus.UI, pitchJitter: 0 });
-    }
-    playVictory() {
-        this._playAsset('flow_victory', { volume: 1.0, priority: SoundPriority.CRITICAL, bus: AudioBus.UI, pitchJitter: 0 });
-    }
+    playWaveStart() { return; }
+    playWaveClear() { return; }
+    playBossSpawn() { return; }
+    playCountdownTick(urgent = false) { return; }
+    playOverloadActivate() { return; }
+    playOverloadEnd() { return; }
+    playParalyze() { return; }
+    playMenuStart() { return; }
+    playGameOver() { return; }
+    playVictory() { return; }
     // ══════════════════════════════════════════════════════
     //  循环层（环境 / 音乐 / 张力）
     // ══════════════════════════════════════════════════════

@@ -110,7 +110,7 @@ export declare class SoundManager {
     private _saveSettings;
     private loadSettings;
     private _voice;
-    /** 播放一个音频素材 */
+    /** 播放一个音频素材（当前静音模式） */
     private _playAsset;
     /** 频率限制：同一 key 在 minMs 内只播放一次 */
     private _rateOk;
@@ -122,41 +122,41 @@ export declare class SoundManager {
     private _noiseBuf;
     /** 通用：创建声部并连接到 pan */
     private _synthVoice;
-    /** 脉冲炮：快速连射，短促金属撞击 */
+    /** 脉冲炮（静音模式） */
     playMachineGunShot(pan?: number): void;
-    /** 冰霜炮：嘶嘶声 + 结晶叮当 */
+    /** 冰霜炮（静音模式） */
     playFrostShot(pan?: number): void;
-    /** 电磁炮：电弧噼啪 + 放电噪声 */
+    /** 电磁炮（静音模式） */
     playElectricShot(pan?: number): void;
-    /** 毒液炮：黏液声 */
+    /** 毒液炮（静音模式） */
     playPoisonShot(pan?: number): void;
-    /** 导弹台：发射呼啸 + 撞击 */
+    /** 导弹台（静音模式） */
     playBombExplosion(pan?: number): void;
-    /** 激光炮：充能嗡鸣 */
+    /** 激光炮（静音模式） */
     playLaserShot(pan?: number): void;
-    /** 磁轨炮：加速嗡鸣 + 音爆 */
+    /** 磁轨炮（静音模式） */
     playSniperShot(pan?: number): void;
-    /** 焚化器：点火 + 咆哮 */
+    /** 焚化器（静音模式） */
     playFlameShot(pan?: number): void;
-    /** 引力场：低频脉冲 + 共鸣 */
+    /** 引力场（静音模式） */
     playMagneticShot(pan?: number): void;
-    /** 奇点炮：扭曲 + 内爆 */
+    /** 奇点炮（静音模式） */
     playSingularityShot(pan?: number): void;
     /** 按防御塔类型分发音效（供游戏逻辑统一调用） */
     playTowerShot(type: string, pan?: number): void;
-    /** 命中反馈：星际争霸风格的清晰金属撞击 */
+    /** 命中反馈（静音模式） */
     playEnemyHit(pan?: number, size?: number): void;
-    /** 暴击命中：明亮叮当 + 轻微混响 */
+    /** 暴击命中（静音模式） */
     playCritHit(pan?: number): void;
-    /** 基地受击：警告号角 */
+    /** 基地受击（静音模式） */
     playBaseHit(): void;
-    /** 普通怪物死亡：星际争霸风格的干脆爆裂 */
+    /** 普通怪物死亡（静音模式） */
     playEnemyDeath(pan?: number): void;
-    /** 大型怪物死亡：星际争霸风格的重型爆裂 */
+    /** 大型怪物死亡（静音模式） */
     playEnemyDeathBig(pan?: number): void;
-    /** Boss 死亡：星际争霸风格的史诗级爆裂 */
+    /** Boss 死亡（静音模式） */
     playBossDeath(): void;
-    /** 怪物逃脱：低沉警告音 */
+    /** 怪物逃脱（静音模式） */
     playEnemyEscape(pan?: number): void;
     playButtonClick(): void;
     playButtonHover(): void;
