@@ -2782,7 +2782,7 @@ export class GameManager {
         ctx.globalAlpha = 1;
         ctx.restore();
         neonText(ctx, '霓虹壁垒', cx, 182, CYBER.cyan, { blur: 16, font: 'bold 34px sans-serif' });
-        neonText(ctx, '机械入侵', cx, 226, CYBER.purple, { blur: 16, font: 'bold 34px sans-serif' });
+        neonText(ctx, '赛博塔防', cx, 226, CYBER.purple, { blur: 16, font: 'bold 34px sans-serif' });
         // ── 副标题 ──
         ctx.fillStyle = CYBER.textMid;
         ctx.font = '14px sans-serif';
